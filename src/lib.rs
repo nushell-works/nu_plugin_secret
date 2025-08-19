@@ -4,7 +4,7 @@ mod commands;
 mod secret_types;
 
 use commands::*;
-pub use secret_types::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList};
+pub use secret_types::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList, SecretFloat, SecretBinary, SecretDate};
 
 pub struct SecretPlugin;
 
@@ -21,6 +21,9 @@ impl Plugin for SecretPlugin {
             Box::new(SecretWrapBoolCommand),
             Box::new(SecretWrapRecordCommand),
             Box::new(SecretWrapListCommand),
+            Box::new(SecretWrapFloatCommand),
+            Box::new(SecretWrapBinaryCommand),
+            Box::new(SecretWrapDateCommand),
             // Utility commands
             Box::new(SecretUnwrapCommand),
             Box::new(SecretInfoCommand),
@@ -44,7 +47,7 @@ mod tests {
     fn test_plugin_commands() {
         let plugin = SecretPlugin;
         let commands = plugin.commands();
-        assert_eq!(commands.len(), 9);
+        assert_eq!(commands.len(), 12);
 
         // Test all commands to ensure they're registered correctly
         let command_names: Vec<&str> = commands.iter().map(|cmd| cmd.name()).collect();
@@ -53,6 +56,9 @@ mod tests {
         assert!(command_names.contains(&"secret wrap-bool"));
         assert!(command_names.contains(&"secret wrap-record"));
         assert!(command_names.contains(&"secret wrap-list"));
+        assert!(command_names.contains(&"secret wrap-float"));
+        assert!(command_names.contains(&"secret wrap-binary"));
+        assert!(command_names.contains(&"secret wrap-date"));
         assert!(command_names.contains(&"secret unwrap"));
         assert!(command_names.contains(&"secret info"));
         assert!(command_names.contains(&"secret validate"));

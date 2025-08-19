@@ -1,4 +1,4 @@
-use crate::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList};
+use crate::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList, SecretFloat, SecretBinary, SecretDate};
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Signature, Type, Value,
@@ -22,6 +22,9 @@ impl PluginCommand for SecretTypeOfCommand {
                 (Type::Custom("secret_bool".into()), Type::String),
                 (Type::Custom("secret_record".into()), Type::String),
                 (Type::Custom("secret_list".into()), Type::String),
+                (Type::Custom("secret_float".into()), Type::String),
+                (Type::Custom("secret_binary".into()), Type::String),
+                (Type::Custom("secret_date".into()), Type::String),
             ])
             .category(Category::Core)
     }
@@ -59,6 +62,12 @@ impl PluginCommand for SecretTypeOfCommand {
                     "record"
                 } else if val.as_any().downcast_ref::<SecretList>().is_some() {
                     "list"
+                } else if val.as_any().downcast_ref::<SecretFloat>().is_some() {
+                    "float"
+                } else if val.as_any().downcast_ref::<SecretBinary>().is_some() {
+                    "binary"
+                } else if val.as_any().downcast_ref::<SecretDate>().is_some() {
+                    "date"
                 } else {
                     "unknown"
                 };
@@ -99,7 +108,7 @@ mod tests {
         let command = SecretTypeOfCommand;
         let sig = command.signature();
         assert_eq!(sig.name, "secret type-of");
-        assert_eq!(sig.input_output_types.len(), 5);
+        assert_eq!(sig.input_output_types.len(), 8);
         assert_eq!(sig.input_output_types[0].1, Type::String);
     }
 }

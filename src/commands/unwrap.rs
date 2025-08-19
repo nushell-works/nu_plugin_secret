@@ -1,4 +1,4 @@
-use crate::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList};
+use crate::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList, SecretFloat, SecretBinary, SecretDate};
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Signature, Type, Value,
@@ -22,6 +22,9 @@ impl PluginCommand for SecretUnwrapCommand {
                 (Type::Custom("secret_bool".into()), Type::Bool),
                 (Type::Custom("secret_record".into()), Type::Record(Box::new([]))),
                 (Type::Custom("secret_list".into()), Type::List(Box::new(Type::Any))),
+                (Type::Custom("secret_float".into()), Type::Float),
+                (Type::Custom("secret_binary".into()), Type::Binary),
+                (Type::Custom("secret_date".into()), Type::Date),
             ])
             .category(Category::Conversions)
     }
@@ -72,6 +75,18 @@ impl PluginCommand for SecretUnwrapCommand {
                     let revealed = secret_list.reveal().clone();
                     let value = Value::list(revealed, call.head);
                     Ok(PipelineData::Value(value, metadata))
+                } else if let Some(secret_float) = val.as_any().downcast_ref::<SecretFloat>() {
+                    let revealed = secret_float.reveal();
+                    let value = Value::float(revealed, call.head);
+                    Ok(PipelineData::Value(value, metadata))
+                } else if let Some(secret_binary) = val.as_any().downcast_ref::<SecretBinary>() {
+                    let revealed = secret_binary.reveal().clone();
+                    let value = Value::binary(revealed, call.head);
+                    Ok(PipelineData::Value(value, metadata))
+                } else if let Some(secret_date) = val.as_any().downcast_ref::<SecretDate>() {
+                    let revealed = secret_date.reveal().clone();
+                    let value = Value::date(revealed, call.head);
+                    Ok(PipelineData::Value(value, metadata))
                 } else {
                     Err(LabeledError::new("Type Error")
                         .with_label("Expected a secret type", call.head)
@@ -109,7 +124,7 @@ mod tests {
         let command = SecretUnwrapCommand;
         let sig = command.signature();
         assert_eq!(sig.name, "secret unwrap");
-        assert_eq!(sig.input_output_types.len(), 5);
+        assert_eq!(sig.input_output_types.len(), 8);
         assert_eq!(sig.input_output_types[0].1, Type::String);
     }
 }
