@@ -1,4 +1,4 @@
-use crate::SecretString;
+use crate::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList};
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Signature, Type, Value,
@@ -49,7 +49,11 @@ impl PluginCommand for SecretValidateCommand {
         match input {
             PipelineData::Value(Value::Custom { val, .. }, metadata) => {
                 // Check if it's any known secret type
-                let is_secret = val.as_any().downcast_ref::<SecretString>().is_some();
+                let is_secret = val.as_any().downcast_ref::<SecretString>().is_some()
+                    || val.as_any().downcast_ref::<SecretInt>().is_some()
+                    || val.as_any().downcast_ref::<SecretBool>().is_some()
+                    || val.as_any().downcast_ref::<SecretRecord>().is_some()
+                    || val.as_any().downcast_ref::<SecretList>().is_some();
                 
                 Ok(PipelineData::Value(
                     Value::bool(is_secret, call.head),

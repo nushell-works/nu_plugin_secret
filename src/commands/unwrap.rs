@@ -1,4 +1,4 @@
-use crate::SecretString;
+use crate::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList};
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Signature, Type, Value,
@@ -16,12 +16,18 @@ impl PluginCommand for SecretUnwrapCommand {
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .input_output_types(vec![(Type::Custom("secret_string".into()), Type::String)])
+            .input_output_types(vec![
+                (Type::Custom("secret_string".into()), Type::String),
+                (Type::Custom("secret_int".into()), Type::Int),
+                (Type::Custom("secret_bool".into()), Type::Bool),
+                (Type::Custom("secret_record".into()), Type::Record(Box::new([]))),
+                (Type::Custom("secret_list".into()), Type::List(Box::new(Type::Any))),
+            ])
             .category(Category::Conversions)
     }
 
     fn description(&self) -> &str {
-        "Extract the underlying value from a secret type. WARNING: This exposes sensitive data!"
+        "Extract the underlying value from any secret type. WARNING: This exposes sensitive data!"
     }
 
     fn examples(&self) -> Vec<Example> {
@@ -49,6 +55,22 @@ impl PluginCommand for SecretUnwrapCommand {
                 if let Some(secret_string) = val.as_any().downcast_ref::<SecretString>() {
                     let revealed = secret_string.reveal().to_string();
                     let value = Value::string(revealed, call.head);
+                    Ok(PipelineData::Value(value, metadata))
+                } else if let Some(secret_int) = val.as_any().downcast_ref::<SecretInt>() {
+                    let revealed = secret_int.reveal();
+                    let value = Value::int(revealed, call.head);
+                    Ok(PipelineData::Value(value, metadata))
+                } else if let Some(secret_bool) = val.as_any().downcast_ref::<SecretBool>() {
+                    let revealed = secret_bool.reveal();
+                    let value = Value::bool(revealed, call.head);
+                    Ok(PipelineData::Value(value, metadata))
+                } else if let Some(secret_record) = val.as_any().downcast_ref::<SecretRecord>() {
+                    let revealed = secret_record.reveal().clone();
+                    let value = Value::record(revealed, call.head);
+                    Ok(PipelineData::Value(value, metadata))
+                } else if let Some(secret_list) = val.as_any().downcast_ref::<SecretList>() {
+                    let revealed = secret_list.reveal().clone();
+                    let value = Value::list(revealed, call.head);
                     Ok(PipelineData::Value(value, metadata))
                 } else {
                     Err(LabeledError::new("Type Error")
@@ -87,7 +109,7 @@ mod tests {
         let command = SecretUnwrapCommand;
         let sig = command.signature();
         assert_eq!(sig.name, "secret unwrap");
-        assert_eq!(sig.input_output_types.len(), 1);
+        assert_eq!(sig.input_output_types.len(), 5);
         assert_eq!(sig.input_output_types[0].1, Type::String);
     }
 }

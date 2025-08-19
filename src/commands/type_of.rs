@@ -1,4 +1,4 @@
-use crate::SecretString;
+use crate::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList};
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Signature, Type, Value,
@@ -16,7 +16,13 @@ impl PluginCommand for SecretTypeOfCommand {
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .input_output_types(vec![(Type::Custom("secret_string".into()), Type::String)])
+            .input_output_types(vec![
+                (Type::Custom("secret_string".into()), Type::String),
+                (Type::Custom("secret_int".into()), Type::String),
+                (Type::Custom("secret_bool".into()), Type::String),
+                (Type::Custom("secret_record".into()), Type::String),
+                (Type::Custom("secret_list".into()), Type::String),
+            ])
             .category(Category::Core)
     }
 
@@ -45,6 +51,14 @@ impl PluginCommand for SecretTypeOfCommand {
             PipelineData::Value(Value::Custom { val, .. }, metadata) => {
                 let underlying_type = if val.as_any().downcast_ref::<SecretString>().is_some() {
                     "string"
+                } else if val.as_any().downcast_ref::<SecretInt>().is_some() {
+                    "int"
+                } else if val.as_any().downcast_ref::<SecretBool>().is_some() {
+                    "bool"
+                } else if val.as_any().downcast_ref::<SecretRecord>().is_some() {
+                    "record"
+                } else if val.as_any().downcast_ref::<SecretList>().is_some() {
+                    "list"
                 } else {
                     "unknown"
                 };
@@ -85,7 +99,7 @@ mod tests {
         let command = SecretTypeOfCommand;
         let sig = command.signature();
         assert_eq!(sig.name, "secret type-of");
-        assert_eq!(sig.input_output_types.len(), 1);
+        assert_eq!(sig.input_output_types.len(), 5);
         assert_eq!(sig.input_output_types[0].1, Type::String);
     }
 }
