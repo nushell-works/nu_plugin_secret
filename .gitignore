@@ -1,0 +1,84 @@
+# Rust build artifacts
+/target/
+
+# Note: Cargo.lock is committed for applications/binaries like plugins
+
+# Debug artifacts
+*.pdb
+
+# IDE and editor files
+# Note: .vscode/settings.json is committed for consistent development setup
+.vscode/*
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs and runtime files
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage and test artifacts
+coverage/
+*.lcov
+lcov.info
+tarpaulin-report.html
+cobertura.xml
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.orig
+*.rej
+
+# Environment and configuration
+.env
+.env.local
+.env.*.local
+
+# Documentation build artifacts
+book/
+mdbook/
+docs/_build/
+
+# Benchmarking artifacts
+criterion/
+bench_results/
+
+# Security and secrets
+.secrets.baseline
+*.pem
+*.key
+*.crt
+
+# Local development
+.cargo/config.toml
+
+# Plugin-specific
+plugin_registry.msgpack
+
+# AI assistant scratch space
+/.ai/scratch
+
+# Claude Code local settings
+.claude/settings.local.json
