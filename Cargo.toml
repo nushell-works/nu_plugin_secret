@@ -18,8 +18,7 @@ include = [
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
-    "Cargo.toml",
-    "benches/**/*"
+    "Cargo.toml"
 ]
 exclude = [
     ".github/",
@@ -45,10 +44,6 @@ maintenance = { status = "actively-developed" }
 name = "nu_plugin_secret"
 path = "src/main.rs"
 
-# Benchmarks will be added later
-# [[bench]]
-# name = "performance_benchmarks"
-# harness = false
 
 [lib]
 name = "nu_plugin_secret"
