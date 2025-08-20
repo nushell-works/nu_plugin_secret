@@ -246,10 +246,10 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          components: rust-src
+          components: rust-src, miri
 
-      - name: Install Miri
-        run: cargo install miri
+      - name: Setup Miri
+        run: cargo miri setup
 
       - name: Run Miri
         run: cargo miri test
