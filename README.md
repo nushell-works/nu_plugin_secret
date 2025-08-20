@@ -94,7 +94,7 @@ secret info
 ```nushell
 # Secure API key handling
 let $api_key = ($env.API_KEY | secret wrap-string)
-http get "https://api.example.com/data" -H [Authorization $"Bearer ($api_key | secret unwrap)"]
+http get "https://example.com/api" -H [Authorization $"Bearer ($api_key | secret unwrap)"]
 
 # Database configuration with mixed types
 let $db_config = {

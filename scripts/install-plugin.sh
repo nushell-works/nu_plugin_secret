@@ -155,7 +155,7 @@ show_examples() {
     echo ""
     echo "# Real-world usage:"
     echo 'let $api_key = ($env.API_KEY | secret wrap-string)'
-    echo 'http get "https://api.example.com" -H [Authorization $"Bearer ($api_key | secret unwrap)"]'
+    echo 'http get "https://example.com/api" -H [Authorization $"Bearer ($api_key | secret unwrap)"]'
     echo ""
 }
 
