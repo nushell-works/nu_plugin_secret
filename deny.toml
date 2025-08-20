@@ -23,7 +23,12 @@ allow = [
     "BSD-2-Clause",
     "BSD-3-Clause",
     "ISC",
-    "Unicode-DFS-2016",
+    # Additional licenses required by nushell dependencies
+    "0BSD",           # BSD Zero Clause License (doctest-file, recvmsg)
+    "Zlib",           # zlib License (foldhash)
+    "MPL-2.0",        # Mozilla Public License 2.0 (option-ext)
+    "CC-PDDC",        # Creative Commons Public Domain Dedication (pwd)
+    "Unicode-3.0",    # Unicode License v3 (unicode-ident)
 ]
 
 [bans]
