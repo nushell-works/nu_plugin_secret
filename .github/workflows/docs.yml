@@ -89,6 +89,8 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
+        with:
+          enablement: true
 
       - name: Create documentation site
         run: |
@@ -145,6 +147,20 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Pages deployment result
+        if: always()
+        run: |
+          if [ "${{ steps.deployment.outcome }}" == "failure" ]; then
+            echo "::warning::GitHub Pages deployment failed. To enable Pages:"
+            echo "::warning::1. Go to repository Settings > Pages"
+            echo "::warning::2. Set Source to 'GitHub Actions'"
+            echo "::warning::3. Re-run this workflow"
+          else
+            echo "✅ Documentation deployed successfully"
+            echo "📖 View at: ${{ steps.deployment.outputs.page_url }}"
+          fi
 
   # Validate documentation quality
   validate-docs:
