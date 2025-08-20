@@ -1,10 +1,14 @@
 # nu_plugin_secret
 
-Production-grade Nushell plugin for secure handling of sensitive data with 8 comprehensive secret types that prevent accidental exposure.
+Production-grade Nushell plugin for secure handling of sensitive data with 8
+comprehensive secret types that prevent accidental exposure.
 
 ## 🔐 Security First
 
-This plugin provides secure custom types that always display as `<redacted:type>` to prevent accidental exposure of sensitive information like API keys, passwords, tokens, and other confidential data in logs, debug output, or command history.
+This plugin provides secure custom types that always display as
+`<redacted:type>` to prevent accidental exposure of sensitive information like
+API keys, passwords, tokens, and other confidential data in logs, debug output,
+or command history.
 
 ## ✨ Features
 
@@ -38,7 +42,9 @@ plugin use secret
 ## 🚀 Commands
 
 ### Wrap Commands
+
 Convert values to secret types:
+
 ```nushell
 "my-api-key" | secret wrap-string     # <redacted:string>
 42 | secret wrap-int                  # <redacted:int>
@@ -52,8 +58,10 @@ date now | secret wrap-date           # <redacted:date>
 
 ### Utility Commands
 
-#### `secret unwrap`  
+#### `secret unwrap`
+
 Extract the underlying value (with security warning):
+
 ```nushell
 $secret_value | secret unwrap
 # WARNING: Extracting sensitive data from secret type...
@@ -61,28 +69,35 @@ $secret_value | secret unwrap
 ```
 
 #### `secret validate`
+
 Check if a value is a secret type:
+
 ```nushell
 $value | secret validate
 # Output: true/false
 ```
 
 #### `secret type-of`
+
 Get the underlying type without exposing content:
+
 ```nushell
-$secret_value | secret type-of  
+$secret_value | secret type-of
 # Output: string, int, bool, record, list, float, binary, or date
 ```
 
 #### `secret info`
+
 Display plugin information and security guidance:
+
 ```nushell
 secret info
 ```
 
 ## 🛡️ Security Features
 
-- **Zero Accidental Exposure**: Secret values never display actual content in any context
+- **Zero Accidental Exposure**: Secret values never display actual content in
+  any context
 - **Memory Safety**: Secure cleanup via ZeroizeOnDrop on all secret types
 - **Constant-Time Comparison**: Prevents timing attacks across all types
 - **Serialization Protection**: Custom implementations prevent exposure
@@ -94,7 +109,8 @@ secret info
 ```nushell
 # Secure API key handling
 let $api_key = ($env.API_KEY | secret wrap-string)
-http get "https://example.com/api" -H [Authorization $"Bearer ($api_key | secret unwrap)"]
+http get "https://example.com/api" \
+  -H [Authorization $"Bearer ($api_key | secret unwrap)"]
 
 # Database configuration with mixed types
 let $db_config = {
@@ -124,17 +140,18 @@ if ($value | secret validate) {
 ## 🎯 Current Status
 
 **✅ Phase 2+ Complete**: All 8 secret types implemented and tested
-- **12 Commands**: 8 wrap commands + 4 utility commands  
+
+- **12 Commands**: 8 wrap commands + 4 utility commands
 - **74 Tests**: Comprehensive test coverage
 - **Production Ready**: Memory-safe, secure, and performant
 
 ## 🗺️ Roadmap
 
-**✅ Phase 1**: SecretString with core commands  
-**✅ Phase 2**: SecretInt, SecretBool, SecretRecord, SecretList  
-**✅ Phase 2+**: SecretFloat, SecretBinary, SecretDate  
-**🔄 Phase 3**: CI/CD pipeline and documentation  
-**📋 Phase 4**: Security audit and production hardening  
+**✅ Phase 1**: SecretString with core commands
+**✅ Phase 2**: SecretInt, SecretBool, SecretRecord, SecretList
+**✅ Phase 2+**: SecretFloat, SecretBinary, SecretDate
+**🔄 Phase 3**: CI/CD pipeline and documentation
+**📋 Phase 4**: Security audit and production hardening
 
 ## 🛠️ Development
 
@@ -159,8 +176,12 @@ BSD 3-Clause License - see [LICENSE](LICENSE) for details.
 
 ## 🤝 Contributing
 
-Contributions welcome! Please read our security guidelines before submitting PRs involving sensitive data handling.
+Contributions welcome! Please read our security guidelines before submitting
+PRs involving sensitive data handling.
 
 ## ⚠️ Security Notice
 
-This plugin is designed for defensive security purposes only. Always follow security best practices when handling sensitive data. All secret types use memory-safe implementations with automatic cleanup to prevent information leakage.
+This plugin is designed for defensive security purposes only. Always follow
+security best practices when handling sensitive data. All secret types use
+memory-safe implementations with automatic cleanup to prevent information
+leakage.
