@@ -1,7 +1,5 @@
 use nu_plugin::{EngineInterface, EvaluatedCall, Plugin, PluginCommand};
-use nu_protocol::{
-    Category, Example, LabeledError, PipelineData, Record, Signature, Type, Value,
-};
+use nu_protocol::{Category, Example, LabeledError, PipelineData, Record, Signature, Type, Value};
 
 #[derive(Clone)]
 pub struct SecretInfoCommand;
@@ -39,7 +37,7 @@ impl PluginCommand for SecretInfoCommand {
         _input: PipelineData,
     ) -> Result<PipelineData, LabeledError> {
         let mut record = Record::new();
-        
+
         record.push("name", Value::string("nu_plugin_secret", call.head));
         record.push("version", Value::string(plugin.version(), call.head));
         record.push(
@@ -49,17 +47,12 @@ impl PluginCommand for SecretInfoCommand {
                 call.head,
             ),
         );
-        
+
         record.push(
             "supported_types",
-            Value::list(
-                vec![
-                    Value::string("secret_string", call.head),
-                ],
-                call.head,
-            ),
+            Value::list(vec![Value::string("secret_string", call.head)], call.head),
         );
-        
+
         record.push(
             "commands",
             Value::list(
@@ -73,7 +66,7 @@ impl PluginCommand for SecretInfoCommand {
                 call.head,
             ),
         );
-        
+
         record.push(
             "security_features",
             Value::list(
@@ -87,14 +80,20 @@ impl PluginCommand for SecretInfoCommand {
                 call.head,
             ),
         );
-        
+
         record.push(
             "best_practices",
             Value::list(
                 vec![
-                    Value::string("Use secret types for API keys, passwords, and tokens", call.head),
+                    Value::string(
+                        "Use secret types for API keys, passwords, and tokens",
+                        call.head,
+                    ),
                     Value::string("Minimize unwrap operations", call.head),
-                    Value::string("Store secrets as environment variables when possible", call.head),
+                    Value::string(
+                        "Store secrets as environment variables when possible",
+                        call.head,
+                    ),
                     Value::string("Use type-specific wrap commands for clarity", call.head),
                     Value::string("Review code for accidental secret exposure", call.head),
                 ],
@@ -102,10 +101,7 @@ impl PluginCommand for SecretInfoCommand {
             ),
         );
 
-        Ok(PipelineData::Value(
-            Value::record(record, call.head),
-            None,
-        ))
+        Ok(PipelineData::Value(Value::record(record, call.head), None))
     }
 }
 

@@ -83,11 +83,11 @@ impl PartialEq for SecretRecord {
         // This is a simplified approach - in production, we might want more sophisticated comparison
         let self_ser = bincode::serialize(&self.inner).unwrap_or_default();
         let other_ser = bincode::serialize(&other.inner).unwrap_or_default();
-        
+
         if self_ser.len() != other_ser.len() {
             return false;
         }
-        
+
         let mut result = 0u8;
         for i in 0..self_ser.len() {
             result |= self_ser[i] ^ other_ser[i];
@@ -105,7 +105,7 @@ mod tests {
         let mut record = Record::new();
         record.push("key", Value::test_string("value"));
         let secret = SecretRecord::new(record.clone());
-        
+
         // Test that we can access the field correctly
         let field_value = secret.get_field("key");
         assert!(field_value.is_some());
@@ -130,7 +130,7 @@ mod tests {
         record.push("api_key", Value::test_string("secret123"));
         let secret = SecretRecord::new(record);
         assert_eq!(secret.type_name(), "secret_record");
-        
+
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
             Value::String { val, .. } => assert_eq!(val, "<redacted:record>"),
@@ -144,10 +144,10 @@ mod tests {
         record.push("username", Value::test_string("admin"));
         record.push("password", Value::test_string("secret"));
         let secret = SecretRecord::new(record);
-        
+
         let username = secret.get_field("username");
         assert!(username.is_some());
-        
+
         let fields: Vec<&String> = secret.fields().collect();
         assert_eq!(fields.len(), 2);
         assert!(fields.contains(&&"username".to_string()));
@@ -160,11 +160,11 @@ mod tests {
         record1.push("key", Value::test_string("value"));
         let secret1 = SecretRecord::new(record1.clone());
         let secret2 = SecretRecord::new(record1);
-        
+
         let mut record3 = Record::new();
         record3.push("key", Value::test_string("different"));
         let secret3 = SecretRecord::new(record3);
-        
+
         assert_eq!(secret1, secret2);
         assert_ne!(secret1, secret3);
     }

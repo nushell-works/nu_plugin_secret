@@ -1,8 +1,9 @@
-use crate::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList, SecretFloat, SecretBinary, SecretDate};
-use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{
-    Category, Example, LabeledError, PipelineData, Signature, Type, Value,
+use crate::{
+    SecretBinary, SecretBool, SecretDate, SecretFloat, SecretInt, SecretList, SecretRecord,
+    SecretString,
 };
+use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
+use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 
 #[derive(Clone)]
 pub struct SecretUnwrapCommand;
@@ -20,8 +21,14 @@ impl PluginCommand for SecretUnwrapCommand {
                 (Type::Custom("secret_string".into()), Type::String),
                 (Type::Custom("secret_int".into()), Type::Int),
                 (Type::Custom("secret_bool".into()), Type::Bool),
-                (Type::Custom("secret_record".into()), Type::Record(Box::new([]))),
-                (Type::Custom("secret_list".into()), Type::List(Box::new(Type::Any))),
+                (
+                    Type::Custom("secret_record".into()),
+                    Type::Record(Box::new([])),
+                ),
+                (
+                    Type::Custom("secret_list".into()),
+                    Type::List(Box::new(Type::Any)),
+                ),
                 (Type::Custom("secret_float".into()), Type::Float),
                 (Type::Custom("secret_binary".into()), Type::Binary),
                 (Type::Custom("secret_date".into()), Type::Date),
@@ -34,13 +41,11 @@ impl PluginCommand for SecretUnwrapCommand {
     }
 
     fn examples(&self) -> Vec<Example> {
-        vec![
-            Example {
-                example: r#""my-secret" | secret wrap-string | secret unwrap"#,
-                description: "Unwrap a secret string to get the original value",
-                result: Some(Value::test_string("my-secret")),
-            },
-        ]
+        vec![Example {
+            example: r#""my-secret" | secret wrap-string | secret unwrap"#,
+            description: "Unwrap a secret string to get the original value",
+            result: Some(Value::test_string("my-secret")),
+        }]
     }
 
     fn run(

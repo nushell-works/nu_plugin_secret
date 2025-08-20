@@ -1,8 +1,9 @@
-use crate::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList, SecretFloat, SecretBinary, SecretDate};
-use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{
-    Category, Example, LabeledError, PipelineData, Signature, Type, Value,
+use crate::{
+    SecretBinary, SecretBool, SecretDate, SecretFloat, SecretInt, SecretList, SecretRecord,
+    SecretString,
 };
+use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
+use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 
 #[derive(Clone)]
 pub struct SecretTypeOfCommand;
@@ -34,13 +35,11 @@ impl PluginCommand for SecretTypeOfCommand {
     }
 
     fn examples(&self) -> Vec<Example> {
-        vec![
-            Example {
-                example: r#""my-secret" | secret wrap-string | secret type-of"#,
-                description: "Get the underlying type of a secret string",
-                result: Some(Value::test_string("string")),
-            },
-        ]
+        vec![Example {
+            example: r#""my-secret" | secret wrap-string | secret type-of"#,
+            description: "Get the underlying type of a secret string",
+            result: Some(Value::test_string("string")),
+        }]
     }
 
     fn run(
@@ -71,7 +70,7 @@ impl PluginCommand for SecretTypeOfCommand {
                 } else {
                     "unknown"
                 };
-                
+
                 Ok(PipelineData::Value(
                     Value::string(underlying_type, call.head),
                     metadata,

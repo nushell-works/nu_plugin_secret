@@ -1,8 +1,6 @@
 use crate::SecretDate;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{
-    Category, Example, LabeledError, PipelineData, Signature, Type, Value,
-};
+use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 
 #[derive(Clone)]
 pub struct SecretWrapDateCommand;
@@ -25,13 +23,11 @@ impl PluginCommand for SecretWrapDateCommand {
     }
 
     fn examples(&self) -> Vec<Example> {
-        vec![
-            Example {
-                example: r#"date now | secret wrap-date"#,
-                description: "Convert current datetime to a secret date",
-                result: None, // We can't show the actual result since it's redacted
-            },
-        ]
+        vec![Example {
+            example: r#"date now | secret wrap-date"#,
+            description: "Convert current datetime to a secret date",
+            result: None, // We can't show the actual result since it's redacted
+        }]
     }
 
     fn run(

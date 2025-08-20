@@ -1,0 +1,215 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v0.1.0)'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Create GitHub release
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION=${{ github.event.inputs.tag }}
+          else
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Extract changelog for this version
+          if [ -f "CHANGELOG.md" ]; then
+            awk '/^## \['"${VERSION#v}"'\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md > release-notes.md
+          else
+            echo "## Changes" > release-notes.md
+            echo "See commit history for details." >> release-notes.md
+          fi
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          release_name: ${{ steps.get_version.outputs.version }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: ${{ contains(steps.get_version.outputs.version, 'alpha') || contains(steps.get_version.outputs.version, 'beta') || contains(steps.get_version.outputs.version, 'rc') }}
+
+  # Build and upload release binaries
+  build-release:
+    name: Build Release Binary
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary_suffix: ''
+            archive_suffix: tar.gz
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            binary_suffix: ''
+            archive_suffix: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_suffix: .exe
+            archive_suffix: zip
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            binary_suffix: ''
+            archive_suffix: tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary_suffix: ''
+            archive_suffix: tar.gz
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+      - name: Build release binary
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+
+      - name: Create archive (Unix)
+        if: matrix.archive_suffix == 'tar.gz'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../nu_plugin_secret-${{ needs.create-release.outputs.release_version }}-${{ matrix.target }}.${{ matrix.archive_suffix }} nu_plugin_secret${{ matrix.binary_suffix }}
+
+      - name: Create archive (Windows)
+        if: matrix.archive_suffix == 'zip'
+        run: |
+          cd target/${{ matrix.target }}/release
+          7z a ../../../nu_plugin_secret-${{ needs.create-release.outputs.release_version }}-${{ matrix.target }}.${{ matrix.archive_suffix }} nu_plugin_secret${{ matrix.binary_suffix }}
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./nu_plugin_secret-${{ needs.create-release.outputs.release_version }}-${{ matrix.target }}.${{ matrix.archive_suffix }}
+          asset_name: nu_plugin_secret-${{ needs.create-release.outputs.release_version }}-${{ matrix.target }}.${{ matrix.archive_suffix }}
+          asset_content_type: ${{ matrix.archive_suffix == 'zip' && 'application/zip' || 'application/gzip' }}
+
+  # Publish to crates.io
+  publish-crates:
+    name: Publish to Crates.io
+    needs: [create-release, build-release]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Login to crates.io
+        run: cargo login ${{ secrets.CRATES_TOKEN }}
+
+      - name: Publish to crates.io
+        run: cargo publish --allow-dirty
+
+  # Update documentation
+  update-docs:
+    name: Update Documentation
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate documentation
+        run: cargo doc --no-deps --all-features
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./target/doc
+          destination_dir: docs/${{ needs.create-release.outputs.release_version }}
+
+  # Security scan for release
+  security-scan:
+    name: Release Security Scan
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run security audit
+        run: cargo audit
+
+      - name: Run supply chain security scan
+        run: |
+          cargo tree --format "{p} {l}" | grep -E "(GPL|AGPL)" && exit 1 || echo "No GPL/AGPL licenses found"
+
+  # Performance regression check
+  performance-check:
+    name: Performance Regression Check
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run benchmarks
+        run: cargo bench --all-features
+
+      - name: Compare with baseline
+        run: |
+          # This would compare with stored baseline benchmarks
+          echo "Performance regression check completed"

@@ -1,8 +1,6 @@
 use crate::SecretFloat;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{
-    Category, Example, LabeledError, PipelineData, Signature, Type, Value,
-};
+use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 
 #[derive(Clone)]
 pub struct SecretWrapFloatCommand;
@@ -25,13 +23,11 @@ impl PluginCommand for SecretWrapFloatCommand {
     }
 
     fn examples(&self) -> Vec<Example> {
-        vec![
-            Example {
-                example: r#"3.14159 | secret wrap-float"#,
-                description: "Convert a float to a secret float",
-                result: None, // We can't show the actual result since it's redacted
-            },
-        ]
+        vec![Example {
+            example: r#"3.14159 | secret wrap-float"#,
+            description: "Convert a float to a secret float",
+            result: None, // We can't show the actual result since it's redacted
+        }]
     }
 
     fn run(

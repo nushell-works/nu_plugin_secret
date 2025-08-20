@@ -1,0 +1,134 @@
+# Pre-commit hooks for nu_plugin_secret
+# Install with: pip install pre-commit && pre-commit install
+
+repos:
+  # Rust formatting and linting
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo fmt --all --
+        language: system
+        files: \.rs$
+        args: [--check]
+
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --all-targets --all-features --
+        language: system
+        files: \.rs$
+        args: [-D, warnings]
+        pass_filenames: false
+
+      - id: cargo-check
+        name: cargo check
+        entry: cargo check --all-targets --all-features
+        language: system
+        files: \.rs$
+        pass_filenames: false
+
+      - id: cargo-test
+        name: cargo test
+        entry: cargo test --all-features
+        language: system
+        files: \.rs$
+        pass_filenames: false
+
+      - id: cargo-audit
+        name: cargo audit
+        entry: cargo audit
+        language: system
+        pass_filenames: false
+        stages: [push]
+
+  # General file quality
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # Security scanning
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: |
+          (?x)^(
+              \.secrets\.baseline|
+              target/.*|
+              \.git/.*
+          )$
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+
+  # License header checking
+  - repo: local
+    hooks:
+      - id: license-header
+        name: Check license headers
+        entry: python3
+        language: system
+        args:
+          - -c
+          - |
+            import sys
+            import os
+            
+            license_header = """// SPDX-License-Identifier: BSD-3-Clause
+            // Copyright (c) 2025 nu_plugin_secret contributors
+            """
+            
+            for file_path in sys.argv[1:]:
+                if file_path.endswith('.rs') and not file_path.startswith('target/'):
+                    with open(file_path, 'r') as f:
+                        content = f.read()
+                    
+                    if not content.startswith('//') and 'SPDX-License-Identifier' not in content:
+                        print(f"Missing license header in {file_path}")
+                        sys.exit(1)
+            
+            print("License headers validated")
+        files: \.rs$
+
+  # Documentation validation
+  - repo: local
+    hooks:
+      - id: docs-check
+        name: Check documentation
+        entry: cargo doc --no-deps --document-private-items --all-features
+        language: system
+        files: \.rs$
+        pass_filenames: false
+
+  # Dependency validation
+  - repo: local
+    hooks:
+      - id: cargo-deny
+        name: cargo deny
+        entry: cargo deny check
+        language: system
+        pass_filenames: false
+        stages: [push]
+
+# Configuration for pre-commit stages
+default_stages: [commit]
+
+# Fail fast - stop on first failure
+fail_fast: true
+
+# Minimum pre-commit version
+minimum_pre_commit_version: "3.0.0"

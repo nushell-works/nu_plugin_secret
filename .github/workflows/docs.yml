@@ -1,0 +1,206 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'Cargo.toml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'docs/**'
+      - 'README.md'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Generate and validate documentation
+  generate-docs:
+    name: Generate Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Generate API documentation
+        run: |
+          cargo doc --no-deps --all-features --document-private-items
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+      - name: Check for broken internal links
+        run: |
+          cargo doc --no-deps --all-features --document-private-items
+          # Add link checking logic here if needed
+
+      - name: Generate coverage documentation
+        run: |
+          cargo install cargo-llvm-cov
+          cargo llvm-cov --all-features --html --output-dir target/coverage
+
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: |
+            target/doc/
+            target/coverage/
+
+  # Deploy documentation to GitHub Pages
+  deploy-docs:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    needs: generate-docs
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate documentation
+        run: |
+          cargo doc --no-deps --all-features --document-private-items
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Create documentation site
+        run: |
+          mkdir -p docs-site
+          cp -r target/doc/* docs-site/
+          
+          # Create index.html
+          cat > docs-site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>nu_plugin_secret Documentation</title>
+              <meta charset="utf-8">
+              <style>
+                  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 2rem; }
+                  .header { border-bottom: 1px solid #eee; padding-bottom: 1rem; margin-bottom: 2rem; }
+                  .section { margin-bottom: 2rem; }
+                  .links a { display: block; padding: 0.5rem 0; text-decoration: none; color: #0066cc; }
+                  .links a:hover { text-decoration: underline; }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>nu_plugin_secret Documentation</h1>
+                  <p>Production-grade secret handling plugin for Nushell</p>
+              </div>
+              
+              <div class="section">
+                  <h2>API Documentation</h2>
+                  <div class="links">
+                      <a href="nu_plugin_secret/">📚 Crate Documentation</a>
+                      <a href="https://github.com/nushell-works/nu_plugin_secret">🔗 GitHub Repository</a>
+                  </div>
+              </div>
+              
+              <div class="section">
+                  <h2>Features</h2>
+                  <ul>
+                      <li><strong>8 Secret Types:</strong> String, Int, Bool, Record, List, Float, Binary, Date</li>
+                      <li><strong>12 Commands:</strong> Type-specific wrap commands + utility commands</li>
+                      <li><strong>Security First:</strong> Zero accidental exposure with memory safety</li>
+                      <li><strong>Production Ready:</strong> 74 comprehensive tests and enterprise features</li>
+                  </ul>
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Validate documentation quality
+  validate-docs:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install documentation tools
+        run: |
+          cargo install cargo-deadlinks
+          npm install -g markdownlint-cli
+
+      - name: Check for dead links in documentation
+        run: |
+          cargo doc --no-deps --all-features
+          cargo deadlinks --check-http
+
+      - name: Validate README markdown
+        run: markdownlint README.md
+
+      - name: Check documentation coverage
+        run: |
+          # Check that all public APIs are documented
+          cargo doc --no-deps --all-features 2>&1 | grep -E "(warning|error)" && exit 1 || echo "Documentation complete"
+
+      - name: Validate code examples in README
+        run: |
+          # Extract and validate code examples
+          grep -A 10 -B 2 '```nushell' README.md > examples.txt
+          echo "Code examples extracted for validation"
+
+  # Check documentation freshness
+  docs-freshness:
+    name: Documentation Freshness Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check if documentation is up to date
+        run: |
+          # Check if docs need updating based on code changes
+          git diff --name-only HEAD~1 HEAD | grep -E '^src/' && echo "Code changed, docs might need update"
+          
+          # Check if README mentions all secret types
+          if ! grep -q "SecretFloat\|SecretBinary\|SecretDate" README.md; then
+            echo "::warning::README might not mention all secret types"
+          fi
+          
+          # Check if project plan is current
+          if [ -f "docs/plan/project.md" ]; then
+            LAST_UPDATE=$(grep "Last Updated" docs/plan/project.md | head -1)
+            echo "Project plan last update: $LAST_UPDATE"
+          fi

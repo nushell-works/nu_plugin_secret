@@ -1,8 +1,6 @@
 use crate::SecretBinary;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{
-    Category, Example, LabeledError, PipelineData, Signature, Type, Value,
-};
+use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 
 #[derive(Clone)]
 pub struct SecretWrapBinaryCommand;
@@ -25,13 +23,11 @@ impl PluginCommand for SecretWrapBinaryCommand {
     }
 
     fn examples(&self) -> Vec<Example> {
-        vec![
-            Example {
-                example: r#"0x[deadbeef] | secret wrap-binary"#,
-                description: "Convert binary data to a secret binary",
-                result: None, // We can't show the actual result since it's redacted
-            },
-        ]
+        vec![Example {
+            example: r#"0x[deadbeef] | secret wrap-binary"#,
+            description: "Convert binary data to a secret binary",
+            result: None, // We can't show the actual result since it's redacted
+        }]
     }
 
     fn run(

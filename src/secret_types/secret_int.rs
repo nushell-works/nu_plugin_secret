@@ -97,7 +97,7 @@ mod tests {
     fn test_secret_int_custom_value() {
         let secret = SecretInt::new(999);
         assert_eq!(secret.type_name(), "secret_int");
-        
+
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
             Value::String { val, .. } => assert_eq!(val, "<redacted:int>"),
@@ -110,7 +110,7 @@ mod tests {
         let secret1 = SecretInt::new(42);
         let secret2 = SecretInt::new(42);
         let secret3 = SecretInt::new(99);
-        
+
         assert_eq!(secret1, secret2);
         assert_ne!(secret1, secret3);
     }

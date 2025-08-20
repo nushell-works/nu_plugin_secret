@@ -1,8 +1,6 @@
 use crate::SecretList;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{
-    Category, Example, LabeledError, PipelineData, Signature, Type, Value,
-};
+use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 
 #[derive(Clone)]
 pub struct SecretWrapListCommand;
@@ -16,7 +14,10 @@ impl PluginCommand for SecretWrapListCommand {
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .input_output_types(vec![(Type::List(Box::new(Type::Any)), Type::Custom("secret_list".into()))])
+            .input_output_types(vec![(
+                Type::List(Box::new(Type::Any)),
+                Type::Custom("secret_list".into()),
+            )])
             .category(Category::Conversions)
     }
 
@@ -25,13 +26,11 @@ impl PluginCommand for SecretWrapListCommand {
     }
 
     fn examples(&self) -> Vec<Example> {
-        vec![
-            Example {
-                example: r#"["secret1", "secret2"] | secret wrap-list"#,
-                description: "Convert a list to a secret list",
-                result: None, // We can't show the actual result since it's redacted
-            },
-        ]
+        vec![Example {
+            example: r#"["secret1", "secret2"] | secret wrap-list"#,
+            description: "Convert a list to a secret list",
+            result: None, // We can't show the actual result since it's redacted
+        }]
     }
 
     fn run(

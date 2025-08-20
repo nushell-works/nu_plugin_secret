@@ -1,8 +1,9 @@
-use crate::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList, SecretFloat, SecretBinary, SecretDate};
-use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{
-    Category, Example, LabeledError, PipelineData, Signature, Type, Value,
+use crate::{
+    SecretBinary, SecretBool, SecretDate, SecretFloat, SecretInt, SecretList, SecretRecord,
+    SecretString,
 };
+use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
+use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 
 #[derive(Clone)]
 pub struct SecretValidateCommand;
@@ -57,7 +58,7 @@ impl PluginCommand for SecretValidateCommand {
                     || val.as_any().downcast_ref::<SecretFloat>().is_some()
                     || val.as_any().downcast_ref::<SecretBinary>().is_some()
                     || val.as_any().downcast_ref::<SecretDate>().is_some();
-                
+
                 Ok(PipelineData::Value(
                     Value::bool(is_secret, call.head),
                     metadata,
@@ -65,15 +66,9 @@ impl PluginCommand for SecretValidateCommand {
             }
             PipelineData::Value(_, metadata) => {
                 // Not a custom value, so not a secret type
-                Ok(PipelineData::Value(
-                    Value::bool(false, call.head),
-                    metadata,
-                ))
+                Ok(PipelineData::Value(Value::bool(false, call.head), metadata))
             }
-            PipelineData::Empty => Ok(PipelineData::Value(
-                Value::bool(false, call.head),
-                None,
-            )),
+            PipelineData::Empty => Ok(PipelineData::Value(Value::bool(false, call.head), None)),
             _ => Err(LabeledError::new("Unsupported Input")
                 .with_label("Cannot validate stream input", call.head)
                 .with_help("Provide a single value to validate")),

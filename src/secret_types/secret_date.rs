@@ -1,6 +1,6 @@
+use chrono::{self, Datelike};
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
-use chrono::{self, Datelike};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use zeroize::ZeroizeOnDrop;
@@ -89,11 +89,11 @@ impl PartialEq for SecretDate {
         // DateTime implements Eq, so we can serialize for comparison
         let self_ser = bincode::serialize(&self.inner).unwrap_or_default();
         let other_ser = bincode::serialize(&other.inner).unwrap_or_default();
-        
+
         if self_ser.len() != other_ser.len() {
             return false;
         }
-        
+
         let mut result = 0u8;
         for i in 0..self_ser.len() {
             result |= self_ser[i] ^ other_ser[i];
@@ -135,7 +135,7 @@ mod tests {
         let dt = test_datetime();
         let secret = SecretDate::new(dt);
         assert_eq!(secret.type_name(), "secret_date");
-        
+
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
             Value::String { val, .. } => assert_eq!(val, "<redacted:date>"),
@@ -155,11 +155,11 @@ mod tests {
         let dt1 = test_datetime();
         let dt2 = test_datetime();
         let dt3 = another_test_datetime();
-        
+
         let secret1 = SecretDate::new(dt1);
         let secret2 = SecretDate::new(dt2);
         let secret3 = SecretDate::new(dt3);
-        
+
         assert_eq!(secret1, secret2);
         assert_ne!(secret1, secret3);
     }
@@ -168,13 +168,13 @@ mod tests {
     fn test_secret_date_comparisons() {
         let early_dt = test_datetime();
         let later_dt = another_test_datetime();
-        
+
         let early_secret = SecretDate::new(early_dt);
         let later_secret = SecretDate::new(later_dt);
-        
+
         assert!(early_secret.is_before(&later_secret));
         assert!(!early_secret.is_after(&later_secret));
-        
+
         assert!(later_secret.is_after(&early_secret));
         assert!(!later_secret.is_before(&early_secret));
     }
@@ -183,7 +183,7 @@ mod tests {
     fn test_secret_date_year_access() {
         let dt = test_datetime();
         let secret = SecretDate::new(dt);
-        
+
         // This assumes our test datetime is in 2023
         assert_eq!(secret.year(), 2023);
     }

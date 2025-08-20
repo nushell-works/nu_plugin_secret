@@ -98,7 +98,7 @@ mod tests {
     fn test_secret_bool_custom_value() {
         let secret = SecretBool::new(false);
         assert_eq!(secret.type_name(), "secret_bool");
-        
+
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
             Value::String { val, .. } => assert_eq!(val, "<redacted:bool>"),
@@ -111,7 +111,7 @@ mod tests {
         let secret1 = SecretBool::new(true);
         let secret2 = SecretBool::new(true);
         let secret3 = SecretBool::new(false);
-        
+
         assert_eq!(secret1, secret2);
         assert_ne!(secret1, secret3);
     }

@@ -88,7 +88,7 @@ impl PartialEq for SecretBinary {
         if self.inner.len() != other.inner.len() {
             return false;
         }
-        
+
         let mut result = 0u8;
         for i in 0..self.inner.len() {
             result |= self.inner[i] ^ other.inner[i];
@@ -121,7 +121,7 @@ mod tests {
         let data = vec![0x01, 0x23, 0x45, 0x67];
         let secret = SecretBinary::new(data);
         assert_eq!(secret.type_name(), "secret_binary");
-        
+
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
             Value::String { val, .. } => assert_eq!(val, "<redacted:binary>"),
@@ -141,11 +141,11 @@ mod tests {
         let data1 = vec![0x01, 0x02, 0x03];
         let data2 = vec![0x01, 0x02, 0x03];
         let data3 = vec![0x04, 0x05, 0x06];
-        
+
         let secret1 = SecretBinary::new(data1);
         let secret2 = SecretBinary::new(data2);
         let secret3 = SecretBinary::new(data3);
-        
+
         assert_eq!(secret1, secret2);
         assert_ne!(secret1, secret3);
     }
@@ -154,10 +154,10 @@ mod tests {
     fn test_secret_binary_access() {
         let data = vec![0x10, 0x20, 0x30, 0x40];
         let secret = SecretBinary::new(data);
-        
+
         assert_eq!(secret.len(), 4);
         assert!(!secret.is_empty());
-        
+
         assert_eq!(secret.get(0), Some(0x10));
         assert_eq!(secret.get(1), Some(0x20));
         assert_eq!(secret.get(4), None); // Out of bounds
@@ -167,7 +167,7 @@ mod tests {
     fn test_secret_binary_empty() {
         let empty_data: Vec<u8> = vec![];
         let secret = SecretBinary::new(empty_data);
-        
+
         assert_eq!(secret.len(), 0);
         assert!(secret.is_empty());
         assert_eq!(secret.get(0), None);
@@ -177,10 +177,10 @@ mod tests {
     fn test_secret_binary_equality_different_lengths() {
         let data1 = vec![0x01, 0x02];
         let data2 = vec![0x01, 0x02, 0x03];
-        
+
         let secret1 = SecretBinary::new(data1);
         let secret2 = SecretBinary::new(data2);
-        
+
         assert_ne!(secret1, secret2);
     }
 }

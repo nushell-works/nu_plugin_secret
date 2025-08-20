@@ -1,8 +1,6 @@
 use crate::SecretRecord;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{
-    Category, Example, LabeledError, PipelineData, Signature, Type, Value,
-};
+use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 
 #[derive(Clone)]
 pub struct SecretWrapRecordCommand;
@@ -16,7 +14,10 @@ impl PluginCommand for SecretWrapRecordCommand {
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .input_output_types(vec![(Type::Record(Box::new([])), Type::Custom("secret_record".into()))])
+            .input_output_types(vec![(
+                Type::Record(Box::new([])),
+                Type::Custom("secret_record".into()),
+            )])
             .category(Category::Conversions)
     }
 
@@ -25,13 +26,11 @@ impl PluginCommand for SecretWrapRecordCommand {
     }
 
     fn examples(&self) -> Vec<Example> {
-        vec![
-            Example {
-                example: r#"{api_key: "secret", token: "hidden"} | secret wrap-record"#,
-                description: "Convert a record to a secret record",
-                result: None, // We can't show the actual result since it's redacted
-            },
-        ]
+        vec![Example {
+            example: r#"{api_key: "secret", token: "hidden"} | secret wrap-record"#,
+            description: "Convert a record to a secret record",
+            result: None, // We can't show the actual result since it's redacted
+        }]
     }
 
     fn run(

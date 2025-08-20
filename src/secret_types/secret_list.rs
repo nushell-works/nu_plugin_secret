@@ -88,11 +88,11 @@ impl PartialEq for SecretList {
         // This is a simplified approach - in production, we might want more sophisticated comparison
         let self_ser = bincode::serialize(&self.inner).unwrap_or_default();
         let other_ser = bincode::serialize(&other.inner).unwrap_or_default();
-        
+
         if self_ser.len() != other_ser.len() {
             return false;
         }
-        
+
         let mut result = 0u8;
         for i in 0..self_ser.len() {
             result |= self_ser[i] ^ other_ser[i];
@@ -125,7 +125,7 @@ mod tests {
         let list = vec![Value::test_int(1), Value::test_int(2), Value::test_int(3)];
         let secret = SecretList::new(list);
         assert_eq!(secret.type_name(), "secret_list");
-        
+
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
             Value::String { val, .. } => assert_eq!(val, "<redacted:list>"),
@@ -137,13 +137,13 @@ mod tests {
     fn test_secret_list_access() {
         let list = vec![Value::test_string("first"), Value::test_string("second")];
         let secret = SecretList::new(list);
-        
+
         assert_eq!(secret.len(), 2);
         assert!(!secret.is_empty());
-        
+
         let first = secret.get(0);
         assert!(first.is_some());
-        
+
         let third = secret.get(2);
         assert!(third.is_none());
     }
@@ -153,10 +153,10 @@ mod tests {
         let list1 = vec![Value::test_string("item1"), Value::test_string("item2")];
         let secret1 = SecretList::new(list1.clone());
         let secret2 = SecretList::new(list1);
-        
+
         let list3 = vec![Value::test_string("item1"), Value::test_string("different")];
         let secret3 = SecretList::new(list3);
-        
+
         assert_eq!(secret1, secret2);
         assert_ne!(secret1, secret3);
     }
@@ -165,7 +165,7 @@ mod tests {
     fn test_secret_list_empty() {
         let empty_list: Vec<Value> = vec![];
         let secret = SecretList::new(empty_list);
-        
+
         assert_eq!(secret.len(), 0);
         assert!(secret.is_empty());
     }

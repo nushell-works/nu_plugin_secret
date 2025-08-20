@@ -89,11 +89,11 @@ impl PartialEq for SecretFloat {
         if self.inner.is_nan() && other.inner.is_nan() {
             return true;
         }
-        
+
         // Convert to bytes for constant-time comparison
         let self_bytes = self.inner.to_bits().to_le_bytes();
         let other_bytes = other.inner.to_bits().to_le_bytes();
-        
+
         let mut result = 0u8;
         for i in 0..8 {
             result |= self_bytes[i] ^ other_bytes[i];
@@ -123,7 +123,7 @@ mod tests {
     fn test_secret_float_custom_value() {
         let secret = SecretFloat::new(2.718);
         assert_eq!(secret.type_name(), "secret_float");
-        
+
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
             Value::String { val, .. } => assert_eq!(val, "<redacted:float>"),
@@ -142,7 +142,7 @@ mod tests {
         let secret1 = SecretFloat::new(1.23);
         let secret2 = SecretFloat::new(1.23);
         let secret3 = SecretFloat::new(4.56);
-        
+
         assert_eq!(secret1, secret2);
         assert_ne!(secret1, secret3);
     }
@@ -152,7 +152,7 @@ mod tests {
         let nan1 = SecretFloat::new(f64::NAN);
         let nan2 = SecretFloat::new(f64::NAN);
         let normal = SecretFloat::new(1.0);
-        
+
         assert_eq!(nan1, nan2); // Our implementation treats NaN as equal
         assert_ne!(nan1, normal);
     }
@@ -162,14 +162,14 @@ mod tests {
         let normal = SecretFloat::new(1.0);
         let nan = SecretFloat::new(f64::NAN);
         let inf = SecretFloat::new(f64::INFINITY);
-        
+
         assert!(normal.is_finite());
         assert!(!normal.is_nan());
         assert!(!normal.is_infinite());
-        
+
         assert!(nan.is_nan());
         assert!(!nan.is_finite());
-        
+
         assert!(inf.is_infinite());
         assert!(!inf.is_finite());
     }

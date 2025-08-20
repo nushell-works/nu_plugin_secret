@@ -73,10 +73,10 @@ impl PartialEq for SecretString {
         if self.inner.len() != other.inner.len() {
             return false;
         }
-        
+
         let self_bytes = self.inner.as_bytes();
         let other_bytes = other.inner.as_bytes();
-        
+
         // Simple constant-time comparison
         let mut result = 0u8;
         for i in 0..self_bytes.len() {
@@ -107,7 +107,7 @@ mod tests {
     fn test_secret_string_custom_value() {
         let secret = SecretString::new("my-secret".to_string());
         assert_eq!(secret.type_name(), "secret_string");
-        
+
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
             Value::String { val, .. } => assert_eq!(val, "<redacted:string>"),
@@ -120,7 +120,7 @@ mod tests {
         let secret1 = SecretString::new("same".to_string());
         let secret2 = SecretString::new("same".to_string());
         let secret3 = SecretString::new("different".to_string());
-        
+
         assert_eq!(secret1, secret2);
         assert_ne!(secret1, secret3);
     }

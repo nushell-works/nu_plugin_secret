@@ -1,0 +1,93 @@
+# cargo-deny configuration for nu_plugin_secret
+
+[licenses]
+# List of explicitly allowed licenses
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-DFS-2016",
+    "CC0-1.0",
+]
+
+# List of explicitly disallowed licenses
+deny = [
+    "GPL-2.0",
+    "GPL-3.0",
+    "AGPL-1.0",
+    "AGPL-3.0",
+    "EUPL-1.2",
+    "LGPL-2.0",
+    "LGPL-2.1",
+    "LGPL-3.0",
+    "NPL-1.0",
+    "NPL-1.1",
+    "OSL-1.0",
+    "OSL-1.1",
+    "OSL-2.0",
+    "OSL-2.1",
+    "OSL-3.0",
+    "QPL-1.0",
+    "Sleepycat",
+]
+
+# Confidence threshold for detecting a license from a license text.
+confidence-threshold = 0.8
+
+# Allow 1 or more licenses on a single crate
+exceptions = [
+    # Unicode is allowed for unicode/locale functionality
+    { allow = ["Unicode-DFS-2016"], name = "unicode-ident" },
+]
+
+[bans]
+# Lint level for when multiple versions of the same crate are detected
+multiple-versions = "warn"
+# Lint level for when a crate version requirement is `*`
+wildcards = "allow"
+
+# List of crates that are allowed to have multiple versions
+skip = [
+    # Common crates that often have multiple versions in the dependency tree
+    { name = "windows-sys" },
+    { name = "windows_x86_64_msvc" },
+    { name = "windows_x86_64_gnu" },
+    { name = "windows_x86_64_gnullvm" },
+]
+
+# List of explicitly banned crates
+deny = [
+    # Ban crates with known security vulnerabilities
+    { name = "openssl", version = "<0.10.64" },
+    # Ban crates with problematic licenses
+    { name = "json", reason = "Use serde_json instead" },
+]
+
+[advisories]
+# The path where the advisory database is cloned/fetched into
+db-path = "~/.cargo/advisory-db"
+# The url(s) of the advisory databases to use
+db-urls = ["https://github.com/rustsec/advisory-db"]
+# The lint level for security vulnerabilities
+vulnerability = "deny"
+# The lint level for unmaintained crates
+unmaintained = "warn"
+# The lint level for crates with security notices
+notice = "warn"
+# A list of advisory IDs to ignore
+ignore = [
+    # Add any specific advisories to ignore here
+]
+
+[sources]
+# Lint level for what to happen when a crate from a crate registry that is not in the allow list is encountered
+unknown-registry = "warn"
+# Lint level for what to happen when a crate from a git repository that is not in the allow list is encountered
+unknown-git = "warn"
+# List of allowed registries
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+# List of allowed Git repositories
+allow-git = []

@@ -4,7 +4,10 @@ mod commands;
 mod secret_types;
 
 use commands::*;
-pub use secret_types::{SecretString, SecretInt, SecretBool, SecretRecord, SecretList, SecretFloat, SecretBinary, SecretDate};
+pub use secret_types::{
+    SecretBinary, SecretBool, SecretDate, SecretFloat, SecretInt, SecretList, SecretRecord,
+    SecretString,
+};
 
 pub struct SecretPlugin;
 
