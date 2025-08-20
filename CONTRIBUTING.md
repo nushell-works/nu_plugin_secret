@@ -15,7 +15,7 @@ This project handles sensitive data and security is our top priority. All contri
 
 ### Prerequisites
 
-- **Rust 1.75.0+** (MSRV - Minimum Supported Rust Version)
+- **Rust 1.85.0+** (MSRV - Minimum Supported Rust Version)
 - **Nushell 0.106.1+** for testing
 - **Git** for version control
 

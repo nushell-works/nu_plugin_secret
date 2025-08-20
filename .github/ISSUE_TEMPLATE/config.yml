@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: GitHub Discussions
+    url: https://github.com/nushell-works/nu_plugin_secret/discussions
+    about: Ask questions and discuss features with the community
+  - name: Security Advisory
+    url: https://github.com/nushell-works/nu_plugin_secret/security/advisories/new
+    about: Report security vulnerabilities privately
+  - name: Nushell Community
+    url: https://discord.gg/NtAbbGn
+    about: General Nushell support and community discussion

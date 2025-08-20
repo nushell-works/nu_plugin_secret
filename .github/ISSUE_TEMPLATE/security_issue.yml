@@ -1,0 +1,62 @@
+name: Security Issue
+description: Report a security vulnerability (please use GitHub Security Advisories instead)
+title: "Security Issue - Please Use Security Advisories"
+labels: ["security", "invalid"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # ⚠️ STOP - Security Issue Detected
+        
+        **Please DO NOT file security issues as public GitHub issues!**
+        
+        If you've discovered a security vulnerability in `nu_plugin_secret`, please report it responsibly through GitHub Security Advisories instead.
+        
+        ## How to Report Security Issues
+        
+        1. Go to the **Security** tab of this repository
+        2. Click **"Report a vulnerability"**
+        3. Fill out the private security advisory form
+        4. We will respond within 24 hours
+        
+        ## Why Private Reporting?
+        
+        - Protects users while we develop a fix
+        - Allows for coordinated disclosure
+        - Prevents exploitation by malicious actors
+        - Follows responsible disclosure best practices
+        
+        ## What We Need
+        
+        When reporting through Security Advisories, please include:
+        - Detailed description of the vulnerability
+        - Steps to reproduce
+        - Impact assessment
+        - Suggested fix (if you have one)
+        - Your contact information for follow-up
+        
+        ## Our Response
+        
+        - **Within 24 hours**: We'll acknowledge your report
+        - **Within 72 hours**: We'll provide an initial assessment
+        - **Timeline**: We'll give you a timeline for fixes
+        - **Credit**: You'll be credited in the security advisory (if desired)
+        
+        ---
+        
+        **This issue template exists only to redirect security reports to the proper channel.**
+        
+        Please close this issue and use GitHub Security Advisories instead.
+
+  - type: checkboxes
+    id: redirect-confirmation
+    attributes:
+      label: Confirmation
+      description: Please confirm you understand and will use the proper reporting channel
+      options:
+        - label: I understand this is for security issues and will use GitHub Security Advisories instead
+          required: true
+        - label: I will close this issue and report through the Security tab
+          required: true
