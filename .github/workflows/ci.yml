@@ -180,14 +180,59 @@ jobs:
 
       - name: Install Nushell
         run: |
-          cargo install nu
+          cargo install nu --version 0.106.1 --locked
 
-      - name: Build plugin
-        run: cargo build --release
+      - name: Install plugin
+        run: |
+          echo "Installing plugin..."
+          cargo install --path .
+          echo "Checking installation..."
+          ls -la ~/.cargo/bin/nu_plugin_secret*
+          echo "PATH: $PATH"
 
       - name: Test plugin registration
         run: |
-          nu -c "plugin add target/release/nu_plugin_secret"
+          # Check if plugin binary is installed and accessible
+          echo "Checking plugin binary..."
+          if ! command -v nu_plugin_secret &> /dev/null; then
+            echo "❌ Plugin not found in PATH"
+            echo "Contents of ~/.cargo/bin:"
+            ls -la ~/.cargo/bin/ | grep plugin || true
+            exit 1
+          fi
+          
+          PLUGIN_PATH=$(which nu_plugin_secret)
+          echo "✅ Plugin found at: $PLUGIN_PATH"
+          
+          # Ensure nushell config directory exists
+          mkdir -p ~/.config/nushell
+          
+          # Initialize nushell (this should create plugin.msgpackz)
+          echo "Initializing nushell..."
+          nu -c "version; 'Nushell initialized'" || nu -c "version" || true
+          
+          # Add the plugin with full path
+          echo "Registering plugin..."
+          if nu -c "plugin add $PLUGIN_PATH"; then
+            echo "✅ Plugin registration successful"
+          else
+            echo "❌ Plugin registration failed"
+            echo "Debug: checking nushell config directory"
+            ls -la ~/.config/nushell/ || true
+            exit 1
+          fi
+          
+          # Use the plugin
+          echo "Activating plugin..."
+          if nu -c "plugin use secret"; then
+            echo "✅ Plugin use successful"
+          else
+            echo "❌ Plugin use failed"
+            exit 1
+          fi
+          
+          # Verify the plugin is registered and available
+          echo "Verifying plugin registration..."
           nu -c "plugin list | where name == secret"
 
       - name: Test basic functionality
