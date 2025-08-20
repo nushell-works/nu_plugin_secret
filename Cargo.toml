@@ -11,7 +11,7 @@ documentation = "https://docs.rs/nw-nu_plugin_secret/"
 keywords = ["nushell", "secret", "security", "plugin", "custom-types"]
 categories = ["command-line-utilities", "development-tools", "cryptography", "data-structures"]
 readme = "README.md"
-rust-version = "1.75.0"
+rust-version = "1.79.0"
 include = [
     "src/**/*",
     "docs/**/*",
