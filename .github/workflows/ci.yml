@@ -216,7 +216,7 @@ jobs:
 
       - name: Install Nushell
         run: |
-          cargo install nu --features=extra
+          cargo install nu
 
       - name: Build plugin
         run: cargo build --release
