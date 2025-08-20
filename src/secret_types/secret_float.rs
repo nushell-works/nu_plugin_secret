@@ -108,8 +108,8 @@ mod tests {
 
     #[test]
     fn test_secret_float_creation() {
-        let secret = SecretFloat::new(3.14159);
-        assert_eq!(secret.reveal(), 3.14159);
+        let secret = SecretFloat::new(std::f64::consts::PI);
+        assert_eq!(secret.reveal(), std::f64::consts::PI);
     }
 
     #[test]
@@ -121,7 +121,7 @@ mod tests {
 
     #[test]
     fn test_secret_float_custom_value() {
-        let secret = SecretFloat::new(2.718);
+        let secret = SecretFloat::new(std::f64::consts::E);
         assert_eq!(secret.type_name(), "secret_float");
 
         let base_value = secret.to_base_value(Span::test_data()).unwrap();

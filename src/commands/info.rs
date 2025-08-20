@@ -21,7 +21,7 @@ impl PluginCommand for SecretInfoCommand {
         "Display plugin information, supported secret types, and security best practices"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![Example {
             example: "secret info",
             description: "Show plugin information and security guidance",

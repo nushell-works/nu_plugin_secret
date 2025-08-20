@@ -22,7 +22,7 @@ impl PluginCommand for SecretWrapBinaryCommand {
         "Convert binary data to a SecretBinary type that displays as <redacted:binary>"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![Example {
             example: r#"0x[deadbeef] | secret wrap-binary"#,
             description: "Convert binary data to a secret binary",

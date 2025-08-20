@@ -25,7 +25,7 @@ impl SecretDate {
 
     /// Convert back to a regular DateTime (consumes the SecretDate)
     pub fn into_inner(self) -> chrono::DateTime<chrono::FixedOffset> {
-        self.inner.clone()
+        self.inner
     }
 
     /// Get the year component (might be safe to expose depending on use case)

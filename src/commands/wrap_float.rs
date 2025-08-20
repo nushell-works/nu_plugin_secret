@@ -22,7 +22,7 @@ impl PluginCommand for SecretWrapFloatCommand {
         "Convert a float to a SecretFloat type that displays as <redacted:float>"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![Example {
             example: r#"3.14159 | secret wrap-float"#,
             description: "Convert a float to a secret float",

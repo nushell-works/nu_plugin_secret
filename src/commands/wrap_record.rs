@@ -25,7 +25,7 @@ impl PluginCommand for SecretWrapRecordCommand {
         "Convert a record to a SecretRecord type that displays as <redacted:record>"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![Example {
             example: r#"{api_key: "secret", token: "hidden"} | secret wrap-record"#,
             description: "Convert a record to a secret record",

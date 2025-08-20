@@ -22,7 +22,7 @@ impl PluginCommand for SecretWrapDateCommand {
         "Convert a date/datetime to a SecretDate type that displays as <redacted:date>"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![Example {
             example: r#"date now | secret wrap-date"#,
             description: "Convert current datetime to a secret date",

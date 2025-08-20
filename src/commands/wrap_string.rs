@@ -22,7 +22,7 @@ impl PluginCommand for SecretWrapStringCommand {
         "Convert a string value to a SecretString type that displays as <redacted:string>"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![
             Example {
                 example: r#""my-api-key" | secret wrap-string"#,
@@ -69,7 +69,6 @@ impl PluginCommand for SecretWrapStringCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nu_protocol::Span;
 
     #[test]
     fn test_command_name() {

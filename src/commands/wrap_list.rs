@@ -25,7 +25,7 @@ impl PluginCommand for SecretWrapListCommand {
         "Convert a list to a SecretList type that displays as <redacted:list>"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![Example {
             example: r#"["secret1", "secret2"] | secret wrap-list"#,
             description: "Convert a list to a secret list",

@@ -83,8 +83,8 @@ mod tests {
     fn test_secret_bool_creation() {
         let secret_true = SecretBool::new(true);
         let secret_false = SecretBool::new(false);
-        assert_eq!(secret_true.reveal(), true);
-        assert_eq!(secret_false.reveal(), false);
+        assert!(secret_true.reveal());
+        assert!(!secret_false.reveal());
     }
 
     #[test]
@@ -120,6 +120,6 @@ mod tests {
     fn test_secret_bool_into_inner() {
         let secret = SecretBool::new(true);
         let revealed = secret.into_inner();
-        assert_eq!(revealed, true);
+        assert!(revealed);
     }
 }

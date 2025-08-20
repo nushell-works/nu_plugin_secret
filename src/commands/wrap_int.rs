@@ -22,7 +22,7 @@ impl PluginCommand for SecretWrapIntCommand {
         "Convert an integer value to a SecretInt type that displays as <redacted:int>"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![
             Example {
                 example: r#"42 | secret wrap-int"#,

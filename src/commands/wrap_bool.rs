@@ -22,7 +22,7 @@ impl PluginCommand for SecretWrapBoolCommand {
         "Convert a boolean value to a SecretBool type that displays as <redacted:bool>"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![
             Example {
                 example: r#"true | secret wrap-bool"#,

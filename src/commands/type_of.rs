@@ -34,7 +34,7 @@ impl PluginCommand for SecretTypeOfCommand {
         "Get the underlying type of a secret value without exposing the content"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![Example {
             example: r#""my-secret" | secret wrap-string | secret type-of"#,
             description: "Get the underlying type of a secret string",

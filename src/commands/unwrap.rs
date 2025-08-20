@@ -40,7 +40,7 @@ impl PluginCommand for SecretUnwrapCommand {
         "Extract the underlying value from any secret type. WARNING: This exposes sensitive data!"
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![Example {
             example: r#""my-secret" | secret wrap-string | secret unwrap"#,
             description: "Unwrap a secret string to get the original value",
@@ -89,7 +89,7 @@ impl PluginCommand for SecretUnwrapCommand {
                     let value = Value::binary(revealed, call.head);
                     Ok(PipelineData::Value(value, metadata))
                 } else if let Some(secret_date) = val.as_any().downcast_ref::<SecretDate>() {
-                    let revealed = secret_date.reveal().clone();
+                    let revealed = *secret_date.reveal();
                     let value = Value::date(revealed, call.head);
                     Ok(PipelineData::Value(value, metadata))
                 } else {
