@@ -1,15 +1,51 @@
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
-use zeroize::ZeroizeOnDrop;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// A secure string type that redacts its content in all display contexts
-#[derive(Clone, Serialize, Deserialize, ZeroizeOnDrop)]
+/// and zeros its memory on drop
+#[derive(Clone)]
 pub struct SecretString {
-    #[zeroize(skip)]
     inner: String,
 }
+
+// Custom secure serialization - never serialize actual content
+impl Serialize for SecretString {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // Always serialize as redacted content for security
+        serializer.serialize_str("<redacted:string>")
+    }
+}
+
+// Custom secure deserialization  
+impl<'de> Deserialize<'de> for SecretString {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // For security, we can't deserialize actual secrets
+        // This prevents injection attacks via malicious serialized data
+        let _value = String::deserialize(deserializer)?;
+        
+        // Return a safe placeholder - real secrets should be created through proper channels
+        Ok(SecretString::new("<deserialized:placeholder>".to_string()))
+    }
+}
+
+impl Drop for SecretString {
+    fn drop(&mut self) {
+        // Explicitly zero the string memory for security
+        self.inner.zeroize();
+    }
+}
+
+// Manual ZeroizeOnDrop implementation to ensure proper cleanup
+impl ZeroizeOnDrop for SecretString {}
 
 impl SecretString {
     /// Create a new SecretString from a regular string
