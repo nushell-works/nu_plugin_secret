@@ -1,5 +1,5 @@
 [package]
-name = "nw-nu_plugin_secret"
+name = "nu_plugin_secret"
 version = "0.1.0"
 edition = "2021"
 authors = ["John Ky <newhoggy@gmail.com>"]
@@ -7,7 +7,7 @@ description = "Production-grade secret handling plugin for Nushell with secure C
 license = "BSD-3-Clause"
 repository = "https://github.com/nushell-works/nu_plugin_secret"
 homepage = "https://github.com/nushell-works/nu_plugin_secret"
-documentation = "https://docs.rs/nw-nu_plugin_secret/"
+documentation = "https://docs.rs/nu_plugin_secret/"
 keywords = ["nushell", "secret", "security", "plugin", "custom-types"]
 categories = ["command-line-utilities", "development-tools", "cryptography", "data-structures"]
 readme = "README.md"

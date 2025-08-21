@@ -1098,7 +1098,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nw-nu_plugin_secret"
+name = "nu_plugin_secret"
 version = "0.1.0"
 dependencies = [
  "bincode",

@@ -158,7 +158,7 @@ cargo publish
 ### Post-Release
 
 - [ ] **Verify Publication**: Check crates.io listing
-- [ ] **Test Installation**: `cargo install nw-nu_plugin_secret`
+- [ ] **Test Installation**: `cargo install nu_plugin_secret`
 - [ ] **Update Documentation**: Update docs with new version
 - [ ] **Announce Release**: Social media, Discord, etc.
 - [ ] **Monitor Issues**: Watch for bug reports
