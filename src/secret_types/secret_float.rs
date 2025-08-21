@@ -31,7 +31,7 @@ impl<'de> Deserialize<'de> for SecretFloat {
         // For security, we can't deserialize actual secrets
         // This prevents injection attacks via malicious serialized data
         let _value = f64::deserialize(deserializer)?;
-        
+
         // Return a safe placeholder - real secrets should be created through proper channels
         Ok(SecretFloat::new(0.0))
     }

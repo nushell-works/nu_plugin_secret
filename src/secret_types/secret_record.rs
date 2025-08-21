@@ -31,7 +31,7 @@ impl<'de> Deserialize<'de> for SecretRecord {
         // For security, we can't deserialize actual secrets
         // This prevents injection attacks via malicious serialized data
         let _value = Record::deserialize(deserializer)?;
-        
+
         // Return a safe placeholder - real secrets should be created through proper channels
         Ok(SecretRecord::new(Record::new()))
     }
@@ -39,15 +39,9 @@ impl<'de> Deserialize<'de> for SecretRecord {
 
 impl Drop for SecretRecord {
     fn drop(&mut self) {
-        // Explicitly zero the record memory for security
-        // Zero the record memory directly since Record doesn't have clear()
-        unsafe {
-            std::ptr::write_bytes(
-                &mut self.inner as *mut _ as *mut u8,
-                0,
-                std::mem::size_of::<Record>(),
-            );
-        }
+        // Note: We rely on ZeroizeOnDrop for additional memory clearing
+        // The Record will be properly dropped by Rust's destructor
+        // Cannot safely zero the Record's memory as it contains complex structures
     }
 }
 

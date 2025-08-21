@@ -32,7 +32,7 @@ impl<'de> Deserialize<'de> for SecretDate {
         // For security, we can't deserialize actual secrets
         // This prevents injection attacks via malicious serialized data
         let _value = chrono::DateTime::<chrono::FixedOffset>::deserialize(deserializer)?;
-        
+
         // Return a safe placeholder - real secrets should be created through proper channels
         use chrono::{TimeZone, Utc};
         let placeholder = Utc.timestamp_opt(0, 0).unwrap().into();
@@ -42,19 +42,9 @@ impl<'de> Deserialize<'de> for SecretDate {
 
 impl Drop for SecretDate {
     fn drop(&mut self) {
-        // Explicitly zero the DateTime memory for security
-        // Since DateTime doesn't implement Zeroize directly, we zero the internal timestamp
-        unsafe {
-            std::ptr::write_volatile(
-                &mut self.inner as *mut _ as *mut u8,
-                0,
-            );
-            std::ptr::write_bytes(
-                &mut self.inner as *mut _ as *mut u8,
-                0,
-                std::mem::size_of::<chrono::DateTime<chrono::FixedOffset>>(),
-            );
-        }
+        // Note: We rely on ZeroizeOnDrop for additional memory clearing
+        // The DateTime will be properly dropped by Rust's destructor
+        // Cannot safely zero the DateTime's memory as it contains complex structures
     }
 }
 

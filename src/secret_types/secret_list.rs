@@ -31,7 +31,7 @@ impl<'de> Deserialize<'de> for SecretList {
         // For security, we can't deserialize actual secrets
         // This prevents injection attacks via malicious serialized data
         let _value = Vec::<Value>::deserialize(deserializer)?;
-        
+
         // Return a safe placeholder - real secrets should be created through proper channels
         Ok(SecretList::new(vec![]))
     }
@@ -39,16 +39,11 @@ impl<'de> Deserialize<'de> for SecretList {
 
 impl Drop for SecretList {
     fn drop(&mut self) {
-        // Explicitly zero the vector memory for security
-        // Clear the vector and then zero its memory
+        // Clear the vector for security
+        // The values will be properly dropped by Rust's standard drop mechanism
         self.inner.clear();
-        unsafe {
-            std::ptr::write_bytes(
-                &mut self.inner as *mut _ as *mut u8,
-                0,
-                std::mem::size_of::<Vec<Value>>(),
-            );
-        }
+        // Note: We rely on ZeroizeOnDrop for additional memory clearing
+        // The Vec itself will be properly dropped by Rust's destructor
     }
 }
 

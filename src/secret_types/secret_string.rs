@@ -22,7 +22,7 @@ impl Serialize for SecretString {
     }
 }
 
-// Custom secure deserialization  
+// Custom secure deserialization
 impl<'de> Deserialize<'de> for SecretString {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -31,7 +31,7 @@ impl<'de> Deserialize<'de> for SecretString {
         // For security, we can't deserialize actual secrets
         // This prevents injection attacks via malicious serialized data
         let _value = String::deserialize(deserializer)?;
-        
+
         // Return a safe placeholder - real secrets should be created through proper channels
         Ok(SecretString::new("<deserialized:placeholder>".to_string()))
     }
