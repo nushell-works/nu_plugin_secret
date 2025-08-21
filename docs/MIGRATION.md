@@ -273,6 +273,259 @@ let password = (input "Enter password: ") | secret wrap-string
 echo $"Password entered: {$password}"  # ✅ Shows <redacted:string>
 ```
 
+### Pattern 4: Mixed Sensitivity Data
+
+**Before:**
+```nushell
+let server_config = {
+  hostname: "api.example.com",     # Public
+  port: 443,                       # Public  
+  api_key: "sk-secret123",         # Secret
+  timeout: 30,                     # Public
+  admin_password: "admin123"       # Secret
+}
+```
+
+**After:**
+```nushell
+let server_config = {
+  hostname: "api.example.com",                        # Keep public
+  port: 443,                                          # Keep public
+  api_key: ("sk-secret123" | secret wrap-string),    # Wrap secret
+  timeout: 30,                                        # Keep public
+  admin_password: ("admin123" | secret wrap-string)  # Wrap secret
+}
+# Don't wrap entire record - only sensitive fields
+```
+
+### Pattern 5: Database Credentials
+
+**Before:**
+```nushell
+let db_creds = {
+  host: "db.internal.com",
+  port: 5432,
+  username: "app_user", 
+  password: "db_password_123",
+  database: "production",
+  ssl: true
+}
+
+# Connect using plain credentials (exposed in memory/logs)
+let connection = db connect $db_creds
+```
+
+**After:**
+```nushell
+let db_creds = {
+  host: "db.internal.com",                               # Public
+  port: (5432 | secret wrap-int),                        # May be sensitive
+  username: ("app_user" | secret wrap-string),           # Sensitive
+  password: ("db_password_123" | secret wrap-string),    # Secret
+  database: "production",                                 # Public
+  ssl: true                                              # Public
+}
+
+# Connection function handles secret unwrapping internally
+let connection = db connect_secure $db_creds
+```
+
+### Pattern 6: API Client Migration
+
+**Before:**
+```nushell
+def call_api [endpoint: string, api_key: string] {
+  http get $endpoint --headers {
+    Authorization: $"Bearer ($api_key)"
+  }
+}
+
+let key = "sk-1234567890"
+call_api "https://api.example.com/data" $key  # Key exposed in call
+```
+
+**After:**
+```nushell
+def call_api [endpoint: string, api_key: any] {
+  # Function expects secret type
+  let key = if ($api_key | secret validate) {
+    $api_key | secret unwrap
+  } else {
+    error make {msg: "API key must be a secret type"}
+  }
+  
+  http get $endpoint --headers {
+    Authorization: $"Bearer ($key)"
+  }
+}
+
+let key = "sk-1234567890" | secret wrap-string
+call_api "https://api.example.com/data" $key  # Key remains protected
+```
+
+### Pattern 7: Bulk Data Processing
+
+**Before:**
+```nushell
+# Processing list of sensitive user data
+let users = [
+  {id: 123, name: "Alice", ssn: "123-45-6789"},
+  {id: 456, name: "Bob", ssn: "987-65-4321"}
+]
+
+$users | each { |user|
+  echo $"Processing user: ($user.name), SSN: ($user.ssn)"  # ❌ Exposes SSN
+}
+```
+
+**After:**
+```nushell
+# Wrap sensitive fields during processing
+let users = [
+  {id: 123, name: "Alice", ssn: ("123-45-6789" | secret wrap-string)},
+  {id: 456, name: "Bob", ssn: ("987-65-4321" | secret wrap-string)}
+]
+
+$users | each { |user|
+  echo $"Processing user: ($user.name), SSN: ($user.ssn)"  # ✅ Shows <redacted:string>
+  # Only unwrap when absolutely necessary for external systems
+  process_user_external ($user.ssn | secret unwrap)
+}
+```
+
+### Pattern 8: File I/O with Secrets
+
+**Before:**
+```nushell
+# Reading sensitive config from file
+let config = open config.json | from json
+echo $"API key: ($config.api_key)"  # ❌ May expose in logs
+
+# Writing sensitive data
+{api_key: "secret123"} | to json | save output.json  # ❌ Exposes in file
+```
+
+**After:**
+```nushell
+# Reading and immediately protecting
+let config = open config.json | from json
+let secure_config = {
+  api_key: ($config.api_key | secret wrap-string),
+  other_field: $config.other_field
+}
+echo $"API key: ($secure_config.api_key)"  # ✅ Shows <redacted:string>
+
+# Only save non-sensitive representations
+let safe_config = {api_key: "<redacted>", other_field: $config.other_field}
+$safe_config | to json | save output.json  # ✅ No secrets in file
+```
+
+### Pattern 9: Function Parameter Migration
+
+**Before:**
+```nushell
+def deploy_app [
+  app_name: string,
+  api_key: string,        # Plain string parameter
+  database_url: string,   # Plain string parameter
+  port: int              # Plain int parameter
+] {
+  echo $"Deploying ($app_name) with key: ($api_key)"  # ❌ Exposes key
+  # ... deployment logic
+}
+
+deploy_app "myapp" "sk-secret123" "postgres://user:pass@host/db" 8080
+```
+
+**After:**
+```nushell
+def deploy_app [
+  app_name: string,
+  api_key: any,          # Accept secret type
+  database_url: any,     # Accept secret type  
+  port: any             # Accept secret type
+] {
+  # Validate secret types
+  if not ($api_key | secret validate) {
+    error make {msg: "api_key must be a secret type"}
+  }
+  if not ($database_url | secret validate) {
+    error make {msg: "database_url must be a secret type"}
+  }
+  if not ($port | secret validate) {
+    error make {msg: "port must be a secret type"}
+  }
+  
+  echo $"Deploying ($app_name) with key: ($api_key)"  # ✅ Shows <redacted:string>
+  
+  # Only unwrap for actual use
+  let key = $api_key | secret unwrap
+  let db = $database_url | secret unwrap
+  let p = $port | secret unwrap
+  
+  # ... deployment logic with unwrapped values
+}
+
+# Call with secret types
+deploy_app "myapp" 
+  ("sk-secret123" | secret wrap-string)
+  ("postgres://user:pass@host/db" | secret wrap-string)
+  (8080 | secret wrap-int)
+```
+
+### Pattern 10: Gradual Migration Strategy
+
+**Phase 1: Identify sensitive data**
+```nushell
+# Audit existing scripts for sensitive data
+def audit_script [file: path] {
+  open $file 
+  | lines 
+  | enumerate 
+  | where item =~ "password|api_key|secret|token|credential"
+  | each { |line| 
+      echo $"Line ($line.index + 1): ($line.item)" 
+    }
+}
+```
+
+**Phase 2: Add secret wrapping at input boundaries**
+```nushell
+# Wrap secrets as soon as they enter your script
+let api_key = ($env.API_KEY | default "" | secret wrap-string)
+let db_pass = ($env.DB_PASSWORD | default "" | secret wrap-string)
+```
+
+**Phase 3: Update functions to accept secret types**
+```nushell
+# Modify functions to handle both plain and secret types during transition
+def flexible_auth [token: any] {
+  let auth_token = if ($token | secret validate) {
+    $token
+  } else {
+    $token | secret wrap-string  # Auto-wrap plain types
+  }
+  
+  # Work with secret type from here on
+  use_auth_token $auth_token
+}
+```
+
+**Phase 4: Remove compatibility and enforce secret types**
+```nushell
+# Final version - only accept secret types
+def secure_auth [token: any] {
+  if not ($token | secret validate) {
+    error make {
+      msg: "Authentication token must be a secret type",
+      help: "Use: $token | secret wrap-string"
+    }
+  }
+  
+  use_auth_token $token
+}
+```
+
 ## 🚨 Security Best Practices
 
 ### 1. **Default to Secret Types**
