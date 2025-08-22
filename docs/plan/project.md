@@ -213,12 +213,12 @@ Create a secure Nushell plugin that provides a family of secret custom types to:
 ### Phase 5: Enhanced Configuration & Partial Redaction (Week 6)
 **Goal**: Add configurable redaction settings and advanced partial redaction features
 
-#### 5.1 Configuration System ⏳ IN PROGRESS
-- [ ] Configuration file support at `~/.config/nushell/plugins/secret/config.toml`
-- [ ] Hierarchical configuration loading (file → env vars → runtime commands)
-- [ ] TOML-based configuration with validation and defaults
-- [ ] Environment variable overrides for all settings
-- [ ] Configuration management module with save/load functionality
+#### 5.1 Configuration System ✅ COMPLETED
+- [x] Configuration file support at `~/.config/nushell/plugins/secret/config.toml`
+- [x] Hierarchical configuration loading (file → env vars → runtime commands)
+- [x] TOML-based configuration with validation and defaults
+- [x] Environment variable overrides for all settings
+- [x] Configuration management module with save/load functionality
 
 #### 5.2 Configurable Redaction Text ⏳ IN PROGRESS  
 - [ ] Multiple redaction styles (typed brackets, simple, asterisks, custom)

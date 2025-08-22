@@ -1,6 +1,7 @@
 use nu_plugin::{Plugin, PluginCommand};
 
 mod commands;
+pub mod config;
 pub mod memory_optimizations;
 pub mod performance_monitoring;
 mod secret_types;
@@ -20,8 +21,13 @@ impl Plugin for SecretPlugin {
     }
 
     fn commands(&self) -> Vec<Box<dyn PluginCommand<Plugin = Self>>> {
-        // Initialize optimizations on first command access
+        // Initialize optimizations and configuration on first command access
         startup_optimizations::command_optimizations::init_command_cache();
+
+        // Initialize configuration system (ignore errors for now)
+        // Skip config initialization under Miri since it involves file system operations
+        #[cfg(not(miri))]
+        let _ = config::init_config();
 
         vec![
             // Core secret wrap commands
