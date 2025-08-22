@@ -21,18 +21,6 @@ include = [
     "CHANGELOG.md",
     "Cargo.toml"
 ]
-exclude = [
-    ".github/",
-    ".git/",
-    "target/",
-    "*.swp",
-    "*.swo",
-    ".DS_Store",
-    "test_data/",
-    "scripts/",
-    ".env*",
-    "*.log"
-]
 
 [package.metadata.docs.rs]
 all-features = true
