@@ -96,13 +96,28 @@ secret info
 
 ## 🛡️ Security Features
 
+### Display Layer Protection
 - **Zero Accidental Exposure**: Secret values never display actual content in
-  any context
+  console output, logs, or debug information
+- **Debug Safety**: Debug output (`{:?}`) never shows sensitive content
+- **Redacted Display**: All secret types show as `<redacted:type>` in output
+
+### Functional Pipeline Support  
+- **Serialization for Unwrap**: Internal serialization contains actual data to 
+  enable proper `unwrap` operations and pipeline functionality
+- **Pipeline Integration**: Secrets work seamlessly in Nushell data flows
+  between commands and through plugin communication
+
+### Core Security
 - **Memory Safety**: Secure cleanup via ZeroizeOnDrop on all secret types
 - **Constant-Time Comparison**: Prevents timing attacks across all types
-- **Serialization Protection**: Custom implementations prevent exposure
-- **Debug Safety**: Debug output never shows sensitive content
 - **Type Safety**: Comprehensive validation and error handling
+
+### Security Model
+This plugin uses a **dual-layer security approach**:
+- **Display/Debug Layer**: Always redacted to prevent accidental exposure
+- **Functional Layer**: Serialization enables unwrap operations while maintaining
+  memory safety and secure display behavior
 
 ## 💡 Usage Examples
 
@@ -139,25 +154,35 @@ if ($value | secret validate) {
 
 ## 🎯 Current Status
 
-**✅ Phase 2+ Complete**: All 8 secret types implemented and tested
+**✅ Phase 5.6 Complete**: Functional Serialization & Comprehensive Testing
 
-- **12 Commands**: 8 wrap commands + 4 utility commands
-- **74 Tests**: Comprehensive test coverage
-- **Production Ready**: Memory-safe, secure, and performant
+- **12 Commands**: 8 wrap commands + 4 utility commands  
+- **179+ Tests**: Comprehensive Rust unit tests + Nushell script tests
+- **Functional Unwrap**: Serialization enables proper unwrap operations
+- **Security Validated**: Display/debug remain redacted, all security tests passing
+- **Production Ready**: Memory-safe, secure, and performant with full pipeline support
 
 ## 🗺️ Roadmap
 
 **✅ Phase 1**: SecretString with core commands
-**✅ Phase 2**: SecretInt, SecretBool, SecretRecord, SecretList
+**✅ Phase 2**: SecretInt, SecretBool, SecretRecord, SecretList  
 **✅ Phase 2+**: SecretFloat, SecretBinary, SecretDate
-**🔄 Phase 3**: CI/CD pipeline and documentation
-**📋 Phase 4**: Security audit and production hardening
+**✅ Phase 5**: Functional serialization with dual-layer security model
+**✅ Phase 5.6**: Comprehensive testing framework and unwrap functionality
+**🔄 Phase 6**: CI/CD pipeline integration
+**📋 Phase 7**: Security audit and production hardening
 
 ## 🛠️ Development
 
 ```bash
-# Run all tests (74 tests)
+# Run all Rust tests (179+ tests)
 cargo test
+
+# Run Nushell integration tests
+./scripts/run_nu_tests.sh
+
+# Quick Nushell test
+nu tests/nushell/simple_test.nu
 
 # Check code quality
 cargo clippy
