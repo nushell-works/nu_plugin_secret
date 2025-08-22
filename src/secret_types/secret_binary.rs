@@ -1,9 +1,9 @@
+use crate::memory_optimizations::{binary_optimization::OptimizedBinary, get_redacted_string};
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use zeroize::{Zeroize, ZeroizeOnDrop};
-use crate::memory_optimizations::{get_redacted_string, binary_optimization::OptimizedBinary};
 
 /// A secure binary type that redacts its content in all display contexts
 /// and zeros its memory on drop
@@ -51,7 +51,9 @@ impl ZeroizeOnDrop for SecretBinary {}
 impl SecretBinary {
     /// Create a new SecretBinary from a byte vector
     pub fn new(value: Vec<u8>) -> Self {
-        Self { inner: OptimizedBinary::from_slice(&value) }
+        Self {
+            inner: OptimizedBinary::from_slice(&value),
+        }
     }
 
     /// Get a reference to the inner binary data (for controlled access)

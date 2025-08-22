@@ -1,11 +1,11 @@
 //! Performance monitoring system for nu_plugin_secret
-//! 
+//!
 //! This module provides real-time performance monitoring capabilities
 //! to track plugin performance, detect regressions, and gather metrics.
 
+use std::collections::{HashMap, VecDeque};
 use std::sync::RwLock;
 use std::time::Instant;
-use std::collections::{HashMap, VecDeque};
 
 /// Performance metric types
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -112,17 +112,23 @@ impl PerformanceMonitor {
     /// Record a performance measurement
     pub fn record(&self, measurement: Measurement) {
         let config = self.config.read().unwrap();
-        
-        if !config.detailed_timing && 
-           !matches!(measurement.metric_type, MetricType::MemoryUsage | MetricType::StartupTime) {
+
+        if !config.detailed_timing
+            && !matches!(
+                measurement.metric_type,
+                MetricType::MemoryUsage | MetricType::StartupTime
+            )
+        {
             return;
         }
 
         let mut measurements = self.measurements.write().unwrap();
-        let entries = measurements.entry(measurement.metric_type.clone()).or_default();
-        
+        let entries = measurements
+            .entry(measurement.metric_type.clone())
+            .or_default();
+
         entries.push_back(measurement);
-        
+
         // Keep only the most recent measurements
         while entries.len() > config.max_measurements {
             entries.pop_front();
@@ -137,7 +143,7 @@ impl PerformanceMonitor {
         let start = Instant::now();
         let result = f();
         let duration = start.elapsed();
-        
+
         self.record(Measurement {
             metric_type,
             value: duration.as_nanos() as f64,
@@ -145,7 +151,7 @@ impl PerformanceMonitor {
             timestamp: start,
             context,
         });
-        
+
         result
     }
 
@@ -153,33 +159,31 @@ impl PerformanceMonitor {
     pub fn get_statistics(&self, metric_type: &MetricType) -> Option<Statistics> {
         let measurements = self.measurements.read().unwrap();
         let entries = measurements.get(metric_type)?;
-        
+
         if entries.is_empty() {
             return None;
         }
 
         let mut values: Vec<f64> = entries.iter().map(|m| m.value).collect();
         values.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        
+
         let count = values.len();
         let min = values[0];
         let max = values[count - 1];
         let mean = values.iter().sum::<f64>() / count as f64;
-        
+
         let median = if count % 2 == 0 {
             (values[count / 2 - 1] + values[count / 2]) / 2.0
         } else {
             values[count / 2]
         };
-        
-        let variance = values.iter()
-            .map(|v| (v - mean).powi(2))
-            .sum::<f64>() / count as f64;
+
+        let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / count as f64;
         let std_dev = variance.sqrt();
-        
+
         let p95_idx = ((count as f64 * 0.95) as usize).min(count - 1);
         let p99_idx = ((count as f64 * 0.99) as usize).min(count - 1);
-        
+
         Some(Statistics {
             count,
             min,
@@ -203,11 +207,11 @@ impl PerformanceMonitor {
         let mut alerts = Vec::new();
         let config = self.config.read().unwrap();
         let baselines = self.baselines.read().unwrap();
-        
+
         for (metric_type, baseline) in baselines.iter() {
             if let Some(current) = self.get_statistics(metric_type) {
                 let regression_pct = ((current.mean - baseline.mean) / baseline.mean) * 100.0;
-                
+
                 if regression_pct > config.regression_threshold {
                     alerts.push(RegressionAlert {
                         metric_type: metric_type.clone(),
@@ -219,7 +223,7 @@ impl PerformanceMonitor {
                 }
             }
         }
-        
+
         alerts
     }
 
@@ -227,12 +231,12 @@ impl PerformanceMonitor {
     pub fn export_metrics(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
         use std::fs::File;
         use std::io::Write;
-        
+
         let measurements = self.measurements.read().unwrap();
         let mut file = File::create(path)?;
-        
+
         writeln!(file, "timestamp,metric_type,value,unit,context")?;
-        
+
         for (metric_type, entries) in measurements.iter() {
             for measurement in entries.iter() {
                 writeln!(
@@ -246,7 +250,7 @@ impl PerformanceMonitor {
                 )?;
             }
         }
-        
+
         Ok(())
     }
 
@@ -254,16 +258,16 @@ impl PerformanceMonitor {
     pub fn generate_report(&self) -> PerformanceReport {
         let config = self.config.read().unwrap();
         let measurements = self.measurements.read().unwrap();
-        
+
         let mut stats_by_metric = HashMap::new();
         for metric_type in measurements.keys() {
             if let Some(stats) = self.get_statistics(metric_type) {
                 stats_by_metric.insert(metric_type.clone(), stats);
             }
         }
-        
+
         let regressions = self.check_regressions();
-        
+
         PerformanceReport {
             timestamp: Instant::now(),
             statistics: stats_by_metric,
@@ -299,7 +303,8 @@ static GLOBAL_MONITOR: std::sync::OnceLock<PerformanceMonitor> = std::sync::Once
 
 /// Initialize the global performance monitor
 pub fn init_monitoring(config: MonitoringConfig) {
-    GLOBAL_MONITOR.set(PerformanceMonitor::new(config))
+    GLOBAL_MONITOR
+        .set(PerformanceMonitor::new(config))
         .map_err(|_| "Monitor already initialized")
         .unwrap();
 }
@@ -321,15 +326,11 @@ macro_rules! time_block {
         $crate::performance_monitoring::get_monitor().time(
             $metric_type,
             Some($context.to_string()),
-            || $block
+            || $block,
         )
     };
     ($metric_type:expr, $block:block) => {
-        $crate::performance_monitoring::get_monitor().time(
-            $metric_type,
-            None,
-            || $block
-        )
+        $crate::performance_monitoring::get_monitor().time($metric_type, None, || $block)
     };
 }
 
@@ -344,7 +345,7 @@ macro_rules! record_metric {
                 unit: $unit,
                 timestamp: std::time::Instant::now(),
                 context: None,
-            }
+            },
         );
     };
     ($metric_type:expr, $value:expr, $unit:expr, $context:expr) => {
@@ -355,7 +356,7 @@ macro_rules! record_metric {
                 unit: $unit,
                 timestamp: std::time::Instant::now(),
                 context: Some($context.to_string()),
-            }
+            },
         );
     };
 }
@@ -373,7 +374,7 @@ mod tests {
             ..MonitoringConfig::default()
         };
         let monitor = PerformanceMonitor::new(config);
-        
+
         // Record some measurements
         monitor.record(Measurement {
             metric_type: MetricType::SecretCreation,
@@ -382,7 +383,7 @@ mod tests {
             timestamp: Instant::now(),
             context: Some("test".to_string()),
         });
-        
+
         monitor.record(Measurement {
             metric_type: MetricType::SecretCreation,
             value: 150.0,
@@ -390,7 +391,7 @@ mod tests {
             timestamp: Instant::now(),
             context: Some("test".to_string()),
         });
-        
+
         // Get statistics
         let stats = monitor.get_statistics(&MetricType::SecretCreation).unwrap();
         assert_eq!(stats.count, 2);
@@ -406,18 +407,18 @@ mod tests {
             ..MonitoringConfig::default()
         };
         let monitor = PerformanceMonitor::new(config);
-        
+
         let result = monitor.time(
             MetricType::SecretCreation,
             Some("test_timing".to_string()),
             || {
                 thread::sleep(Duration::from_millis(1));
                 42
-            }
+            },
         );
-        
+
         assert_eq!(result, 42);
-        
+
         let stats = monitor.get_statistics(&MetricType::SecretCreation).unwrap();
         assert_eq!(stats.count, 1);
         assert!(stats.mean > 0.0);
@@ -431,7 +432,7 @@ mod tests {
             ..MonitoringConfig::default()
         };
         let monitor = PerformanceMonitor::new(config);
-        
+
         // Set baseline
         let baseline = Statistics {
             count: 100,
@@ -444,7 +445,7 @@ mod tests {
             p99: 109.0,
         };
         monitor.set_baseline(MetricType::SecretCreation, baseline);
-        
+
         // Add measurements that exceed threshold
         for _ in 0..10 {
             monitor.record(Measurement {
@@ -455,7 +456,7 @@ mod tests {
                 context: None,
             });
         }
-        
+
         let regressions = monitor.check_regressions();
         assert_eq!(regressions.len(), 1);
         assert!(regressions[0].regression_percentage > 10.0);

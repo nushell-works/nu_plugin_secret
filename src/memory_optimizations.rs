@@ -1,5 +1,5 @@
 //! Memory optimization utilities for the secret plugin
-//! 
+//!
 //! This module contains optimizations to reduce memory usage and improve
 //! performance while maintaining security guarantees.
 
@@ -33,7 +33,7 @@ pub fn get_redacted_string(type_name: &str) -> &'static str {
         init_string_cache();
         REDACTED_STRINGS.get().unwrap()
     });
-    
+
     cache.get(type_name).copied().unwrap_or("<redacted>")
 }
 
@@ -61,11 +61,17 @@ impl SecretMemoryPool {
     /// Get a pre-allocated string from the pool or create a new one
     pub fn get_string(&mut self, size_hint: usize) -> String {
         if size_hint <= Self::SMALL_SIZE {
-            self.small_strings.pop().unwrap_or_else(|| String::with_capacity(Self::SMALL_SIZE))
+            self.small_strings
+                .pop()
+                .unwrap_or_else(|| String::with_capacity(Self::SMALL_SIZE))
         } else if size_hint <= Self::MEDIUM_SIZE {
-            self.medium_strings.pop().unwrap_or_else(|| String::with_capacity(Self::MEDIUM_SIZE))
+            self.medium_strings
+                .pop()
+                .unwrap_or_else(|| String::with_capacity(Self::MEDIUM_SIZE))
         } else {
-            self.large_strings.pop().unwrap_or_else(|| String::with_capacity(size_hint))
+            self.large_strings
+                .pop()
+                .unwrap_or_else(|| String::with_capacity(size_hint))
         }
     }
 
@@ -73,11 +79,13 @@ impl SecretMemoryPool {
     pub fn return_string(&mut self, mut s: String) {
         // Clear content but keep capacity
         s.clear();
-        
+
         let capacity = s.capacity();
         if capacity <= Self::SMALL_SIZE && self.small_strings.len() < Self::POOL_INITIAL_CAPACITY {
             self.small_strings.push(s);
-        } else if capacity <= Self::MEDIUM_SIZE && self.medium_strings.len() < Self::POOL_INITIAL_CAPACITY {
+        } else if capacity <= Self::MEDIUM_SIZE
+            && self.medium_strings.len() < Self::POOL_INITIAL_CAPACITY
+        {
             self.medium_strings.push(s);
         } else if self.large_strings.len() < Self::POOL_INITIAL_CAPACITY {
             self.large_strings.push(s);
@@ -116,14 +124,14 @@ pub mod binary_optimization {
         /// Create optimized binary from a slice
         pub fn from_slice(data: &[u8]) -> Self {
             let len = data.len();
-            
+
             if len == 0 {
                 return Self::Small([0; 32], 0);
             }
 
             // Check for common patterns
             let first_byte = data[0];
-            
+
             if data.iter().all(|&b| b == 0) {
                 Self::Zeros(len)
             } else if data.iter().all(|&b| b == 0xFF) {
@@ -248,10 +256,10 @@ mod tests {
     #[test]
     fn test_string_interning() {
         init_string_cache();
-        
+
         let s1 = get_redacted_string("string");
         let s2 = get_redacted_string("string");
-        
+
         // Should be the same memory location (interned)
         assert_eq!(s1.as_ptr(), s2.as_ptr());
         assert_eq!(s1, "<redacted:string>");
@@ -260,23 +268,23 @@ mod tests {
     #[test]
     fn test_binary_optimization() {
         use binary_optimization::OptimizedBinary;
-        
+
         // Test zeros optimization
         let zeros = vec![0; 1000];
         let opt_zeros = OptimizedBinary::from_slice(&zeros);
         assert!(matches!(opt_zeros, OptimizedBinary::Zeros(1000)));
         assert_eq!(opt_zeros.len(), 1000);
-        
+
         // Test ones optimization
         let ones = vec![0xFF; 500];
         let opt_ones = OptimizedBinary::from_slice(&ones);
         assert!(matches!(opt_ones, OptimizedBinary::Ones(500)));
-        
+
         // Test repeated pattern optimization
         let repeated = vec![0xAA; 200];
         let opt_repeated = OptimizedBinary::from_slice(&repeated);
         assert!(matches!(opt_repeated, OptimizedBinary::Repeated(0xAA, 200)));
-        
+
         // Test small data optimization
         let small_data = vec![1, 2, 3, 4, 5];
         let opt_small = OptimizedBinary::from_slice(&small_data);
@@ -286,21 +294,21 @@ mod tests {
     #[test]
     fn test_memory_pool() {
         let mut pool = SecretMemoryPool::new();
-        
+
         // Get some strings
         let s1 = pool.get_string(32);
         let s2 = pool.get_string(100);
         let s3 = pool.get_string(2000);
-        
+
         assert!(s1.capacity() >= 32);
         assert!(s2.capacity() >= 100);
         assert!(s3.capacity() >= 2000);
-        
+
         // Return them to the pool
         pool.return_string(s1);
         pool.return_string(s2);
         pool.return_string(s3);
-        
+
         // Get them back (should reuse)
         let s4 = pool.get_string(30);
         assert!(s4.capacity() >= 30);
@@ -310,10 +318,10 @@ mod tests {
     fn test_memory_stats() {
         let mut stats = MemoryStats::new();
         assert_eq!(stats.total_secrets, 0);
-        
+
         stats.add_string_secret(100);
         stats.add_binary_secret(200);
-        
+
         assert_eq!(stats.total_secrets, 2);
         assert_eq!(stats.string_secrets, 1);
         assert_eq!(stats.binary_secrets, 1);

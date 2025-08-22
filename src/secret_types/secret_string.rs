@@ -1,9 +1,9 @@
+use crate::memory_optimizations::get_redacted_string;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use zeroize::{Zeroize, ZeroizeOnDrop};
-use crate::memory_optimizations::get_redacted_string;
 
 /// A secure string type that redacts its content in all display contexts
 /// and zeros its memory on drop
