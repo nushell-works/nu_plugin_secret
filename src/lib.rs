@@ -44,6 +44,13 @@ impl Plugin for SecretPlugin {
             Box::new(SecretInfoCommand),
             Box::new(SecretValidateCommand),
             Box::new(SecretTypeOfCommand),
+            // Configuration commands
+            Box::new(SecretConfigureCommand),
+            Box::new(SecretConfigShowCommand),
+            Box::new(SecretConfigResetCommand),
+            Box::new(SecretConfigValidateCommand),
+            Box::new(SecretConfigExportCommand),
+            Box::new(SecretConfigImportCommand),
         ]
     }
 }
@@ -62,10 +69,11 @@ mod tests {
     fn test_plugin_commands() {
         let plugin = SecretPlugin;
         let commands = plugin.commands();
-        assert_eq!(commands.len(), 12);
+        assert_eq!(commands.len(), 18);
 
         // Test all commands to ensure they're registered correctly
         let command_names: Vec<&str> = commands.iter().map(|cmd| cmd.name()).collect();
+        // Core secret wrap commands
         assert!(command_names.contains(&"secret wrap-string"));
         assert!(command_names.contains(&"secret wrap-int"));
         assert!(command_names.contains(&"secret wrap-bool"));
@@ -74,9 +82,17 @@ mod tests {
         assert!(command_names.contains(&"secret wrap-float"));
         assert!(command_names.contains(&"secret wrap-binary"));
         assert!(command_names.contains(&"secret wrap-date"));
+        // Utility commands
         assert!(command_names.contains(&"secret unwrap"));
         assert!(command_names.contains(&"secret info"));
         assert!(command_names.contains(&"secret validate"));
         assert!(command_names.contains(&"secret type-of"));
+        // Configuration commands
+        assert!(command_names.contains(&"secret configure"));
+        assert!(command_names.contains(&"secret config show"));
+        assert!(command_names.contains(&"secret config reset"));
+        assert!(command_names.contains(&"secret config validate"));
+        assert!(command_names.contains(&"secret config export"));
+        assert!(command_names.contains(&"secret config import"));
     }
 }

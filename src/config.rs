@@ -216,6 +216,14 @@ pub struct ConfigManager {
 }
 
 impl ConfigManager {
+    /// Create a new ConfigManager with the given config
+    pub fn new(config: PluginConfig) -> Self {
+        Self {
+            config,
+            config_path: get_config_file_path(),
+        }
+    }
+
     /// Load configuration with hierarchical priority
     pub fn load() -> Result<Self, ConfigError> {
         let config_path = get_config_file_path();
@@ -263,6 +271,39 @@ impl ConfigManager {
     /// Get mutable configuration reference
     pub fn config_mut(&mut self) -> &mut PluginConfig {
         &mut self.config
+    }
+
+    /// Load configuration from a specific path
+    pub fn load_from_path(path: &std::path::Path) -> Result<Self, ConfigError> {
+        if !path.exists() {
+            return Err(ConfigError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Configuration file not found",
+            )));
+        }
+
+        let content = std::fs::read_to_string(path)?;
+        let config: PluginConfig = toml::from_str(&content)?;
+
+        // Validate the loaded configuration
+        Self::validate_config(&config)?;
+
+        Ok(Self {
+            config,
+            config_path: Some(path.to_path_buf()),
+        })
+    }
+
+    /// Save configuration to a specific path
+    pub fn save_to_path(&self, path: &std::path::Path) -> Result<(), ConfigError> {
+        // Create parent directories
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let content = toml::to_string_pretty(&self.config)?;
+        std::fs::write(path, content)?;
+        Ok(())
     }
 
     /// Apply environment variable overrides
@@ -315,7 +356,7 @@ impl ConfigManager {
     }
 
     /// Validate configuration against security constraints
-    fn validate_config(config: &PluginConfig) -> Result<(), ConfigError> {
+    pub fn validate_config(config: &PluginConfig) -> Result<(), ConfigError> {
         // Validate custom redaction text
         if let RedactionStyle::Custom(ref text) = config.redaction.style {
             if text.len() > config.security.max_custom_text_length {
@@ -508,6 +549,14 @@ pub fn get_config_mut() -> Result<std::sync::RwLockWriteGuard<'static, ConfigMan
         .ok_or_else(|| ConfigError::Invalid("Configuration not initialized".to_string()))?
         .write()
         .map_err(|_| ConfigError::Invalid("Configuration lock poisoned".to_string()))
+}
+
+/// Update the global configuration with a new config
+pub fn update_config(new_config: PluginConfig) -> Result<(), ConfigError> {
+    let mut config_guard = get_config_mut()?;
+    *config_guard.config_mut() = new_config;
+    config_guard.save()?;
+    Ok(())
 }
 
 #[cfg(test)]

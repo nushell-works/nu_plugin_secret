@@ -242,12 +242,12 @@ Create a secure Nushell plugin that provides a family of secret custom types to:
 - [x] **Security validation** preventing information leakage through partial redaction
 - [x] **Comprehensive test coverage** for all partial redaction scenarios
 
-#### 5.4 Configuration Commands ⏳ IN PROGRESS
-- [ ] `secret configure` command for runtime configuration changes
-- [ ] `secret config show` command to display current settings
-- [ ] `secret config reset` command to restore defaults
-- [ ] `secret config validate` command for configuration validation
-- [ ] Configuration import/export functionality
+#### 5.4 Configuration Commands ✅ COMPLETED
+- [x] `secret configure` command for runtime configuration changes
+- [x] `secret config show` command to display current settings
+- [x] `secret config reset` command to restore defaults
+- [x] `secret config validate` command for configuration validation
+- [x] Configuration import/export functionality (`secret config export` and `secret config import` commands)
 
 #### 5.5 Enhanced Security Features ⏳ IN PROGRESS
 - [ ] Configurable security levels (minimal, standard, paranoid)

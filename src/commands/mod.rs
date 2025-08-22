@@ -1,3 +1,9 @@
+mod config_export;
+mod config_import;
+mod config_reset;
+mod config_show;
+mod config_validate;
+mod configure;
 mod info;
 mod type_of;
 mod unwrap;
@@ -11,6 +17,12 @@ mod wrap_list;
 mod wrap_record;
 mod wrap_string;
 
+pub use config_export::SecretConfigExportCommand;
+pub use config_import::SecretConfigImportCommand;
+pub use config_reset::SecretConfigResetCommand;
+pub use config_show::SecretConfigShowCommand;
+pub use config_validate::SecretConfigValidateCommand;
+pub use configure::SecretConfigureCommand;
 pub use info::SecretInfoCommand;
 pub use type_of::SecretTypeOfCommand;
 pub use unwrap::SecretUnwrapCommand;
