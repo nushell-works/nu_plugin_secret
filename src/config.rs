@@ -89,7 +89,7 @@ impl Default for SecurityLevel {
 }
 
 /// Partial redaction configuration for string secrets
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PartialRedactionConfig {
     /// Whether partial redaction is enabled
     pub enabled: bool,
@@ -122,7 +122,7 @@ impl Default for PartialRedactionConfig {
 }
 
 /// Main redaction configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RedactionConfig {
     /// Global redaction style
     pub style: RedactionStyle,
@@ -157,7 +157,7 @@ impl Default for RedactionConfig {
 }
 
 /// Security configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SecurityConfig {
     /// Security level for validation
     pub level: SecurityLevel,
@@ -184,7 +184,7 @@ impl Default for SecurityConfig {
 }
 
 /// Main plugin configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PluginConfig {
     /// Redaction configuration
     pub redaction: RedactionConfig,
@@ -408,6 +408,100 @@ impl ConfigManager {
             }
         }
 
+        // Enhanced security validation based on security level
+        Self::validate_security_level_constraints(config)?;
+
+        Ok(())
+    }
+
+    /// Validate security level constraints
+    fn validate_security_level_constraints(config: &PluginConfig) -> Result<(), ConfigError> {
+        match config.security.level {
+            SecurityLevel::Minimal => {
+                // Minimal security allows most configurations, but still has basic limits
+                if config.redaction.partial.enabled {
+                    let total_reveal =
+                        config.redaction.partial.show_first + config.redaction.partial.show_last;
+                    if total_reveal > 20 {
+                        return Err(ConfigError::Security(
+                            "Even minimal security requires some content to remain hidden"
+                                .to_string(),
+                        ));
+                    }
+                }
+            }
+            SecurityLevel::Standard => {
+                // Standard security requires audit logging by default
+                if !config.security.audit_config_changes {
+                    return Err(ConfigError::Security(
+                        "Standard security level requires audit logging to be enabled".to_string(),
+                    ));
+                }
+
+                // Enhanced partial redaction limits for standard security
+                if config.redaction.partial.enabled {
+                    let total_reveal =
+                        config.redaction.partial.show_first + config.redaction.partial.show_last;
+                    if total_reveal > 8 {
+                        return Err(ConfigError::Security(
+                            "Standard security level limits partial redaction to 8 characters total".to_string(),
+                        ));
+                    }
+                }
+            }
+            SecurityLevel::Paranoid => {
+                // Paranoid security has strict requirements
+                if !config.security.audit_config_changes {
+                    return Err(ConfigError::Security(
+                        "Paranoid security level requires audit logging to be enabled".to_string(),
+                    ));
+                }
+
+                if config.security.max_custom_text_length > 20 {
+                    return Err(ConfigError::Security(
+                        "Paranoid security level limits custom text to 20 characters".to_string(),
+                    ));
+                }
+
+                if config.redaction.show_type_info {
+                    return Err(ConfigError::Security(
+                        "Paranoid security level prohibits showing type information".to_string(),
+                    ));
+                }
+
+                if config.redaction.preserve_length {
+                    return Err(ConfigError::Security(
+                        "Paranoid security level prohibits preserving length information"
+                            .to_string(),
+                    ));
+                }
+
+                // Very strict partial redaction limits
+                if config.redaction.partial.enabled {
+                    let total_reveal =
+                        config.redaction.partial.show_first + config.redaction.partial.show_last;
+                    if total_reveal > 4 {
+                        return Err(ConfigError::Security(
+                            "Paranoid security level limits partial redaction to 4 characters total".to_string(),
+                        ));
+                    }
+
+                    if config.redaction.partial.min_length < 32 {
+                        return Err(ConfigError::Security(
+                            "Paranoid security level requires secrets to be at least 32 characters for partial redaction".to_string(),
+                        ));
+                    }
+
+                    if !config.redaction.partial.use_hash {
+                        return Err(ConfigError::Security(
+                            "Paranoid security level requires hash-based partial redaction"
+                                .to_string(),
+                        ));
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -554,8 +648,119 @@ pub fn get_config_mut() -> Result<std::sync::RwLockWriteGuard<'static, ConfigMan
 /// Update the global configuration with a new config
 pub fn update_config(new_config: PluginConfig) -> Result<(), ConfigError> {
     let mut config_guard = get_config_mut()?;
+
+    // Log configuration change if audit logging is enabled
+    let old_config = config_guard.config().clone();
+    if old_config.security.audit_config_changes {
+        audit_config_change(&old_config, &new_config)?;
+    }
+
     *config_guard.config_mut() = new_config;
     config_guard.save()?;
+    Ok(())
+}
+
+/// Log configuration changes for audit purposes
+fn audit_config_change(
+    old_config: &PluginConfig,
+    new_config: &PluginConfig,
+) -> Result<(), ConfigError> {
+    use std::io::Write;
+
+    // Only log if there are actual changes
+    if old_config == new_config {
+        return Ok(());
+    }
+
+    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+    let mut changes = Vec::new();
+
+    // Track redaction style changes
+    if old_config.redaction.style != new_config.redaction.style {
+        changes.push(format!(
+            "redaction.style: {:?} -> {:?}",
+            old_config.redaction.style, new_config.redaction.style
+        ));
+    }
+
+    // Track security level changes
+    if old_config.security.level != new_config.security.level {
+        changes.push(format!(
+            "security.level: {:?} -> {:?}",
+            old_config.security.level, new_config.security.level
+        ));
+    }
+
+    // Track partial redaction changes
+    if old_config.redaction.partial.enabled != new_config.redaction.partial.enabled {
+        changes.push(format!(
+            "partial_redaction.enabled: {} -> {}",
+            old_config.redaction.partial.enabled, new_config.redaction.partial.enabled
+        ));
+    }
+
+    if old_config.redaction.partial.show_first != new_config.redaction.partial.show_first {
+        changes.push(format!(
+            "partial_redaction.show_first: {} -> {}",
+            old_config.redaction.partial.show_first, new_config.redaction.partial.show_first
+        ));
+    }
+
+    if old_config.redaction.partial.show_last != new_config.redaction.partial.show_last {
+        changes.push(format!(
+            "partial_redaction.show_last: {} -> {}",
+            old_config.redaction.partial.show_last, new_config.redaction.partial.show_last
+        ));
+    }
+
+    // Track audit setting changes (important for security)
+    if old_config.security.audit_config_changes != new_config.security.audit_config_changes {
+        changes.push(format!(
+            "security.audit_config_changes: {} -> {}",
+            old_config.security.audit_config_changes, new_config.security.audit_config_changes
+        ));
+    }
+
+    if !changes.is_empty() {
+        // Try to write to audit log file
+        if let Some(config_dir) =
+            get_config_file_path().and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        {
+            let audit_file = config_dir.join("audit.log");
+
+            // Create directory if it doesn't exist
+            if let Err(e) = std::fs::create_dir_all(&config_dir) {
+                eprintln!(
+                    "Warning: Failed to create config directory for audit log: {}",
+                    e
+                );
+                return Ok(());
+            }
+
+            // Append to audit log
+            let mut file = match std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&audit_file)
+            {
+                Ok(file) => file,
+                Err(e) => {
+                    eprintln!("Warning: Failed to open audit log file: {}", e);
+                    return Ok(());
+                }
+            };
+
+            let log_entry = format!(
+                "[{}] Configuration changed: {}\n",
+                timestamp,
+                changes.join(", ")
+            );
+            if let Err(e) = file.write_all(log_entry.as_bytes()) {
+                eprintln!("Warning: Failed to write to audit log: {}", e);
+            }
+        }
+    }
+
     Ok(())
 }
 
