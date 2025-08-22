@@ -12,33 +12,32 @@ keywords = ["nushell", "secret", "security", "plugin", "custom-types"]
 categories = ["command-line-utilities", "development-tools", "cryptography", "data-structures"]
 readme = "README.md"
 rust-version = "1.85.0"
+publish = true
 include = [
     "src/**/*",
+    "tests/**/*",
+    "benches/**/*",
     "docs/**/*",
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
     "Cargo.toml"
 ]
-exclude = [
-    ".github/",
-    ".git/",
-    "target/",
-    "*.swp",
-    "*.swo",
-    ".DS_Store",
-    "test_data/",
-    "scripts/",
-    ".env*",
-    "*.log"
-]
 
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc", "x86_64-apple-darwin", "aarch64-apple-darwin"]
+
+[package.metadata.release]
+pre-release-replacements = [
+    {file="CHANGELOG.md", search="## \\[Unreleased\\]", replace="## [Unreleased]\n\n## [{{version}}] - {{date}}"},
+    {file="README.md", search="nu_plugin_secret = \"[^\"]*\"", replace="nu_plugin_secret = \"{{version}}\""},
+]
 
 [badges]
 maintenance = { status = "actively-developed" }
+codecov = { repository = "nushell-works/nu_plugin_secret", branch = "main", service = "github" }
 
 [[bin]]
 name = "nu_plugin_secret"

@@ -50,12 +50,12 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.get_version.outputs.version }}
-          release_name: ${{ steps.get_version.outputs.version }}
+          name: ${{ steps.get_version.outputs.version }}
           body_path: release-notes.md
           draft: false
           prerelease: ${{ contains(steps.get_version.outputs.version, 'alpha') || contains(steps.get_version.outputs.version, 'beta') || contains(steps.get_version.outputs.version, 'rc') }}
@@ -121,14 +121,12 @@ jobs:
           7z a ../../../nu_plugin_secret-${{ needs.create-release.outputs.release_version }}-${{ matrix.target }}.${{ matrix.archive_suffix }} nu_plugin_secret${{ matrix.binary_suffix }}
 
       - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./nu_plugin_secret-${{ needs.create-release.outputs.release_version }}-${{ matrix.target }}.${{ matrix.archive_suffix }}
-          asset_name: nu_plugin_secret-${{ needs.create-release.outputs.release_version }}-${{ matrix.target }}.${{ matrix.archive_suffix }}
-          asset_content_type: ${{ matrix.archive_suffix == 'zip' && 'application/zip' || 'application/gzip' }}
+          tag_name: ${{ needs.create-release.outputs.release_version }}
+          files: ./nu_plugin_secret-${{ needs.create-release.outputs.release_version }}-${{ matrix.target }}.${{ matrix.archive_suffix }}
 
   # Publish to crates.io
   publish-crates:
