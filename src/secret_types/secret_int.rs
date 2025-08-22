@@ -1,15 +1,51 @@
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
-use zeroize::ZeroizeOnDrop;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// A secure integer type that redacts its content in all display contexts
-#[derive(Clone, Serialize, Deserialize, ZeroizeOnDrop)]
+/// and zeros its memory on drop
+#[derive(Clone)]
 pub struct SecretInt {
-    #[zeroize(skip)]
     inner: i64,
 }
+
+// Custom secure serialization - never serialize actual content
+impl Serialize for SecretInt {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // Always serialize as redacted content for security
+        serializer.serialize_str("<redacted:int>")
+    }
+}
+
+// Custom secure deserialization
+impl<'de> Deserialize<'de> for SecretInt {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // For security, we can't deserialize actual secrets
+        // This prevents injection attacks via malicious serialized data
+        let _value = i64::deserialize(deserializer)?;
+
+        // Return a safe placeholder - real secrets should be created through proper channels
+        Ok(SecretInt::new(0))
+    }
+}
+
+impl Drop for SecretInt {
+    fn drop(&mut self) {
+        // Explicitly zero the integer memory for security
+        self.inner.zeroize();
+    }
+}
+
+// Manual ZeroizeOnDrop implementation to ensure proper cleanup
+impl ZeroizeOnDrop for SecretInt {}
 
 impl SecretInt {
     /// Create a new SecretInt from a regular integer

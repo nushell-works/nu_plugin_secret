@@ -15,7 +15,7 @@ Secret types prevent these exposures while maintaining full functionality.
 ## 📋 Migration Checklist
 
 ### Before You Start
-- [ ] Install `nu_plugin_secret`: `cargo install nw-nu_plugin_secret`
+- [ ] Install `nu_plugin_secret`: `cargo install nu_plugin_secret`
 - [ ] Register the plugin: `plugin add ~/.cargo/bin/nu_plugin_secret`
 - [ ] Activate the plugin: `plugin use secret`
 - [ ] Verify installation: `secret info`

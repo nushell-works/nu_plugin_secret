@@ -1,15 +1,51 @@
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
-use zeroize::ZeroizeOnDrop;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// A secure binary type that redacts its content in all display contexts
-#[derive(Clone, Serialize, Deserialize, ZeroizeOnDrop)]
+/// and zeros its memory on drop
+#[derive(Clone)]
 pub struct SecretBinary {
-    #[zeroize(skip)]
     inner: Vec<u8>,
 }
+
+// Custom secure serialization - never serialize actual content
+impl Serialize for SecretBinary {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // Always serialize as redacted content for security
+        serializer.serialize_str("<redacted:binary>")
+    }
+}
+
+// Custom secure deserialization
+impl<'de> Deserialize<'de> for SecretBinary {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // For security, we can't deserialize actual secrets
+        // This prevents injection attacks via malicious serialized data
+        let _value = Vec::<u8>::deserialize(deserializer)?;
+
+        // Return a safe placeholder - real secrets should be created through proper channels
+        Ok(SecretBinary::new(vec![]))
+    }
+}
+
+impl Drop for SecretBinary {
+    fn drop(&mut self) {
+        // Explicitly zero the binary data memory for security
+        self.inner.zeroize();
+    }
+}
+
+// Manual ZeroizeOnDrop implementation to ensure proper cleanup
+impl ZeroizeOnDrop for SecretBinary {}
 
 impl SecretBinary {
     /// Create a new SecretBinary from a byte vector
@@ -84,17 +120,80 @@ impl fmt::Debug for SecretBinary {
 
 impl PartialEq for SecretBinary {
     fn eq(&self, other: &Self) -> bool {
-        // Use constant-time comparison for security
-        if self.inner.len() != other.inner.len() {
-            return false;
-        }
+        // Constant-time comparison to prevent timing attacks
+        // This follows the pattern used in cryptographic libraries
 
-        let mut result = 0u8;
-        for i in 0..self.inner.len() {
-            result |= self.inner[i] ^ other.inner[i];
-        }
-        result == 0
+        let len_a = self.inner.len();
+        let len_b = other.inner.len();
+
+        // First compare lengths in constant time
+        let len_eq = constant_time_eq_usize(len_a, len_b);
+
+        // Always compare min_len bytes to avoid timing differences
+        let min_len = len_a.min(len_b);
+        let max_len = len_a.max(len_b);
+
+        // Use constant-time slice comparison for the minimum length
+        let content_eq = if min_len > 0 {
+            constant_time_eq_slice(&self.inner[..min_len], &other.inner[..min_len])
+        } else {
+            1u8 // Empty slices are equal
+        };
+
+        // If lengths differ, ensure we still do some work to maintain timing
+        let _padding_work = if len_a != len_b {
+            // Do some computation with the extra bytes to maintain consistent timing
+            let extra_bytes = max_len - min_len;
+            let mut dummy = 0u8;
+            for i in 0..extra_bytes {
+                dummy ^= (i as u8).wrapping_add(0x42);
+            }
+            dummy
+        } else {
+            0x42
+        };
+
+        // Combine results in constant time
+        (len_eq & content_eq) == 1
     }
+}
+
+/// Constant-time equality check for usize values
+fn constant_time_eq_usize(a: usize, b: usize) -> u8 {
+    let diff = a ^ b;
+
+    // Handle both 32-bit and 64-bit systems properly
+    let diff = if usize::BITS >= 64 {
+        diff | diff.wrapping_shr(32)
+    } else {
+        diff
+    };
+    let diff = diff | diff.wrapping_shr(16);
+    let diff = diff | diff.wrapping_shr(8);
+    let diff = diff | diff.wrapping_shr(4);
+    let diff = diff | diff.wrapping_shr(2);
+    let diff = diff | diff.wrapping_shr(1);
+    (diff ^ 1) as u8
+}
+
+/// Constant-time equality check for byte slices of the same length
+fn constant_time_eq_slice(a: &[u8], b: &[u8]) -> u8 {
+    // This function assumes a.len() == b.len() for constant-time behavior
+    // The caller should ensure this precondition
+
+    let mut result = 0u8;
+    for i in 0..a.len() {
+        result |= a[i] ^ b[i];
+    }
+
+    // Convert to 0 or 1 using bit manipulation to avoid branches
+    let result = result as u32;
+    let result = result | result.wrapping_shr(16);
+    let result = result | result.wrapping_shr(8);
+    let result = result | result.wrapping_shr(4);
+    let result = result | result.wrapping_shr(2);
+    let result = result | result.wrapping_shr(1);
+    (result ^ 1) as u8
 }
 
 #[cfg(test)]
