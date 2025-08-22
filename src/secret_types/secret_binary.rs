@@ -208,7 +208,7 @@ mod tests {
     fn test_secret_binary_creation() {
         let data = vec![0x01, 0x02, 0x03, 0x04];
         let secret = SecretBinary::new(data.clone());
-        assert_eq!(secret.reveal(), &data);
+        assert_eq!(secret.reveal().as_ref(), &data);
     }
 
     #[test]

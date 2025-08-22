@@ -1,7 +1,7 @@
-/// Memory optimization utilities for the secret plugin
-/// 
-/// This module contains optimizations to reduce memory usage and improve
-/// performance while maintaining security guarantees.
+//! Memory optimization utilities for the secret plugin
+//! 
+//! This module contains optimizations to reduce memory usage and improve
+//! performance while maintaining security guarantees.
 
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -210,13 +210,15 @@ impl MemoryStats {
     pub fn add_string_secret(&mut self, size: usize) {
         self.total_secrets += 1;
         self.string_secrets += 1;
-        self.estimated_memory_kb += (size + std::mem::size_of::<String>()) / 1024;
+        // Round up to ensure non-zero for small allocations
+        self.estimated_memory_kb += (size + std::mem::size_of::<String>()).div_ceil(1024);
     }
 
     pub fn add_binary_secret(&mut self, size: usize) {
         self.total_secrets += 1;
         self.binary_secrets += 1;
-        self.estimated_memory_kb += (size + std::mem::size_of::<Vec<u8>>()) / 1024;
+        // Round up to ensure non-zero for small allocations
+        self.estimated_memory_kb += (size + std::mem::size_of::<Vec<u8>>()).div_ceil(1024);
     }
 
     pub fn memory_efficiency_ratio(&self) -> f64 {

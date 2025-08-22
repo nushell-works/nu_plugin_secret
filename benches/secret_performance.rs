@@ -1,3 +1,8 @@
+#![allow(clippy::approx_constant)]
+#![allow(clippy::useless_format)]
+#![allow(clippy::clone_on_copy)]
+#![allow(clippy::useless_vec)]
+
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use nu_plugin_secret::*;
 use nu_protocol::{Record, Span, Value};

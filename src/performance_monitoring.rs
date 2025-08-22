@@ -1,10 +1,10 @@
-/// Performance monitoring system for nu_plugin_secret
-/// 
-/// This module provides real-time performance monitoring capabilities
-/// to track plugin performance, detect regressions, and gather metrics.
+//! Performance monitoring system for nu_plugin_secret
+//! 
+//! This module provides real-time performance monitoring capabilities
+//! to track plugin performance, detect regressions, and gather metrics.
 
-use std::sync::{Arc, Mutex, RwLock};
-use std::time::{Duration, Instant};
+use std::sync::RwLock;
+use std::time::Instant;
 use std::collections::{HashMap, VecDeque};
 
 /// Performance metric types
@@ -119,7 +119,7 @@ impl PerformanceMonitor {
         }
 
         let mut measurements = self.measurements.write().unwrap();
-        let entries = measurements.entry(measurement.metric_type.clone()).or_insert_with(VecDeque::new);
+        let entries = measurements.entry(measurement.metric_type.clone()).or_default();
         
         entries.push_back(measurement);
         
@@ -313,7 +313,7 @@ pub fn get_monitor() -> &'static PerformanceMonitor {
 }
 
 /// Convenience macros for performance monitoring
-
+///
 /// Time a block of code
 #[macro_export]
 macro_rules! time_block {
@@ -364,10 +364,14 @@ macro_rules! record_metric {
 mod tests {
     use super::*;
     use std::thread;
+    use std::time::Duration;
 
     #[test]
     fn test_performance_monitor() {
-        let config = MonitoringConfig::default();
+        let config = MonitoringConfig {
+            detailed_timing: true,
+            ..MonitoringConfig::default()
+        };
         let monitor = PerformanceMonitor::new(config);
         
         // Record some measurements
@@ -397,7 +401,10 @@ mod tests {
 
     #[test]
     fn test_timing_function() {
-        let config = MonitoringConfig::default();
+        let config = MonitoringConfig {
+            detailed_timing: true,
+            ..MonitoringConfig::default()
+        };
         let monitor = PerformanceMonitor::new(config);
         
         let result = monitor.time(
@@ -420,6 +427,7 @@ mod tests {
     fn test_regression_detection() {
         let config = MonitoringConfig {
             regression_threshold: 10.0,
+            detailed_timing: true,
             ..MonitoringConfig::default()
         };
         let monitor = PerformanceMonitor::new(config);

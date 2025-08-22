@@ -1,10 +1,10 @@
-/// Startup time optimizations for the nu_plugin_secret
-/// 
-/// This module contains optimizations to reduce plugin startup time
-/// while maintaining all functionality and security guarantees.
-
-/// Startup optimizations focus on caching and initialization
-/// rather than complex command management
+//! Startup time optimizations for the nu_plugin_secret
+//! 
+//! This module contains optimizations to reduce plugin startup time
+//! while maintaining all functionality and security guarantees.
+//!
+//! Startup optimizations focus on caching and initialization
+//! rather than complex command management
 
 /// Fast startup mode configuration
 #[derive(Clone, Debug)]
@@ -45,7 +45,7 @@ pub fn initialize_plugin(config: StartupConfig) -> crate::SecretPlugin {
 /// Pre-allocate common data structures to reduce allocation overhead
 fn pre_allocate_common_structures() {
     // Pre-allocate small string capacity for common operations
-    let _common_strings = vec![
+    let _common_strings = [
         String::with_capacity(64),   // Small secrets
         String::with_capacity(256),  // Medium secrets
         String::with_capacity(1024), // Large secrets
@@ -156,13 +156,14 @@ pub mod command_optimizations {
     #[derive(Clone, Debug)]
     struct CommandMeta {
         name: &'static str,
-        description: &'static str,
+        #[allow(dead_code)]
+    description: &'static str,
         category: CommandCategory,
     }
     
     /// Command categories for optimization
     #[derive(Clone, Debug, PartialEq)]
-    enum CommandCategory {
+    pub enum CommandCategory {
         Wrap,
         Utility,
         Security,
@@ -269,13 +270,13 @@ mod tests {
     }
     
     #[test]
-    fn test_lazy_command_initialization() {
-        let commands = get_commands();
-        assert_eq!(commands.len(), 12);
+    fn test_command_cache_initialization() {
+        command_optimizations::init_command_cache();
         
-        // Calling again should return the same cached instance
-        let commands2 = get_commands();
-        assert_eq!(commands.as_ptr(), commands2.as_ptr());
+        let wrap_commands = command_optimizations::get_commands_by_category(
+            command_optimizations::CommandCategory::Wrap
+        );
+        assert_eq!(wrap_commands.len(), 8);
     }
     
     #[test]

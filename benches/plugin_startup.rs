@@ -1,3 +1,6 @@
+#![allow(clippy::needless_borrows_for_generic_args)]
+#![allow(unused_imports)]
+
 use criterion::{criterion_group, criterion_main, Criterion};
 use nu_plugin::{Plugin, PluginCommand};
 use nu_plugin_secret::SecretPlugin;

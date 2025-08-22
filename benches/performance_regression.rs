@@ -1,7 +1,10 @@
-/// Performance regression test suite
-/// 
-/// This benchmark suite is designed to detect performance regressions
-/// by establishing baselines and monitoring for significant changes.
+//! Performance regression test suite
+//! 
+//! This benchmark suite is designed to detect performance regressions
+//! by establishing baselines and monitoring for significant changes.
+
+#![allow(clippy::useless_vec)]
+#![allow(dead_code)]
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use nu_plugin::Plugin;
