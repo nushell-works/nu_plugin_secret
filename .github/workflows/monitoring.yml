@@ -1,0 +1,382 @@
+name: Monitoring & Alerting
+
+# Monitor repository health, performance, and security
+on:
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allow manual triggering
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Repository health monitoring
+  repository-health:
+    name: Repository Health Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check repository structure
+        run: |
+          echo "=== Repository Structure Check ==="
+          
+          # Required files
+          required_files=(
+            "README.md"
+            "LICENSE" 
+            "Cargo.toml"
+            "CHANGELOG.md"
+            "CONTRIBUTING.md"
+            "SECURITY.md"
+            ".github/workflows/ci.yml"
+            ".github/workflows/release.yml"
+          )
+          
+          missing_files=()
+          for file in "${required_files[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              missing_files+=("$file")
+            fi
+          done
+          
+          if [[ ${#missing_files[@]} -gt 0 ]]; then
+            echo "❌ Missing required files:"
+            printf '%s\n' "${missing_files[@]}"
+            exit 1
+          else
+            echo "✅ All required files present"
+          fi
+
+      - name: Check documentation coverage
+        run: |
+          echo "=== Documentation Coverage Check ==="
+          
+          # Count documented vs undocumented public items
+          rust_files=$(find src -name "*.rs" -type f)
+          total_public=0
+          documented=0
+          
+          for file in $rust_files; do
+            # Count public functions, structs, enums, etc.
+            public_items=$(grep -c "^pub " "$file" 2>/dev/null || echo 0)
+            total_public=$((total_public + public_items))
+            
+            # Count documented items (preceding /// comment)
+            doc_items=$(grep -B1 "^pub " "$file" 2>/dev/null | grep -c "///" || echo 0)
+            documented=$((documented + doc_items))
+          done
+          
+          if [[ $total_public -gt 0 ]]; then
+            coverage=$(( (documented * 100) / total_public ))
+            echo "📊 Documentation coverage: $coverage% ($documented/$total_public)"
+            
+            if [[ $coverage -lt 80 ]]; then
+              echo "⚠️ Documentation coverage below 80%"
+            else
+              echo "✅ Documentation coverage acceptable"
+            fi
+          else
+            echo "✅ No public items found"
+          fi
+
+      - name: Check for outdated dependencies
+        run: |
+          echo "=== Dependency Health Check ==="
+          cargo install cargo-outdated
+          cargo outdated --exit-code 1 || echo "⚠️ Some dependencies may be outdated"
+
+  # Security monitoring
+  security-monitoring:
+    name: Security Monitoring
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Security audit
+        run: |
+          echo "=== Security Audit ==="
+          cargo install cargo-audit
+          cargo audit --ignore RUSTSEC-2024-0436 || exit 1
+
+      - name: License compliance check
+        run: |
+          echo "=== License Compliance Check ==="
+          cargo install cargo-deny
+          cargo deny check licenses || exit 1
+
+      - name: Supply chain security
+        run: |
+          echo "=== Supply Chain Security ==="
+          # Check for any GPL/AGPL dependencies
+          if cargo tree --format "{p} {l}" | grep -E "(GPL|AGPL)"; then
+            echo "❌ Found GPL/AGPL licensed dependencies"
+            exit 1
+          else
+            echo "✅ No GPL/AGPL dependencies found"
+          fi
+
+      - name: Vulnerability scan with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Performance monitoring
+  performance-monitoring:
+    name: Performance Monitoring
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install criterion
+        run: cargo install cargo-criterion
+
+      - name: Run benchmarks
+        run: |
+          echo "=== Performance Benchmarks ==="
+          
+          # Run benchmarks and capture output
+          cargo bench --all-features > benchmark_results.txt 2>&1 || true
+          
+          echo "📊 Benchmark Results Summary:"
+          if [[ -f benchmark_results.txt ]]; then
+            # Extract key performance metrics
+            grep -E "(time|ns|μs|ms)" benchmark_results.txt | head -20 || echo "No timing data found"
+          fi
+
+      - name: Check binary size
+        run: |
+          echo "=== Binary Size Check ==="
+          cargo build --release
+          
+          binary_size=$(stat -f%z target/release/nu_plugin_secret 2>/dev/null || stat -c%s target/release/nu_plugin_secret)
+          binary_size_mb=$(( binary_size / 1024 / 1024 ))
+          
+          echo "📏 Binary size: ${binary_size} bytes (${binary_size_mb} MB)"
+          
+          # Alert if binary is larger than 50MB
+          if [[ $binary_size_mb -gt 50 ]]; then
+            echo "⚠️ Binary size is large (>${binary_size_mb}MB)"
+          else
+            echo "✅ Binary size is reasonable"
+          fi
+
+      - name: Memory usage analysis
+        run: |
+          echo "=== Memory Usage Analysis ==="
+          cargo build --release
+          
+          # Simple memory test (if valgrind is available)
+          if command -v valgrind >/dev/null 2>&1; then
+            echo "Running memory analysis with valgrind..."
+            timeout 30s valgrind --tool=massif --time-unit=ms ./target/release/nu_plugin_secret --help 2>&1 | head -10 || true
+          else
+            echo "Valgrind not available, skipping detailed memory analysis"
+          fi
+
+  # Code quality monitoring
+  code-quality:
+    name: Code Quality Monitoring
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Code formatting check
+        run: |
+          echo "=== Code Formatting Check ==="
+          if cargo fmt --all -- --check; then
+            echo "✅ Code formatting is correct"
+          else
+            echo "❌ Code formatting issues found"
+            exit 1
+          fi
+
+      - name: Clippy analysis
+        run: |
+          echo "=== Clippy Analysis ==="
+          cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Dead code detection
+        run: |
+          echo "=== Dead Code Detection ==="
+          cargo build --all-targets
+          
+          # Check for unused dependencies
+          cargo install cargo-udeps
+          cargo +nightly udeps || echo "⚠️ Unused dependencies detected"
+
+      - name: Code complexity analysis
+        run: |
+          echo "=== Code Complexity Analysis ==="
+          
+          # Count lines of code
+          rust_files=$(find src -name "*.rs" -type f)
+          total_lines=0
+          
+          for file in $rust_files; do
+            lines=$(wc -l < "$file")
+            total_lines=$((total_lines + lines))
+            
+            if [[ $lines -gt 500 ]]; then
+              echo "⚠️ Large file: $file ($lines lines)"
+            fi
+          done
+          
+          echo "📊 Total lines of Rust code: $total_lines"
+
+  # Test coverage monitoring
+  test-coverage:
+    name: Test Coverage Monitoring
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Generate coverage report
+        run: |
+          echo "=== Test Coverage Analysis ==="
+          cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+          
+          # Extract coverage percentage
+          coverage=$(grep -o 'line-rate="[0-9.]*"' cobertura.xml | head -1 | grep -o '[0-9.]*' | head -1 || echo "0")
+          coverage_percent=$(echo "$coverage * 100" | bc -l | cut -d. -f1 2>/dev/null || echo "0")
+          
+          echo "📊 Test coverage: ${coverage_percent}%"
+          
+          if [[ $coverage_percent -lt 80 ]]; then
+            echo "⚠️ Test coverage below 80%"
+          else
+            echo "✅ Test coverage acceptable"
+          fi
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./cobertura.xml
+          fail_ci_if_error: false
+
+  # Notification and alerting
+  alert-on-failure:
+    name: Alert on Failures
+    needs: [repository-health, security-monitoring, performance-monitoring, code-quality, test-coverage]
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Create Issue on Failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Monitoring Alert: ${context.workflow} Failed`;
+            const body = `
+            ## Monitoring Alert
+            
+            **Workflow**: ${context.workflow}
+            **Run ID**: ${context.runId}
+            **Commit**: ${context.sha}
+            **Branch**: ${context.ref}
+            
+            One or more monitoring jobs have failed. Please investigate:
+            
+            - **Repository Health**: ${context.job === 'repository-health' ? '❌ FAILED' : '✅ Passed'}
+            - **Security Monitoring**: ${context.job === 'security-monitoring' ? '❌ FAILED' : '✅ Passed'}  
+            - **Performance Monitoring**: ${context.job === 'performance-monitoring' ? '❌ FAILED' : '✅ Passed'}
+            - **Code Quality**: ${context.job === 'code-quality' ? '❌ FAILED' : '✅ Passed'}
+            - **Test Coverage**: ${context.job === 'test-coverage' ? '❌ FAILED' : '✅ Passed'}
+            
+            **Action Required**: Review the failed jobs and address any issues.
+            
+            [View Workflow Run](${context.payload.repository.html_url}/actions/runs/${context.runId})
+            `;
+            
+            // Only create issue if it's a scheduled run or main branch
+            if (context.eventName === 'schedule' || context.ref === 'refs/heads/main') {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['monitoring', 'alert', 'ci/cd']
+              });
+            }
+
+  # Daily summary report
+  daily-summary:
+    name: Daily Summary Report
+    needs: [repository-health, security-monitoring, performance-monitoring, code-quality, test-coverage]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' && always()
+    steps:
+      - name: Generate Summary Report
+        run: |
+          echo "=== Daily Monitoring Summary ===" > summary.md
+          echo "Date: $(date -u)" >> summary.md
+          echo "" >> summary.md
+          
+          echo "## Status Overview" >> summary.md
+          echo "- **Repository Health**: ${{ needs.repository-health.result == 'success' && '✅ Healthy' || '❌ Issues Detected' }}" >> summary.md
+          echo "- **Security**: ${{ needs.security-monitoring.result == 'success' && '✅ Secure' || '❌ Vulnerabilities Found' }}" >> summary.md
+          echo "- **Performance**: ${{ needs.performance-monitoring.result == 'success' && '✅ Good' || '❌ Performance Issues' }}" >> summary.md
+          echo "- **Code Quality**: ${{ needs.code-quality.result == 'success' && '✅ High Quality' || '❌ Quality Issues' }}" >> summary.md
+          echo "- **Test Coverage**: ${{ needs.test-coverage.result == 'success' && '✅ Adequate' || '❌ Coverage Issues' }}" >> summary.md
+          echo "" >> summary.md
+          
+          echo "## Recommendations" >> summary.md
+          if [[ "${{ needs.repository-health.result }}" != "success" ]]; then
+            echo "- Review repository structure and documentation" >> summary.md
+          fi
+          if [[ "${{ needs.security-monitoring.result }}" != "success" ]]; then
+            echo "- Address security vulnerabilities and update dependencies" >> summary.md
+          fi
+          if [[ "${{ needs.performance-monitoring.result }}" != "success" ]]; then
+            echo "- Investigate performance regressions" >> summary.md
+          fi
+          if [[ "${{ needs.code-quality.result }}" != "success" ]]; then
+            echo "- Fix code quality issues and formatting" >> summary.md
+          fi
+          if [[ "${{ needs.test-coverage.result }}" != "success" ]]; then
+            echo "- Improve test coverage" >> summary.md
+          fi
+          
+          cat summary.md
+
+      - name: Archive Summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-monitoring-summary
+          path: summary.md
+          retention-days: 30
