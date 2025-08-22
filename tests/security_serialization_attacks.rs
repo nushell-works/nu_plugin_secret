@@ -378,7 +378,7 @@ impl SerializationTestable for SecretBinary {
     fn contains_sensitive_data(&self, serialized: &str) -> bool {
         // For binary data, check if any of the bytes appear as strings
         let revealed = self.reveal();
-        let as_string = String::from_utf8_lossy(revealed);
+        let as_string = String::from_utf8_lossy(&revealed);
         serialized.contains(&*as_string)
     }
 }

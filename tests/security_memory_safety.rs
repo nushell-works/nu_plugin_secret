@@ -71,7 +71,7 @@ mod memory_safety_tests {
 
         {
             let secret = SecretBinary::new(key_data);
-            assert_eq!(secret.reveal(), &key_pattern);
+            assert_eq!(secret.reveal().as_ref(), &key_pattern);
         }
         // secret is dropped here
 

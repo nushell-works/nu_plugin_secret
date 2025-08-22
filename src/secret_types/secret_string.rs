@@ -1,3 +1,4 @@
+use crate::memory_optimizations::get_redacted_string;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -18,7 +19,7 @@ impl Serialize for SecretString {
         S: Serializer,
     {
         // Always serialize as redacted content for security
-        serializer.serialize_str("<redacted:string>")
+        serializer.serialize_str(get_redacted_string("string"))
     }
 }
 
@@ -75,7 +76,7 @@ impl CustomValue for SecretString {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        Ok(Value::string("<redacted:string>", span))
+        Ok(Value::string(get_redacted_string("string"), span))
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -93,7 +94,7 @@ impl CustomValue for SecretString {
 
 impl fmt::Display for SecretString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<redacted:string>")
+        write!(f, "{}", get_redacted_string("string"))
     }
 }
 
