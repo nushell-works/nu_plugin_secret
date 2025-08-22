@@ -1,3 +1,5 @@
+use crate::config::RedactionContext;
+use crate::memory_optimizations::get_configurable_redacted_string;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -18,7 +20,9 @@ impl Serialize for SecretBool {
         S: Serializer,
     {
         // Always serialize as redacted content for security
-        serializer.serialize_str("<redacted:bool>")
+        let redacted_text =
+            get_configurable_redacted_string("bool", RedactionContext::Serialization);
+        serializer.serialize_str(&redacted_text)
     }
 }
 
@@ -75,7 +79,9 @@ impl CustomValue for SecretBool {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        Ok(Value::string("<redacted:bool>", span))
+        let redacted_text =
+            get_configurable_redacted_string("bool", RedactionContext::Serialization);
+        Ok(Value::string(redacted_text, span))
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -93,13 +99,15 @@ impl CustomValue for SecretBool {
 
 impl fmt::Display for SecretBool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<redacted:bool>")
+        let redacted_text = get_configurable_redacted_string("bool", RedactionContext::Display);
+        write!(f, "{}", redacted_text)
     }
 }
 
 impl fmt::Debug for SecretBool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SecretBool(<redacted>)")
+        let redacted_text = get_configurable_redacted_string("bool", RedactionContext::Debug);
+        write!(f, "SecretBool({})", redacted_text)
     }
 }
 
@@ -126,8 +134,18 @@ mod tests {
     #[test]
     fn test_secret_bool_display() {
         let secret = SecretBool::new(true);
-        assert_eq!(format!("{}", secret), "<redacted:bool>");
-        assert_eq!(format!("{:?}", secret), "SecretBool(<redacted>)");
+        let display_result = format!("{}", secret);
+        assert!(
+            display_result.contains("redacted")
+                || display_result.contains("***")
+                || display_result.contains("HIDDEN")
+        );
+        let debug_result = format!("{:?}", secret);
+        assert!(
+            debug_result.contains("redacted")
+                || debug_result.contains("***")
+                || debug_result.contains("HIDDEN")
+        );
     }
 
     #[test]
@@ -137,7 +155,9 @@ mod tests {
 
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
-            Value::String { val, .. } => assert_eq!(val, "<redacted:bool>"),
+            Value::String { val, .. } => {
+                assert!(val.contains("redacted") || val.contains("***") || val.contains("HIDDEN"))
+            }
             _ => panic!("Expected string value"),
         }
     }

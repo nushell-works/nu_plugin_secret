@@ -28,6 +28,7 @@ pub fn init_string_cache() {
 
 /// Get an interned redacted string for a given type
 /// This avoids repeated allocations of the same strings
+/// Falls back to hardcoded values if configuration is not available
 pub fn get_redacted_string(type_name: &str) -> &'static str {
     let cache = REDACTED_STRINGS.get().unwrap_or_else(|| {
         init_string_cache();
@@ -35,6 +36,20 @@ pub fn get_redacted_string(type_name: &str) -> &'static str {
     });
 
     cache.get(type_name).copied().unwrap_or("<redacted>")
+}
+
+/// Get configurable redacted string for a given type and context
+/// This uses the new configuration system when available
+pub fn get_configurable_redacted_string(
+    type_name: &str,
+    context: crate::config::RedactionContext,
+) -> String {
+    if let Ok(config) = crate::config::get_config() {
+        config.get_redaction_text(type_name, context)
+    } else {
+        // Fallback to static string if config not available
+        get_redacted_string(type_name).to_string()
+    }
 }
 
 /// Memory pool for small allocations

@@ -1,4 +1,5 @@
-use crate::memory_optimizations::get_redacted_string;
+use crate::config::RedactionContext;
+use crate::memory_optimizations::get_configurable_redacted_string;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -19,7 +20,9 @@ impl Serialize for SecretString {
         S: Serializer,
     {
         // Always serialize as redacted content for security
-        serializer.serialize_str(get_redacted_string("string"))
+        let redacted_text =
+            get_configurable_redacted_string("string", RedactionContext::Serialization);
+        serializer.serialize_str(&redacted_text)
     }
 }
 
@@ -63,6 +66,38 @@ impl SecretString {
     pub fn into_inner(self) -> String {
         self.inner.clone()
     }
+
+    /// Get length of the secret string (safe to expose)
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Check if the secret string is empty (safe to expose)
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    /// Get a partially redacted version of the string if configured
+    /// Returns None if partial redaction is not enabled or not applicable
+    pub fn partial_redact(&self) -> Option<String> {
+        if let Ok(config) = crate::config::get_config() {
+            config.apply_partial_redaction(&self.inner, "string")
+        } else {
+            None
+        }
+    }
+
+    /// Get redacted string with optional partial redaction
+    /// This respects the user's configuration for redaction style
+    pub fn redacted_display(&self) -> String {
+        // First try partial redaction if configured
+        if let Some(partial) = self.partial_redact() {
+            return partial;
+        }
+
+        // Fall back to configured full redaction
+        get_configurable_redacted_string("string", RedactionContext::Display)
+    }
 }
 
 #[typetag::serde]
@@ -76,7 +111,9 @@ impl CustomValue for SecretString {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        Ok(Value::string(get_redacted_string("string"), span))
+        let redacted_text =
+            get_configurable_redacted_string("string", RedactionContext::Serialization);
+        Ok(Value::string(redacted_text, span))
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -94,13 +131,15 @@ impl CustomValue for SecretString {
 
 impl fmt::Display for SecretString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", get_redacted_string("string"))
+        let redacted_text = get_configurable_redacted_string("string", RedactionContext::Display);
+        write!(f, "{}", redacted_text)
     }
 }
 
 impl fmt::Debug for SecretString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SecretString(<redacted>)")
+        let redacted_text = get_configurable_redacted_string("string", RedactionContext::Debug);
+        write!(f, "SecretString({})", redacted_text)
     }
 }
 
@@ -136,8 +175,18 @@ mod tests {
     #[test]
     fn test_secret_string_display() {
         let secret = SecretString::new("my-secret".to_string());
-        assert_eq!(format!("{}", secret), "<redacted:string>");
-        assert_eq!(format!("{:?}", secret), "SecretString(<redacted>)");
+        let display_result = format!("{}", secret);
+        assert!(
+            display_result.contains("redacted")
+                || display_result.contains("***")
+                || display_result.contains("HIDDEN")
+        );
+        let debug_result = format!("{:?}", secret);
+        assert!(
+            debug_result.contains("redacted")
+                || debug_result.contains("***")
+                || debug_result.contains("HIDDEN")
+        );
     }
 
     #[test]
@@ -147,7 +196,9 @@ mod tests {
 
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
-            Value::String { val, .. } => assert_eq!(val, "<redacted:string>"),
+            Value::String { val, .. } => {
+                assert!(val.contains("redacted") || val.contains("***") || val.contains("HIDDEN"))
+            }
             _ => panic!("Expected string value"),
         }
     }

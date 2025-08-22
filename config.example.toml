@@ -1,0 +1,105 @@
+# nu_plugin_secret Configuration Example
+# 
+# This file shows all available configuration options for the nu_plugin_secret plugin.
+# Copy this file to ~/.config/nushell/plugins/secret/config.toml and modify as needed.
+
+# Configuration file version (for migration purposes)
+version = "1.0"
+
+[redaction]
+# Global redaction style: "typed_brackets", "simple", "asterisks", "brackets", or custom text
+style = "typed_brackets"
+
+# Custom redaction text (only used when style = custom)
+# custom_text = "[SECRET]"
+
+# Whether to show type information in redaction text
+show_type_info = true
+
+# Whether to preserve length information in redaction (security consideration)
+preserve_length = false
+
+# Per-type redaction style overrides
+[redaction.per_type]
+# string = "asterisks"
+# binary = "simple"
+# int = "brackets"
+
+# Per-context redaction style overrides
+[redaction.per_context]
+# display = "typed_brackets"
+# debug = "simple"
+# serialization = "simple"
+# audit = "simple"
+
+# Partial redaction configuration (SECURITY SENSITIVE)
+[redaction.partial]
+# Enable partial redaction (shows parts of actual secret)
+enabled = false
+
+# Number of characters to show from beginning and end
+show_first = 4
+show_last = 4
+
+# Minimum secret length required for partial redaction
+min_length = 12
+
+# Maximum total characters that can be revealed
+max_reveal = 8
+
+# Use salted hash instead of actual characters (more secure)
+use_hash = false
+
+# Salt for hash-based partial redaction (change this!)
+hash_salt = "your_unique_salt_here_change_me"
+
+[security]
+# Security level: "minimal", "standard", "paranoid"
+level = "standard"
+
+# Audit configuration changes to system logs
+audit_config_changes = true
+
+# Maximum length for custom redaction text
+max_custom_text_length = 50
+
+# Allow partial redaction (can reveal information about secrets)
+allow_partial_redaction = false
+
+# Minimum secret length to allow partial redaction
+min_partial_redaction_length = 16
+
+# Example configurations for different use cases:
+
+# High Security Environment (minimal information disclosure):
+# [redaction]
+# style = "simple"
+# show_type_info = false
+# preserve_length = false
+# [redaction.partial]
+# enabled = false
+# [security]
+# level = "paranoid"
+# allow_partial_redaction = false
+
+# Development Environment (more informative):
+# [redaction]
+# style = "typed_brackets" 
+# show_type_info = true
+# preserve_length = true
+# [redaction.partial]
+# enabled = true
+# show_first = 2
+# show_last = 2
+# use_hash = true
+# [security]
+# level = "minimal"
+# allow_partial_redaction = true
+
+# Custom Branded Environment:
+# [redaction]
+# style = "custom"
+# custom_text = "[COMPANY_SECRET]"
+# show_type_info = false
+# [security]
+# level = "standard"
