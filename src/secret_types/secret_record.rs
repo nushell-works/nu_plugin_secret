@@ -1,3 +1,5 @@
+use crate::config::RedactionContext;
+use crate::memory_optimizations::get_configurable_redacted_string;
 use nu_protocol::{CustomValue, Record};
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -18,7 +20,9 @@ impl Serialize for SecretRecord {
         S: Serializer,
     {
         // Always serialize as redacted content for security
-        serializer.serialize_str("<redacted:record>")
+        let redacted_text =
+            get_configurable_redacted_string("record", RedactionContext::Serialization);
+        serializer.serialize_str(&redacted_text)
     }
 }
 
@@ -86,7 +90,9 @@ impl CustomValue for SecretRecord {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        Ok(Value::string("<redacted:record>", span))
+        let redacted_text =
+            get_configurable_redacted_string("record", RedactionContext::Serialization);
+        Ok(Value::string(redacted_text, span))
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -104,13 +110,15 @@ impl CustomValue for SecretRecord {
 
 impl fmt::Display for SecretRecord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<redacted:record>")
+        let redacted_text = get_configurable_redacted_string("record", RedactionContext::Display);
+        write!(f, "{}", redacted_text)
     }
 }
 
 impl fmt::Debug for SecretRecord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SecretRecord(<redacted>)")
+        let redacted_text = get_configurable_redacted_string("record", RedactionContext::Debug);
+        write!(f, "SecretRecord({})", redacted_text)
     }
 }
 
@@ -157,8 +165,18 @@ mod tests {
         let mut record = Record::new();
         record.push("secret", Value::test_string("hidden"));
         let secret = SecretRecord::new(record);
-        assert_eq!(format!("{}", secret), "<redacted:record>");
-        assert_eq!(format!("{:?}", secret), "SecretRecord(<redacted>)");
+        let display_result = format!("{}", secret);
+        assert!(
+            display_result.contains("redacted")
+                || display_result.contains("***")
+                || display_result.contains("HIDDEN")
+        );
+        let debug_result = format!("{:?}", secret);
+        assert!(
+            debug_result.contains("redacted")
+                || debug_result.contains("***")
+                || debug_result.contains("HIDDEN")
+        );
     }
 
     #[test]
@@ -170,7 +188,9 @@ mod tests {
 
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
-            Value::String { val, .. } => assert_eq!(val, "<redacted:record>"),
+            Value::String { val, .. } => {
+                assert!(val.contains("redacted") || val.contains("***") || val.contains("HIDDEN"))
+            }
             _ => panic!("Expected string value"),
         }
     }

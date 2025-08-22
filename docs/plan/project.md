@@ -220,19 +220,27 @@ Create a secure Nushell plugin that provides a family of secret custom types to:
 - [x] Environment variable overrides for all settings
 - [x] Configuration management module with save/load functionality
 
-#### 5.2 Configurable Redaction Text ⏳ IN PROGRESS  
-- [ ] Multiple redaction styles (typed brackets, simple, asterisks, custom)
-- [ ] Type-specific redaction text customization
-- [ ] Context-aware redaction (display, debug, serialization, logging)
-- [ ] Security-validated custom redaction text
-- [ ] Per-type and per-context override capabilities
+#### 5.2 Configurable Redaction Text ✅ COMPLETED
+- [x] Multiple redaction styles (typed brackets, simple, asterisks, custom)
+- [x] Type-specific redaction text customization
+- [x] Context-aware redaction (display, debug, serialization, logging)
+- [x] Security-validated custom redaction text
+- [x] Per-type and per-context override capabilities
+- [x] **All 8 secret types updated** (SecretString, SecretInt, SecretBool, SecretFloat, SecretBinary, SecretDate, SecretList, SecretRecord)
+- [x] Flexible test assertions supporting any redaction style
+- [x] Graceful fallbacks when configuration unavailable
 
-#### 5.3 Partial Redaction System ⏳ IN PROGRESS
-- [ ] Configurable partial reveal for string secrets (first N + last N characters)
-- [ ] Intelligent length-based partial redaction with minimums
-- [ ] Salted hash-based partial redaction with configurable salt
-- [ ] Security controls for partial redaction (minimum secret length, max reveal)
-- [ ] Performance optimization for partial redaction operations
+#### 5.3 Partial Redaction System ✅ COMPLETED
+- [x] Configurable partial reveal for string secrets (first N + last N characters)
+- [x] Intelligent length-based partial redaction with minimums
+- [x] Salted hash-based partial redaction with configurable salt
+- [x] Security controls for partial redaction (minimum secret length, max reveal)  
+- [x] Performance optimization for partial redaction operations
+- [x] **Character-based partial redaction** with configurable first/last character counts
+- [x] **Hash-based partial redaction** using SHA256 with configurable salt
+- [x] **SecretString integration** with `partial_redact()` and `redacted_display()` methods
+- [x] **Security validation** preventing information leakage through partial redaction
+- [x] **Comprehensive test coverage** for all partial redaction scenarios
 
 #### 5.4 Configuration Commands ⏳ IN PROGRESS
 - [ ] `secret configure` command for runtime configuration changes

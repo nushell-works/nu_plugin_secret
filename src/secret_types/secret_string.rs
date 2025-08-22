@@ -66,6 +66,38 @@ impl SecretString {
     pub fn into_inner(self) -> String {
         self.inner.clone()
     }
+
+    /// Get length of the secret string (safe to expose)
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Check if the secret string is empty (safe to expose)
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    /// Get a partially redacted version of the string if configured
+    /// Returns None if partial redaction is not enabled or not applicable
+    pub fn partial_redact(&self) -> Option<String> {
+        if let Ok(config) = crate::config::get_config() {
+            config.apply_partial_redaction(&self.inner, "string")
+        } else {
+            None
+        }
+    }
+
+    /// Get redacted string with optional partial redaction
+    /// This respects the user's configuration for redaction style
+    pub fn redacted_display(&self) -> String {
+        // First try partial redaction if configured
+        if let Some(partial) = self.partial_redact() {
+            return partial;
+        }
+
+        // Fall back to configured full redaction
+        get_configurable_redacted_string("string", RedactionContext::Display)
+    }
 }
 
 #[typetag::serde]

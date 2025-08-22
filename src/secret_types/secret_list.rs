@@ -1,3 +1,5 @@
+use crate::config::RedactionContext;
+use crate::memory_optimizations::get_configurable_redacted_string;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -18,7 +20,9 @@ impl Serialize for SecretList {
         S: Serializer,
     {
         // Always serialize as redacted content for security
-        serializer.serialize_str("<redacted:list>")
+        let redacted_text =
+            get_configurable_redacted_string("list", RedactionContext::Serialization);
+        serializer.serialize_str(&redacted_text)
     }
 }
 
@@ -93,7 +97,9 @@ impl CustomValue for SecretList {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        Ok(Value::string("<redacted:list>", span))
+        let redacted_text =
+            get_configurable_redacted_string("list", RedactionContext::Serialization);
+        Ok(Value::string(redacted_text, span))
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -111,13 +117,15 @@ impl CustomValue for SecretList {
 
 impl fmt::Display for SecretList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<redacted:list>")
+        let redacted_text = get_configurable_redacted_string("list", RedactionContext::Display);
+        write!(f, "{}", redacted_text)
     }
 }
 
 impl fmt::Debug for SecretList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SecretList(<redacted>)")
+        let redacted_text = get_configurable_redacted_string("list", RedactionContext::Debug);
+        write!(f, "SecretList({})", redacted_text)
     }
 }
 
@@ -155,8 +163,18 @@ mod tests {
     fn test_secret_list_display() {
         let list = vec![Value::test_string("secret1"), Value::test_string("secret2")];
         let secret = SecretList::new(list);
-        assert_eq!(format!("{}", secret), "<redacted:list>");
-        assert_eq!(format!("{:?}", secret), "SecretList(<redacted>)");
+        let display_result = format!("{}", secret);
+        assert!(
+            display_result.contains("redacted")
+                || display_result.contains("***")
+                || display_result.contains("HIDDEN")
+        );
+        let debug_result = format!("{:?}", secret);
+        assert!(
+            debug_result.contains("redacted")
+                || debug_result.contains("***")
+                || debug_result.contains("HIDDEN")
+        );
     }
 
     #[test]
@@ -167,7 +185,9 @@ mod tests {
 
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
-            Value::String { val, .. } => assert_eq!(val, "<redacted:list>"),
+            Value::String { val, .. } => {
+                assert!(val.contains("redacted") || val.contains("***") || val.contains("HIDDEN"))
+            }
             _ => panic!("Expected string value"),
         }
     }

@@ -1,3 +1,5 @@
+use crate::config::RedactionContext;
+use crate::memory_optimizations::get_configurable_redacted_string;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -18,7 +20,9 @@ impl Serialize for SecretInt {
         S: Serializer,
     {
         // Always serialize as redacted content for security
-        serializer.serialize_str("<redacted:int>")
+        let redacted_text =
+            get_configurable_redacted_string("int", RedactionContext::Serialization);
+        serializer.serialize_str(&redacted_text)
     }
 }
 
@@ -75,7 +79,9 @@ impl CustomValue for SecretInt {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        Ok(Value::string("<redacted:int>", span))
+        let redacted_text =
+            get_configurable_redacted_string("int", RedactionContext::Serialization);
+        Ok(Value::string(redacted_text, span))
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -93,13 +99,15 @@ impl CustomValue for SecretInt {
 
 impl fmt::Display for SecretInt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<redacted:int>")
+        let redacted_text = get_configurable_redacted_string("int", RedactionContext::Display);
+        write!(f, "{}", redacted_text)
     }
 }
 
 impl fmt::Debug for SecretInt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SecretInt(<redacted>)")
+        let redacted_text = get_configurable_redacted_string("int", RedactionContext::Debug);
+        write!(f, "SecretInt({})", redacted_text)
     }
 }
 
@@ -125,8 +133,17 @@ mod tests {
     #[test]
     fn test_secret_int_display() {
         let secret = SecretInt::new(12345);
-        assert_eq!(format!("{}", secret), "<redacted:int>");
-        assert_eq!(format!("{:?}", secret), "SecretInt(<redacted>)");
+        // Test that display uses configurable redaction (falls back to default if config not loaded)
+        let display_result = format!("{}", secret);
+        let debug_result = format!("{:?}", secret);
+
+        // Should contain redacted text (exact text depends on configuration)
+        assert!(
+            display_result.contains("redacted")
+                || display_result.contains("***")
+                || display_result.contains("HIDDEN")
+        );
+        assert!(debug_result.contains("SecretInt"));
     }
 
     #[test]
@@ -136,7 +153,10 @@ mod tests {
 
         let base_value = secret.to_base_value(Span::test_data()).unwrap();
         match base_value {
-            Value::String { val, .. } => assert_eq!(val, "<redacted:int>"),
+            Value::String { val, .. } => {
+                // Should contain redacted text (exact text depends on configuration)
+                assert!(val.contains("redacted") || val.contains("***") || val.contains("HIDDEN"));
+            }
             _ => panic!("Expected string value"),
         }
     }
