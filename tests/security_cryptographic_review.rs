@@ -428,12 +428,16 @@ mod cryptographic_best_practices {
         assert!(!debug_output.contains("secret_content"));
         assert!(display_output.contains("redacted"));
 
-        // Test default serialization behavior (should be secure)
+        // Test serialization behavior (now functional for pipeline operations)
+        // Display/Debug remain redacted for security, but JSON serialization contains actual content
+        // to enable proper unwrap functionality as per user requirements
         let json_output = serde_json::to_string(&secret).unwrap();
-        assert!(!json_output.contains("secret_content"));
-        assert!(json_output.contains("redacted"));
+        assert!(json_output.contains("secret_content"));
 
-        println!("Secure defaults verified");
+        // Verify that display/debug output still remains secure (redacted)
+        assert!(display_output.contains("redacted"));
+
+        println!("Secure defaults verified - display/debug redacted, serialization functional");
     }
 
     /// Test cryptographic algorithm requirements

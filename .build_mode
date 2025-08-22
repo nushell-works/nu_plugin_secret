@@ -1,0 +1,2 @@
+BUILD_MODE=release
+TARGET_DIR=target/release

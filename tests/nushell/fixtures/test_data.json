@@ -1,0 +1,43 @@
+{
+  "test_strings": [
+    "simple-secret",
+    "",
+    "🔐 unicode secret with émojis 中文 and special chars",
+    "password123!@#$%^&*()_+-=[]{}|;':\",./<>?`~",
+    "very-long-secret-that-is-repeated-many-times-to-test-performance-and-memory-usage-abcdefghijklmnopqrstuvwxyz0123456789",
+    "api-key-sk-1234567890abcdefghijklmnopqrstuvwxyz",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ",
+    "postgresql://username:password@localhost:5432/database_name"
+  ],
+  "test_integers": [0, 1, -1, 42, -42, 2147483647, -2147483648, 9223372036854775807],
+  "test_floats": [0.0, 3.14159, -3.14159, 1.23456789, -1.23456789, 1e10, -1e10],
+  "test_booleans": [true, false],
+  "test_records": [
+    {"api_key": "sk-test123", "secret": true},
+    {"database": {"host": "localhost", "password": "secret", "port": 5432}},
+    {"tokens": ["token1", "token2", "token3"]},
+    {"empty_record": {}},
+    {"nested": {"level1": {"level2": {"secret": "deep-secret"}}}}
+  ],
+  "test_lists": [
+    [],
+    ["single-item"],
+    ["api-key-1", "api-key-2", "api-key-3"],
+    [1, 2, 3, 4, 5],
+    [true, false, true],
+    [{"name": "user1", "token": "token1"}, {"name": "user2", "token": "token2"}]
+  ],
+  "test_binaries": [
+    "empty",
+    "deadbeef",
+    "cafebabe",
+    "0123456789abcdef"
+  ],
+  "performance_data": {
+    "small_batch": 10,
+    "medium_batch": 100,
+    "large_batch": 1000,
+    "max_string_length": 10000,
+    "timeout_seconds": 30
+  }
+}

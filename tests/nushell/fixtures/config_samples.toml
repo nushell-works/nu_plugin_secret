@@ -1,0 +1,39 @@
+# Sample configurations for testing different redaction styles
+
+[default_config]
+redaction_style = "typed_brackets"
+partial_redaction_enabled = false
+security_level = "standard"
+
+[asterisk_config]
+redaction_style = "asterisks"
+redaction_text = "****"
+partial_redaction_enabled = false
+security_level = "standard"
+
+[simple_config] 
+redaction_style = "simple"
+redaction_text = "<SECRET>"
+partial_redaction_enabled = false
+security_level = "minimal"
+
+[paranoid_config]
+redaction_style = "typed_brackets"
+partial_redaction_enabled = false
+security_level = "paranoid"
+audit_logging = true
+
+[partial_redaction_config]
+redaction_style = "typed_brackets"
+partial_redaction_enabled = true
+reveal_first_chars = 2
+reveal_last_chars = 2
+min_length_for_partial = 8
+partial_redaction_salt = "test-salt-123"
+security_level = "standard"
+
+[custom_config]
+redaction_style = "custom"
+redaction_text = "🔒CLASSIFIED🔒"
+partial_redaction_enabled = false
+security_level = "standard"

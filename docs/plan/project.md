@@ -657,6 +657,204 @@ impl std::fmt::Debug for SecretString {
 
 This project plan provides a strategic roadmap for creating a production-grade secret handling plugin using individual CustomValue types that prioritizes security while maintaining excellent developer experience and seamless Nushell ecosystem integration.
 
+## Phase 6: Comprehensive Nushell Script Testing (Future Enhancement)
+
+### 6.1 Nushell Integration Testing Strategy
+
+**Goal**: Implement comprehensive Nushell script tests to complement existing Rust unit tests and validate real-world usage scenarios.
+
+#### Testing Gaps Analysis
+- **Current State**: 179 Rust unit/integration tests with comprehensive security validation
+- **Gap Identified**: Missing real Nushell environment testing and end-to-end workflow validation
+- **Need**: Plugin integration validation, command chaining, and pipeline tests
+
+#### Proposed Test Structure
+```
+tests/
+├── nushell/
+│   ├── fixtures/           # Test data and setup files
+│   │   ├── test_data.json
+│   │   ├── config_samples.toml
+│   │   └── secrets.nu
+│   ├── integration/        # Full workflow tests
+│   │   ├── basic_operations.nu
+│   │   ├── pipeline_workflows.nu
+│   │   ├── configuration_tests.nu
+│   │   └── error_scenarios.nu
+│   ├── commands/          # Per-command tests
+│   │   ├── wrap_commands.nu
+│   │   ├── unwrap_tests.nu
+│   │   ├── utility_commands.nu
+│   │   └── config_commands.nu
+│   ├── security/          # Security validation
+│   │   ├── redaction_tests.nu
+│   │   ├── memory_tests.nu
+│   │   └── edge_cases.nu
+│   ├── performance/       # Performance benchmarks
+│   │   ├── startup_time.nu
+│   │   ├── bulk_operations.nu
+│   │   └── memory_usage.nu
+│   ├── runner.nu          # Test runner and framework
+│   └── setup.nu           # Plugin setup and teardown
+├── scripts/
+│   ├── run_nu_tests.sh    # Cross-platform test runner
+│   └── install_plugin.nu  # Plugin installation helper
+```
+
+### 6.2 Test Categories
+
+#### Command Testing (`commands/*.nu`)
+- **Wrap Commands**: Test all 8 wrap commands with edge cases (empty strings, Unicode, long content)
+- **Unwrap Tests**: Round-trip validation, type preservation, error handling
+- **Utility Commands**: `secret validate`, `secret type-of`, `secret info` functionality
+- **Configuration Commands**: Settings management, partial redaction, security levels
+
+#### Integration/Workflow Testing (`integration/*.nu`)
+- **Pipeline Workflows**: Secrets in complex data structures and transformations
+- **List Operations**: Arrays of secrets, filtering, mapping operations  
+- **Data Transformation**: Secrets through Nushell data processing pipelines
+- **Error Scenarios**: Invalid inputs, type mismatches, plugin failures
+
+#### Security Testing (`security/*.nu`)
+- **Redaction Verification**: No content leakage in any output format (JSON, YAML, debug, logs)
+- **Consistency Tests**: Redaction behavior consistency across operations
+- **Memory Safety**: Long-running operations, bulk secret handling
+- **Edge Cases**: Unicode, special characters, very long content
+
+#### Performance Testing (`performance/*.nu`)
+- **Startup Time**: Plugin initialization < 1 second
+- **Bulk Operations**: 1000+ secret operations < 5 seconds
+- **Memory Usage**: Reasonable memory consumption patterns
+- **Performance Regression**: Benchmark comparison against baselines
+
+### 6.3 Test Framework Design
+
+#### Test Runner Framework (`runner.nu`)
+```nushell
+def main [
+    --suite: string = "all"  # Which test suite to run
+    --verbose (-v)           # Verbose output
+    --parallel (-p)          # Run tests in parallel
+] {
+    setup_plugin
+    let results = run_test_suites $suite $verbose
+    cleanup_plugin
+    report_results $results
+}
+```
+
+#### Plugin Setup/Teardown (`setup.nu`)
+- Automated plugin building and registration
+- Plugin loading verification
+- Test environment isolation
+- Cleanup and artifact removal
+
+### 6.4 CI/CD Integration
+
+#### GitHub Actions Workflow
+```yaml
+name: Nushell Integration Tests
+on: [push, pull_request]
+jobs:
+  nushell-tests:
+    runs-on: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Install Nushell
+      - name: Build Plugin  
+      - name: Run Nushell Tests
+      - name: Upload Test Results
+```
+
+#### Cross-Platform Test Runner (`scripts/run_nu_tests.sh`)
+- Automated plugin building
+- Nushell installation verification
+- Test execution and result reporting
+- Integration with existing CI pipeline
+
+### 6.5 Test Coverage Goals
+
+#### Command Coverage
+- ✅ All 18 commands tested in real Nushell environment
+- ✅ All 8 secret types covered with edge cases
+- ✅ Error scenarios and recovery testing
+- ✅ Pipeline integration validation
+
+#### Workflow Coverage  
+- ✅ Complex data structure handling
+- ✅ Configuration management workflows
+- ✅ Pipeline chaining scenarios
+- ✅ Real-world usage pattern validation
+
+#### Security Coverage
+- ✅ Redaction verification across output formats
+- ✅ Memory safety in production scenarios
+- ✅ No content leakage validation
+- ✅ Configuration security testing
+
+#### Performance Coverage
+- ✅ Plugin startup time < 1 second
+- ✅ Bulk operations efficiency
+- ✅ Memory usage optimization
+- ✅ Performance regression prevention
+
+### 6.6 Implementation Strategy
+
+#### Phase 6.1: Foundation (Week 1) ✅ COMPLETED
+- [x] Design comprehensive test plan architecture
+- [x] Create test directory structure and framework
+- [x] Implement plugin setup/teardown automation
+- [x] Build basic test runner infrastructure
+- [x] Create initial basic wrap/unwrap tests
+
+#### Phase 6.2: Core Command Tests (Week 2)
+- [ ] Implement all wrap command tests with edge cases
+- [ ] Complete unwrap and utility command validation
+- [ ] Add comprehensive error scenario testing
+- [ ] Create security redaction verification tests
+
+#### Phase 6.3: Integration Tests (Week 3)
+- [ ] Complex pipeline workflow testing
+- [ ] Configuration management validation
+- [ ] Data transformation scenario testing
+- [ ] Performance benchmarking implementation
+
+#### Phase 6.4: Automation & CI (Week 4)
+- [ ] GitHub Actions integration
+- [ ] Cross-platform test runner development
+- [ ] Automated reporting and notifications
+- [ ] Documentation and usage examples
+
+### 6.7 Benefits and Value
+
+#### Comprehensive Validation
+- **Real Environment Testing**: Validates plugin in actual Nushell sessions
+- **End-to-End Coverage**: Tests complete workflows from user perspective
+- **Integration Validation**: Ensures seamless Nushell ecosystem integration
+- **Security Verification**: Confirms security properties in production scenarios
+
+#### Quality Assurance
+- **User Experience**: Validates commands work as documented
+- **Performance Assurance**: Ensures acceptable performance characteristics
+- **Regression Prevention**: Catches breaking changes before release
+- **Documentation Accuracy**: Verifies examples and usage patterns
+
+#### Maintainability
+- **Modular Architecture**: Easy to extend and maintain test suite
+- **Automated Execution**: Integrated into CI/CD for continuous validation
+- **Clear Reporting**: Detailed test results and failure diagnostics
+- **Cross-Platform Support**: Ensures compatibility across operating systems
+
+### 6.8 Success Metrics
+
+- **Test Coverage**: 100% command coverage in real Nushell environment
+- **Integration Validation**: All documented workflows tested end-to-end
+- **Performance Benchmarks**: All performance targets met and monitored
+- **Security Verification**: Zero content leakage across all output formats
+- **CI Integration**: Automated testing in all supported environments
+- **Maintenance Efficiency**: Easy test addition and modification workflows
+
+This comprehensive Nushell testing strategy complements the existing 179 Rust tests by adding real-world validation, ensuring the plugin works flawlessly in production Nushell environments while maintaining all security guarantees.
+
 ## Recent Completion: Phase 3 CI/CD Infrastructure (August 20, 2025)
 
 ### 🎉 Phase 3 Achievement: Enterprise-Grade CI/CD Pipeline

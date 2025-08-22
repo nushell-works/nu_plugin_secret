@@ -13,31 +13,26 @@ pub struct SecretInt {
     inner: i64,
 }
 
-// Custom secure serialization - never serialize actual content
+// Functional serialization - serialize actual content for pipeline operations
 impl Serialize for SecretInt {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        // Always serialize as redacted content for security
-        let redacted_text =
-            get_configurable_redacted_string("int", RedactionContext::Serialization);
-        serializer.serialize_str(&redacted_text)
+        // Serialize the actual content to make pipeline operations work
+        self.inner.serialize(serializer)
     }
 }
 
-// Custom secure deserialization
+// Functional deserialization - restore actual content for pipeline operations
 impl<'de> Deserialize<'de> for SecretInt {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        // For security, we can't deserialize actual secrets
-        // This prevents injection attacks via malicious serialized data
-        let _value = i64::deserialize(deserializer)?;
-
-        // Return a safe placeholder - real secrets should be created through proper channels
-        Ok(SecretInt::new(0))
+        // Deserialize the actual content to make pipeline operations work
+        let content = i64::deserialize(deserializer)?;
+        Ok(SecretInt::new(content))
     }
 }
 
