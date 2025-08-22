@@ -84,7 +84,7 @@ impl PluginCommand for SecretConfigureCommand {
             .category(Category::Custom("secret".into()))
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![
             Example {
                 example: "secret configure --redaction-style simple",

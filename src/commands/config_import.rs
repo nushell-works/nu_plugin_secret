@@ -42,7 +42,7 @@ impl PluginCommand for SecretConfigImportCommand {
             .category(Category::Custom("secret".into()))
     }
 
-    fn examples(&self) -> Vec<Example> {
+    fn examples(&self) -> Vec<Example<'_>> {
         vec![
             Example {
                 example: "secret config import backup_config.toml",
