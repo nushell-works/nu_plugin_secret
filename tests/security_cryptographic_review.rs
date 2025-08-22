@@ -220,7 +220,7 @@ mod cryptographic_security_tests {
         ];
 
         let secret_key = SecretBinary::new(key_material.clone());
-        assert_eq!(secret_key.reveal(), &key_material);
+        assert_eq!(secret_key.reveal().as_ref(), &key_material);
 
         // This should securely zeroize the key material
         drop(secret_key);
@@ -273,7 +273,7 @@ mod cryptographic_security_tests {
 
         // Verify binary secrets maintain their data
         for (i, secret) in binary_secrets.iter().enumerate() {
-            assert_eq!(secret.reveal(), &chunks[i]);
+            assert_eq!(secret.reveal().as_ref(), &chunks[i]);
         }
 
         println!(
@@ -336,7 +336,7 @@ mod cryptographic_security_tests {
 
         // Verify key integrity
         assert_eq!(secret_key.reveal().len(), 32);
-        assert_eq!(secret_key.reveal(), &aes_key_bytes);
+        assert_eq!(secret_key.reveal().as_ref(), &aes_key_bytes);
 
         // Test key comparison (should be constant-time)
         let same_key = SecretBinary::new(aes_key_bytes.clone());

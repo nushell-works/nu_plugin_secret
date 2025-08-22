@@ -84,3 +84,15 @@ debug = true
 
 [profile.test]
 debug = true
+
+[[bench]]
+name = "secret_performance"
+harness = false
+
+[[bench]]
+name = "plugin_startup"
+harness = false
+
+[[bench]]
+name = "performance_regression"
+harness = false
