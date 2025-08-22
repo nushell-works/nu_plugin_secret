@@ -2,6 +2,9 @@ use nu_plugin::{Plugin, PluginCommand};
 
 mod commands;
 mod secret_types;
+pub mod memory_optimizations;
+pub mod startup_optimizations;
+pub mod performance_monitoring;
 
 use commands::*;
 pub use secret_types::{
@@ -17,6 +20,9 @@ impl Plugin for SecretPlugin {
     }
 
     fn commands(&self) -> Vec<Box<dyn PluginCommand<Plugin = Self>>> {
+        // Initialize optimizations on first command access
+        startup_optimizations::command_optimizations::init_command_cache();
+        
         vec![
             // Core secret wrap commands
             Box::new(SecretWrapStringCommand),

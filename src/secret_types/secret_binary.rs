@@ -3,12 +3,13 @@ use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use zeroize::{Zeroize, ZeroizeOnDrop};
+use crate::memory_optimizations::{get_redacted_string, binary_optimization::OptimizedBinary};
 
 /// A secure binary type that redacts its content in all display contexts
 /// and zeros its memory on drop
 #[derive(Clone)]
 pub struct SecretBinary {
-    inner: Vec<u8>,
+    inner: OptimizedBinary,
 }
 
 // Custom secure serialization - never serialize actual content
@@ -18,7 +19,7 @@ impl Serialize for SecretBinary {
         S: Serializer,
     {
         // Always serialize as redacted content for security
-        serializer.serialize_str("<redacted:binary>")
+        serializer.serialize_str(get_redacted_string("binary"))
     }
 }
 
@@ -50,17 +51,17 @@ impl ZeroizeOnDrop for SecretBinary {}
 impl SecretBinary {
     /// Create a new SecretBinary from a byte vector
     pub fn new(value: Vec<u8>) -> Self {
-        Self { inner: value }
+        Self { inner: OptimizedBinary::from_slice(&value) }
     }
 
     /// Get a reference to the inner binary data (for controlled access)
-    pub fn reveal(&self) -> &Vec<u8> {
-        &self.inner
+    pub fn reveal(&self) -> std::borrow::Cow<'_, [u8]> {
+        self.inner.as_bytes()
     }
 
     /// Convert back to a regular byte vector (consumes the SecretBinary)
     pub fn into_inner(self) -> Vec<u8> {
-        self.inner.clone()
+        self.inner.as_bytes().into_owned()
     }
 
     /// Get the length of the binary data (safe to expose)
@@ -75,7 +76,8 @@ impl SecretBinary {
 
     /// Get a byte at a specific index while preserving secrecy
     pub fn get(&self, index: usize) -> Option<u8> {
-        self.inner.get(index).copied()
+        let bytes = self.inner.as_bytes();
+        bytes.get(index).copied()
     }
 }
 
@@ -90,7 +92,7 @@ impl CustomValue for SecretBinary {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        Ok(Value::string("<redacted:binary>", span))
+        Ok(Value::string(get_redacted_string("binary"), span))
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -108,7 +110,7 @@ impl CustomValue for SecretBinary {
 
 impl fmt::Display for SecretBinary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "<redacted:binary>")
+        write!(f, "{}", get_redacted_string("binary"))
     }
 }
 
@@ -135,7 +137,9 @@ impl PartialEq for SecretBinary {
 
         // Use constant-time slice comparison for the minimum length
         let content_eq = if min_len > 0 {
-            constant_time_eq_slice(&self.inner[..min_len], &other.inner[..min_len])
+            let self_bytes = self.inner.as_bytes();
+            let other_bytes = other.inner.as_bytes();
+            constant_time_eq_slice(&self_bytes[..min_len], &other_bytes[..min_len])
         } else {
             1u8 // Empty slices are equal
         };
