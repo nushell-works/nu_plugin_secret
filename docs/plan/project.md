@@ -1,9 +1,9 @@
 # nu_plugin_secret - Project Plan
 
-## 🎯 Current Status: Phase 4 Complete - Production Ready for Release
+## 🎯 Current Status: Phase 5 Started - Enhanced Configuration & Partial Redaction  
 **Last Updated**: August 22, 2025  
-**Completion**: 100% - All development phases complete, ready for v0.1.0 release  
-**Status**: Production-ready plugin with comprehensive infrastructure  
+**Completion**: 95% - Core plugin complete, now adding advanced configuration features  
+**Status**: v0.1.0 production-ready, Phase 5 enhancement development in progress  
 
 ## Project Overview
 
@@ -209,6 +209,44 @@ Create a secure Nushell plugin that provides a family of secret custom types to:
 - [x] Support and maintenance procedures
 - [x] Backup and disaster recovery planning
 - [x] Performance and uptime monitoring
+
+### Phase 5: Enhanced Configuration & Partial Redaction (Week 6)
+**Goal**: Add configurable redaction settings and advanced partial redaction features
+
+#### 5.1 Configuration System ⏳ IN PROGRESS
+- [ ] Configuration file support at `~/.config/nushell/plugins/secret/config.toml`
+- [ ] Hierarchical configuration loading (file → env vars → runtime commands)
+- [ ] TOML-based configuration with validation and defaults
+- [ ] Environment variable overrides for all settings
+- [ ] Configuration management module with save/load functionality
+
+#### 5.2 Configurable Redaction Text ⏳ IN PROGRESS  
+- [ ] Multiple redaction styles (typed brackets, simple, asterisks, custom)
+- [ ] Type-specific redaction text customization
+- [ ] Context-aware redaction (display, debug, serialization, logging)
+- [ ] Security-validated custom redaction text
+- [ ] Per-type and per-context override capabilities
+
+#### 5.3 Partial Redaction System ⏳ IN PROGRESS
+- [ ] Configurable partial reveal for string secrets (first N + last N characters)
+- [ ] Intelligent length-based partial redaction with minimums
+- [ ] Salted hash-based partial redaction with configurable salt
+- [ ] Security controls for partial redaction (minimum secret length, max reveal)
+- [ ] Performance optimization for partial redaction operations
+
+#### 5.4 Configuration Commands ⏳ IN PROGRESS
+- [ ] `secret configure` command for runtime configuration changes
+- [ ] `secret config show` command to display current settings
+- [ ] `secret config reset` command to restore defaults
+- [ ] `secret config validate` command for configuration validation
+- [ ] Configuration import/export functionality
+
+#### 5.5 Enhanced Security Features ⏳ IN PROGRESS
+- [ ] Configurable security levels (minimal, standard, paranoid)
+- [ ] Audit logging for configuration changes
+- [ ] Security validation of partial redaction settings
+- [ ] Protection against information leakage through configuration
+- [ ] Configuration-based access controls
 
 ---
 
