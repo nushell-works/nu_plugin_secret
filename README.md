@@ -97,24 +97,29 @@ secret info
 ## 🛡️ Security Features
 
 ### Display Layer Protection
+
 - **Zero Accidental Exposure**: Secret values never display actual content in
   console output, logs, or debug information
 - **Debug Safety**: Debug output (`{:?}`) never shows sensitive content
 - **Redacted Display**: All secret types show as `<redacted:type>` in output
 
-### Functional Pipeline Support  
-- **Serialization for Unwrap**: Internal serialization contains actual data to 
+### Functional Pipeline Support
+
+- **Serialization for Unwrap**: Internal serialization contains actual data to
   enable proper `unwrap` operations and pipeline functionality
 - **Pipeline Integration**: Secrets work seamlessly in Nushell data flows
   between commands and through plugin communication
 
 ### Core Security
+
 - **Memory Safety**: Secure cleanup via ZeroizeOnDrop on all secret types
 - **Constant-Time Comparison**: Prevents timing attacks across all types
 - **Type Safety**: Comprehensive validation and error handling
 
 ### Security Model
+
 This plugin uses a **dual-layer security approach**:
+
 - **Display/Debug Layer**: Always redacted to prevent accidental exposure
 - **Functional Layer**: Serialization enables unwrap operations while maintaining
   memory safety and secure display behavior
