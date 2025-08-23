@@ -224,4 +224,53 @@ mod tests {
         assert!(inf.is_infinite());
         assert!(!inf.is_finite());
     }
+
+    #[test]
+    fn test_secret_float_serialization() {
+        // Test that serialization works for functional unwrap
+        let value = std::f64::consts::PI;
+        let secret = SecretFloat::new(value);
+
+        // Test JSON serialization
+        let json_result = serde_json::to_string(&secret);
+        assert!(json_result.is_ok(), "JSON serialization should work");
+        
+        let json = json_result.unwrap();
+        // Should contain the numeric data for functional unwrap
+        assert!(json.contains("3.14159"), "JSON should contain PI value");
+
+        // Test bincode serialization (used for plugin communication)
+        let bincode_result = bincode::serialize(&secret);
+        assert!(bincode_result.is_ok(), "Bincode serialization should work");
+
+        // Test special values
+        let nan_secret = SecretFloat::new(f64::NAN);
+        let inf_secret = SecretFloat::new(f64::INFINITY);
+        
+        assert!(serde_json::to_string(&nan_secret).is_ok(), "NaN serialization should work");
+        assert!(serde_json::to_string(&inf_secret).is_ok(), "Infinity serialization should work");
+    }
+
+    #[test] 
+    fn test_secret_float_deserialization() {
+        // Test that deserialization works for functional unwrap
+        let original_value = -42.875;
+        let secret = SecretFloat::new(original_value);
+
+        // Test JSON round-trip
+        let json = serde_json::to_string(&secret).unwrap();
+        let deserialized: Result<SecretFloat, _> = serde_json::from_str(&json);
+        assert!(deserialized.is_ok(), "JSON deserialization should work");
+        
+        let restored = deserialized.unwrap();
+        assert_eq!(restored.reveal(), original_value, "Round-trip should preserve data");
+
+        // Test bincode round-trip  
+        let bytes = bincode::serialize(&secret).unwrap();
+        let deserialized: Result<SecretFloat, _> = bincode::deserialize(&bytes);
+        assert!(deserialized.is_ok(), "Bincode deserialization should work");
+        
+        let restored = deserialized.unwrap();
+        assert_eq!(restored.reveal(), original_value, "Bincode round-trip should preserve data");
+    }
 }

@@ -305,4 +305,47 @@ mod tests {
 
         assert_ne!(secret1, secret2);
     }
+
+    #[test]
+    fn test_secret_binary_serialization() {
+        // Test that serialization works for functional unwrap
+        let data = vec![0xde, 0xad, 0xbe, 0xef, 0x12, 0x34];
+        let secret = SecretBinary::new(data.clone());
+
+        // Test JSON serialization - should contain array of bytes
+        let json_result = serde_json::to_string(&secret);
+        assert!(json_result.is_ok(), "JSON serialization should work");
+        
+        let json = json_result.unwrap();
+        // Should contain the byte values for functional unwrap
+        assert!(json.contains("222"), "JSON should contain byte values"); // 0xde = 222
+        assert!(json.contains("173"), "JSON should contain byte values"); // 0xad = 173
+
+        // Test bincode serialization (used for plugin communication)
+        let bincode_result = bincode::serialize(&secret);
+        assert!(bincode_result.is_ok(), "Bincode serialization should work");
+    }
+
+    #[test] 
+    fn test_secret_binary_deserialization() {
+        // Test that deserialization works for functional unwrap
+        let original_data = vec![0xff, 0x00, 0x42, 0xa5];
+        let secret = SecretBinary::new(original_data.clone());
+
+        // Test JSON round-trip
+        let json = serde_json::to_string(&secret).unwrap();
+        let deserialized: Result<SecretBinary, _> = serde_json::from_str(&json);
+        assert!(deserialized.is_ok(), "JSON deserialization should work");
+        
+        let restored = deserialized.unwrap();
+        assert_eq!(restored.reveal().as_ref(), &original_data, "Round-trip should preserve data");
+
+        // Test bincode round-trip  
+        let bytes = bincode::serialize(&secret).unwrap();
+        let deserialized: Result<SecretBinary, _> = bincode::deserialize(&bytes);
+        assert!(deserialized.is_ok(), "Bincode deserialization should work");
+        
+        let restored = deserialized.unwrap();
+        assert_eq!(restored.reveal().as_ref(), &original_data, "Bincode round-trip should preserve data");
+    }
 }
