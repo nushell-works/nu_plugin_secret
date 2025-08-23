@@ -233,7 +233,7 @@ mod tests {
         // Test JSON serialization
         let json_result = serde_json::to_string(&secret);
         assert!(json_result.is_ok(), "JSON serialization should work");
-        
+
         let json = json_result.unwrap();
         // Should contain the actual data for functional unwrap
         assert!(json.contains("item1"), "JSON should contain list data");
@@ -244,7 +244,7 @@ mod tests {
         assert!(bincode_result.is_ok(), "Bincode serialization should work");
     }
 
-    #[test] 
+    #[test]
     fn test_secret_list_deserialization() {
         // Test that deserialization works for functional unwrap
         let original_list = vec![Value::test_string("test"), Value::test_bool(true)];
@@ -254,16 +254,24 @@ mod tests {
         let json = serde_json::to_string(&secret).unwrap();
         let deserialized: Result<SecretList, _> = serde_json::from_str(&json);
         assert!(deserialized.is_ok(), "JSON deserialization should work");
-        
-        let restored = deserialized.unwrap();
-        assert_eq!(restored.reveal(), &original_list, "Round-trip should preserve data");
 
-        // Test bincode round-trip  
+        let restored = deserialized.unwrap();
+        assert_eq!(
+            restored.reveal(),
+            &original_list,
+            "Round-trip should preserve data"
+        );
+
+        // Test bincode round-trip
         let bytes = bincode::serialize(&secret).unwrap();
         let deserialized: Result<SecretList, _> = bincode::deserialize(&bytes);
         assert!(deserialized.is_ok(), "Bincode deserialization should work");
-        
+
         let restored = deserialized.unwrap();
-        assert_eq!(restored.reveal(), &original_list, "Bincode round-trip should preserve data");
+        assert_eq!(
+            restored.reveal(),
+            &original_list,
+            "Bincode round-trip should preserve data"
+        );
     }
 }

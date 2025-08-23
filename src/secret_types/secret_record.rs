@@ -232,11 +232,14 @@ mod tests {
         // Test JSON serialization
         let json_result = serde_json::to_string(&secret);
         assert!(json_result.is_ok(), "JSON serialization should work");
-        
+
         let json = json_result.unwrap();
         // Should contain the record data for functional unwrap
         assert!(json.contains("api_key"), "JSON should contain field names");
-        assert!(json.contains("secret123"), "JSON should contain field values");
+        assert!(
+            json.contains("secret123"),
+            "JSON should contain field values"
+        );
         assert!(json.contains("8080"), "JSON should contain numeric values");
 
         // Test bincode serialization (used for plugin communication)
@@ -244,7 +247,7 @@ mod tests {
         assert!(bincode_result.is_ok(), "Bincode serialization should work");
     }
 
-    #[test] 
+    #[test]
     fn test_secret_record_deserialization() {
         // Test that deserialization works for functional unwrap
         let mut original_record = Record::new();
@@ -256,20 +259,36 @@ mod tests {
         let json = serde_json::to_string(&secret).unwrap();
         let deserialized: Result<SecretRecord, _> = serde_json::from_str(&json);
         assert!(deserialized.is_ok(), "JSON deserialization should work");
-        
+
         let restored = deserialized.unwrap();
         // Compare individual fields since Record doesn't implement PartialEq
-        assert_eq!(restored.get_field("username").unwrap(), original_record.get("username").unwrap(), "Username field should match");
-        assert_eq!(restored.get_field("active").unwrap(), original_record.get("active").unwrap(), "Active field should match");
+        assert_eq!(
+            restored.get_field("username").unwrap(),
+            original_record.get("username").unwrap(),
+            "Username field should match"
+        );
+        assert_eq!(
+            restored.get_field("active").unwrap(),
+            original_record.get("active").unwrap(),
+            "Active field should match"
+        );
 
-        // Test bincode round-trip  
+        // Test bincode round-trip
         let bytes = bincode::serialize(&secret).unwrap();
         let deserialized: Result<SecretRecord, _> = bincode::deserialize(&bytes);
         assert!(deserialized.is_ok(), "Bincode deserialization should work");
-        
+
         let restored = deserialized.unwrap();
         // Compare individual fields for bincode round-trip too
-        assert_eq!(restored.get_field("username").unwrap(), original_record.get("username").unwrap(), "Bincode username field should match");
-        assert_eq!(restored.get_field("active").unwrap(), original_record.get("active").unwrap(), "Bincode active field should match");
+        assert_eq!(
+            restored.get_field("username").unwrap(),
+            original_record.get("username").unwrap(),
+            "Bincode username field should match"
+        );
+        assert_eq!(
+            restored.get_field("active").unwrap(),
+            original_record.get("active").unwrap(),
+            "Bincode active field should match"
+        );
     }
 }

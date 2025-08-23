@@ -435,10 +435,23 @@ mod security_tests {
     }
 
     #[test]
+    #[cfg(not(miri))] // Exclude from Miri due to SystemTime usage in random function
     fn test_secret_string_memory_safety() {
         // Test that creating and dropping many secrets doesn't cause issues
         for _ in 0..1000 {
             let secret = SecretString::new(format!("secret-{}", rand::random::<u64>() as u32));
+            let _ = format!("{}", secret); // Use the secret
+                                           // Secret should be safely dropped here
+        }
+    }
+
+    #[test]
+    #[cfg(miri)] // Alternative test for Miri that doesn't use system time
+    fn test_secret_string_memory_safety_miri() {
+        // Test that creating and dropping many secrets doesn't cause issues (Miri version)
+        for i in 0..100 {
+            // Reduced iterations for Miri
+            let secret = SecretString::new(format!("secret-{}", i));
             let _ = format!("{}", secret); // Use the secret
                                            // Secret should be safely dropped here
         }

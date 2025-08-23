@@ -315,7 +315,7 @@ mod tests {
         // Test JSON serialization - should contain array of bytes
         let json_result = serde_json::to_string(&secret);
         assert!(json_result.is_ok(), "JSON serialization should work");
-        
+
         let json = json_result.unwrap();
         // Should contain the byte values for functional unwrap
         assert!(json.contains("222"), "JSON should contain byte values"); // 0xde = 222
@@ -326,7 +326,7 @@ mod tests {
         assert!(bincode_result.is_ok(), "Bincode serialization should work");
     }
 
-    #[test] 
+    #[test]
     fn test_secret_binary_deserialization() {
         // Test that deserialization works for functional unwrap
         let original_data = vec![0xff, 0x00, 0x42, 0xa5];
@@ -336,16 +336,24 @@ mod tests {
         let json = serde_json::to_string(&secret).unwrap();
         let deserialized: Result<SecretBinary, _> = serde_json::from_str(&json);
         assert!(deserialized.is_ok(), "JSON deserialization should work");
-        
-        let restored = deserialized.unwrap();
-        assert_eq!(restored.reveal().as_ref(), &original_data, "Round-trip should preserve data");
 
-        // Test bincode round-trip  
+        let restored = deserialized.unwrap();
+        assert_eq!(
+            restored.reveal().as_ref(),
+            &original_data,
+            "Round-trip should preserve data"
+        );
+
+        // Test bincode round-trip
         let bytes = bincode::serialize(&secret).unwrap();
         let deserialized: Result<SecretBinary, _> = bincode::deserialize(&bytes);
         assert!(deserialized.is_ok(), "Bincode deserialization should work");
-        
+
         let restored = deserialized.unwrap();
-        assert_eq!(restored.reveal().as_ref(), &original_data, "Bincode round-trip should preserve data");
+        assert_eq!(
+            restored.reveal().as_ref(),
+            &original_data,
+            "Bincode round-trip should preserve data"
+        );
     }
 }
