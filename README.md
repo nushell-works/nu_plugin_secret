@@ -159,10 +159,10 @@ if ($value | secret validate) {
 
 ## 🎯 Current Status
 
-**✅ Phase 5.6 Complete**: Functional Serialization & Comprehensive Testing
+**✅ v0.1.1 Released**: Functional Serialization & Comprehensive Testing
 
 - **12 Commands**: 8 wrap commands + 4 utility commands  
-- **179+ Tests**: Comprehensive Rust unit tests + Nushell script tests
+- **189+ Tests**: Comprehensive Rust unit tests + Nushell script tests
 - **Functional Unwrap**: Serialization enables proper unwrap operations
 - **Security Validated**: Display/debug remain redacted, all security tests passing
 - **Production Ready**: Memory-safe, secure, and performant with full pipeline support
