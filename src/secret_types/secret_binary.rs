@@ -15,31 +15,27 @@ pub struct SecretBinary {
     inner: OptimizedBinary,
 }
 
-// Custom secure serialization - never serialize actual content
+// Functional serialization - serialize actual content for pipeline operations
 impl Serialize for SecretBinary {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        // Always serialize as redacted content for security
-        let redacted_text =
-            get_configurable_redacted_string("binary", RedactionContext::Serialization);
-        serializer.serialize_str(&redacted_text)
+        // Serialize the actual content to make pipeline operations work
+        let bytes = self.inner.as_bytes();
+        bytes.as_ref().serialize(serializer)
     }
 }
 
-// Custom secure deserialization
+// Functional deserialization - restore actual content for pipeline operations
 impl<'de> Deserialize<'de> for SecretBinary {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        // For security, we can't deserialize actual secrets
-        // This prevents injection attacks via malicious serialized data
-        let _value = Vec::<u8>::deserialize(deserializer)?;
-
-        // Return a safe placeholder - real secrets should be created through proper channels
-        Ok(SecretBinary::new(vec![]))
+        // Deserialize the actual content to make pipeline operations work
+        let content = Vec::<u8>::deserialize(deserializer)?;
+        Ok(SecretBinary::new(content))
     }
 }
 
@@ -308,5 +304,56 @@ mod tests {
         let secret2 = SecretBinary::new(data2);
 
         assert_ne!(secret1, secret2);
+    }
+
+    #[test]
+    fn test_secret_binary_serialization() {
+        // Test that serialization works for functional unwrap
+        let data = vec![0xde, 0xad, 0xbe, 0xef, 0x12, 0x34];
+        let secret = SecretBinary::new(data.clone());
+
+        // Test JSON serialization - should contain array of bytes
+        let json_result = serde_json::to_string(&secret);
+        assert!(json_result.is_ok(), "JSON serialization should work");
+
+        let json = json_result.unwrap();
+        // Should contain the byte values for functional unwrap
+        assert!(json.contains("222"), "JSON should contain byte values"); // 0xde = 222
+        assert!(json.contains("173"), "JSON should contain byte values"); // 0xad = 173
+
+        // Test bincode serialization (used for plugin communication)
+        let bincode_result = bincode::serialize(&secret);
+        assert!(bincode_result.is_ok(), "Bincode serialization should work");
+    }
+
+    #[test]
+    fn test_secret_binary_deserialization() {
+        // Test that deserialization works for functional unwrap
+        let original_data = vec![0xff, 0x00, 0x42, 0xa5];
+        let secret = SecretBinary::new(original_data.clone());
+
+        // Test JSON round-trip
+        let json = serde_json::to_string(&secret).unwrap();
+        let deserialized: Result<SecretBinary, _> = serde_json::from_str(&json);
+        assert!(deserialized.is_ok(), "JSON deserialization should work");
+
+        let restored = deserialized.unwrap();
+        assert_eq!(
+            restored.reveal().as_ref(),
+            &original_data,
+            "Round-trip should preserve data"
+        );
+
+        // Test bincode round-trip
+        let bytes = bincode::serialize(&secret).unwrap();
+        let deserialized: Result<SecretBinary, _> = bincode::deserialize(&bytes);
+        assert!(deserialized.is_ok(), "Bincode deserialization should work");
+
+        let restored = deserialized.unwrap();
+        assert_eq!(
+            restored.reveal().as_ref(),
+            &original_data,
+            "Bincode round-trip should preserve data"
+        );
     }
 }

@@ -14,33 +14,26 @@ pub struct SecretDate {
     inner: chrono::DateTime<chrono::FixedOffset>,
 }
 
-// Custom secure serialization - never serialize actual content
+// Functional serialization - serialize actual content for pipeline operations
 impl Serialize for SecretDate {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        // Always serialize as redacted content for security
-        let redacted_text =
-            get_configurable_redacted_string("date", RedactionContext::Serialization);
-        serializer.serialize_str(&redacted_text)
+        // Serialize the actual content to make pipeline operations work
+        self.inner.serialize(serializer)
     }
 }
 
-// Custom secure deserialization
+// Functional deserialization - restore actual content for pipeline operations
 impl<'de> Deserialize<'de> for SecretDate {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        // For security, we can't deserialize actual secrets
-        // This prevents injection attacks via malicious serialized data
-        let _value = chrono::DateTime::<chrono::FixedOffset>::deserialize(deserializer)?;
-
-        // Return a safe placeholder - real secrets should be created through proper channels
-        use chrono::{TimeZone, Utc};
-        let placeholder = Utc.timestamp_opt(0, 0).unwrap().into();
-        Ok(SecretDate::new(placeholder))
+        // Deserialize the actual content to make pipeline operations work
+        let content = chrono::DateTime::<chrono::FixedOffset>::deserialize(deserializer)?;
+        Ok(SecretDate::new(content))
     }
 }
 
@@ -245,5 +238,60 @@ mod tests {
 
         // This assumes our test datetime is in 2023
         assert_eq!(secret.year(), 2023);
+    }
+
+    #[test]
+    fn test_secret_date_serialization() {
+        // Test that serialization works for functional unwrap
+        let dt = test_datetime();
+        let secret = SecretDate::new(dt);
+
+        // Test JSON serialization
+        let json_result = serde_json::to_string(&secret);
+        assert!(json_result.is_ok(), "JSON serialization should work");
+
+        let json = json_result.unwrap();
+        // Should contain the date/time data for functional unwrap
+        assert!(json.contains("2023"), "JSON should contain year");
+        // Be more flexible with date formatting since format may vary
+        assert!(
+            json.contains("11") || json.contains("04"),
+            "JSON should contain date components"
+        );
+
+        // Test bincode serialization (used for plugin communication)
+        let bincode_result = bincode::serialize(&secret);
+        assert!(bincode_result.is_ok(), "Bincode serialization should work");
+    }
+
+    #[test]
+    fn test_secret_date_deserialization() {
+        // Test that deserialization works for functional unwrap
+        let original_dt = test_datetime();
+        let secret = SecretDate::new(original_dt);
+
+        // Test JSON round-trip
+        let json = serde_json::to_string(&secret).unwrap();
+        let deserialized: Result<SecretDate, _> = serde_json::from_str(&json);
+        assert!(deserialized.is_ok(), "JSON deserialization should work");
+
+        let restored = deserialized.unwrap();
+        assert_eq!(
+            restored.reveal(),
+            &original_dt,
+            "Round-trip should preserve data"
+        );
+
+        // Test bincode round-trip
+        let bytes = bincode::serialize(&secret).unwrap();
+        let deserialized: Result<SecretDate, _> = bincode::deserialize(&bytes);
+        assert!(deserialized.is_ok(), "Bincode deserialization should work");
+
+        let restored = deserialized.unwrap();
+        assert_eq!(
+            restored.reveal(),
+            &original_dt,
+            "Bincode round-trip should preserve data"
+        );
     }
 }

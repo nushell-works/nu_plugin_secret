@@ -1,5 +1,5 @@
 # Rust build artifacts
-/target/
+target/
 
 # Note: Cargo.lock is committed for applications/binaries like plugins
 
