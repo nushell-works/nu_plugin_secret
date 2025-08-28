@@ -52,6 +52,46 @@ pub fn get_configurable_redacted_string(
     }
 }
 
+/// Get configurable redacted string with optional actual value for unredacted mode
+/// This function checks if SHOW_UNREDACTED is enabled and returns actual value if so
+pub fn get_configurable_redacted_string_with_value(
+    type_name: &str,
+    context: crate::config::RedactionContext,
+    actual_value: Option<&str>,
+) -> String {
+    if let Ok(config) = crate::config::get_config() {
+        if config.config().redaction.show_unredacted {
+            if let Some(value) = actual_value {
+                return value.to_string();
+            }
+        }
+        config.get_redaction_text(type_name, context)
+    } else {
+        // Fallback to static string if config not available
+        get_redacted_string(type_name).to_string()
+    }
+}
+
+/// Get configurable redacted string with optional actual value (generic) for unredacted mode
+/// This function checks if SHOW_UNREDACTED is enabled and returns actual value if so
+pub fn get_configurable_redacted_string_with_generic_value<T: std::fmt::Display>(
+    type_name: &str,
+    context: crate::config::RedactionContext,
+    actual_value: Option<&T>,
+) -> String {
+    if let Ok(config) = crate::config::get_config() {
+        if config.config().redaction.show_unredacted {
+            if let Some(value) = actual_value {
+                return value.to_string();
+            }
+        }
+        config.get_redaction_text(type_name, context)
+    } else {
+        // Fallback to static string if config not available
+        get_redacted_string(type_name).to_string()
+    }
+}
+
 /// Memory pool for small allocations
 /// This reduces allocation overhead for small secret values
 pub struct SecretMemoryPool {
@@ -341,5 +381,52 @@ mod tests {
         assert_eq!(stats.string_secrets, 1);
         assert_eq!(stats.binary_secrets, 1);
         assert!(stats.estimated_memory_kb > 0);
+    }
+
+    #[test]
+    fn test_configurable_redacted_string_with_value() {
+        use crate::config::RedactionContext;
+
+        // Test without configuration - should fallback to static strings
+        let result = get_configurable_redacted_string_with_value(
+            "string",
+            RedactionContext::Display,
+            Some("secret_value"),
+        );
+        assert!(result.contains("redacted"));
+
+        // Test with None value - should still return redacted text
+        let result =
+            get_configurable_redacted_string_with_value("string", RedactionContext::Display, None);
+        assert!(result.contains("redacted"));
+    }
+
+    #[test]
+    fn test_configurable_redacted_string_with_generic_value() {
+        use crate::config::RedactionContext;
+
+        // Test with integer
+        let result = get_configurable_redacted_string_with_generic_value(
+            "int",
+            RedactionContext::Display,
+            Some(&42),
+        );
+        assert!(result.contains("redacted"));
+
+        // Test with boolean
+        let result = get_configurable_redacted_string_with_generic_value(
+            "bool",
+            RedactionContext::Display,
+            Some(&true),
+        );
+        assert!(result.contains("redacted"));
+
+        // Test with float
+        let result = get_configurable_redacted_string_with_generic_value(
+            "float",
+            RedactionContext::Display,
+            Some(&2.5),
+        );
+        assert!(result.contains("redacted"));
     }
 }

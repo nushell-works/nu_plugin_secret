@@ -1,5 +1,5 @@
 use crate::config::RedactionContext;
-use crate::memory_optimizations::get_configurable_redacted_string;
+use crate::memory_optimizations::get_configurable_redacted_string_with_generic_value;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -74,8 +74,11 @@ impl CustomValue for SecretInt {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        let redacted_text =
-            get_configurable_redacted_string("int", RedactionContext::Serialization);
+        let redacted_text = get_configurable_redacted_string_with_generic_value(
+            "int",
+            RedactionContext::Serialization,
+            Some(&self.inner),
+        );
         Ok(Value::string(redacted_text, span))
     }
 
@@ -94,14 +97,22 @@ impl CustomValue for SecretInt {
 
 impl fmt::Display for SecretInt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string("int", RedactionContext::Display);
+        let redacted_text = get_configurable_redacted_string_with_generic_value(
+            "int",
+            RedactionContext::Display,
+            Some(&self.inner),
+        );
         write!(f, "{}", redacted_text)
     }
 }
 
 impl fmt::Debug for SecretInt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string("int", RedactionContext::Debug);
+        let redacted_text = get_configurable_redacted_string_with_generic_value(
+            "int",
+            RedactionContext::Debug,
+            Some(&self.inner),
+        );
         write!(f, "SecretInt({})", redacted_text)
     }
 }

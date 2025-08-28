@@ -1,5 +1,5 @@
 use crate::config::RedactionContext;
-use crate::memory_optimizations::get_configurable_redacted_string;
+use crate::memory_optimizations::get_configurable_redacted_string_with_generic_value;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -74,8 +74,11 @@ impl CustomValue for SecretBool {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        let redacted_text =
-            get_configurable_redacted_string("bool", RedactionContext::Serialization);
+        let redacted_text = get_configurable_redacted_string_with_generic_value(
+            "bool",
+            RedactionContext::Serialization,
+            Some(&self.inner),
+        );
         Ok(Value::string(redacted_text, span))
     }
 
@@ -94,14 +97,22 @@ impl CustomValue for SecretBool {
 
 impl fmt::Display for SecretBool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string("bool", RedactionContext::Display);
+        let redacted_text = get_configurable_redacted_string_with_generic_value(
+            "bool",
+            RedactionContext::Display,
+            Some(&self.inner),
+        );
         write!(f, "{}", redacted_text)
     }
 }
 
 impl fmt::Debug for SecretBool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string("bool", RedactionContext::Debug);
+        let redacted_text = get_configurable_redacted_string_with_generic_value(
+            "bool",
+            RedactionContext::Debug,
+            Some(&self.inner),
+        );
         write!(f, "SecretBool({})", redacted_text)
     }
 }
