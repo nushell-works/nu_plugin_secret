@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-08-28
+
+### ✨ Added
+
+#### Environment Variable Support
+- **SHOW_UNREDACTED Variable**: Added `SHOW_UNREDACTED` environment variable support for development and debugging workflows
+- **Flexible Configuration**: Allows temporary override of redaction behavior without code changes
+- **Security-First Design**: Maintains display protection by default while enabling controlled unredaction when needed
+
+#### Development Tooling
+- **Git Workflow Automation**: Added Claude command definitions for streamlined git workflow automation
+- **AI Development Guidelines**: Comprehensive Claude AI development guidelines for maintaining code quality
+- **Enhanced Documentation**: Improved development workflow documentation and best practices
+
+#### Test Infrastructure Improvements
+- **Configuration System**: Complete test configuration system with enhanced Nushell integration
+- **Test Isolation**: Improved test configuration isolation for more reliable testing
+- **Development Testing**: Enhanced testing infrastructure for development scenarios
+
+### 🔧 Enhanced
+
+#### Developer Experience
+- **Workflow Automation**: Streamlined git operations through automated command definitions
+- **Code Quality**: Enhanced linting and code quality guidelines specifically for AI-assisted development
+- **Documentation**: Improved developer onboarding with comprehensive guidelines
+
+#### Testing Framework
+- **Nushell Integration**: Enhanced integration testing with Nushell command pipeline
+- **Configuration Management**: Improved test configuration management and validation
+- **Test Reliability**: More robust test execution and environment handling
+
+### 📚 Documentation
+
+#### Development Guidelines
+- **AI Guidelines**: Specific guidelines for Claude AI development to avoid common pitfalls
+- **Code Quality Standards**: Mathematical constants usage, testing best practices, security guidelines
+- **Workflow Documentation**: Comprehensive git workflow and release process documentation
+
+#### Technical Documentation
+- **Environment Variables**: Complete documentation of `SHOW_UNREDACTED` functionality and use cases
+- **Configuration Guide**: Enhanced configuration system documentation
+- **Testing Guide**: Improved testing procedures and best practices
+
+### 🛡️ Security
+
+#### Controlled Unredaction
+- **Environment-Based Control**: `SHOW_UNREDACTED` provides controlled access to unredacted values
+- **Default Security**: Maintains secure-by-default behavior with opt-in unredaction
+- **Development Safety**: Safe debugging capabilities without compromising production security
+
 ## [0.1.1] - 2025-01-22
 
 ### 🔧 Fixed
@@ -157,5 +207,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: Complete user and developer documentation
 - **Community**: Contributing guidelines and security vulnerability disclosure
 
+[0.2.0]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/nushell-works/nu_plugin_secret/releases/tag/v0.1.0

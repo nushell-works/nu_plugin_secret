@@ -1,6 +1,6 @@
 [package]
 name = "nu_plugin_secret"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 authors = ["John Ky <newhoggy@gmail.com>"]
 description = "Production-grade secret handling plugin for Nushell with secure CustomValue types that prevent accidental exposure of sensitive data"
