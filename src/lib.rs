@@ -1,6 +1,6 @@
 use nu_plugin::{Plugin, PluginCommand};
 
-mod commands;
+pub mod commands;
 pub mod config;
 pub mod memory_optimizations;
 pub mod performance_monitoring;
@@ -30,7 +30,9 @@ impl Plugin for SecretPlugin {
         let _ = config::init_config();
 
         vec![
-            // Core secret wrap commands
+            // Unified wrap command
+            Box::new(SecretWrapCommand),
+            // Core secret wrap commands (kept for backward compatibility)
             Box::new(SecretWrapStringCommand),
             Box::new(SecretWrapIntCommand),
             Box::new(SecretWrapBoolCommand),
@@ -69,11 +71,13 @@ mod tests {
     fn test_plugin_commands() {
         let plugin = SecretPlugin;
         let commands = plugin.commands();
-        assert_eq!(commands.len(), 18);
+        assert_eq!(commands.len(), 19);
 
         // Test all commands to ensure they're registered correctly
         let command_names: Vec<&str> = commands.iter().map(|cmd| cmd.name()).collect();
-        // Core secret wrap commands
+        // Unified wrap command
+        assert!(command_names.contains(&"secret wrap"));
+        // Core secret wrap commands (kept for backward compatibility)
         assert!(command_names.contains(&"secret wrap-string"));
         assert!(command_names.contains(&"secret wrap-int"));
         assert!(command_names.contains(&"secret wrap-bool"));
