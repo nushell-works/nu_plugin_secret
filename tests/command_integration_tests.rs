@@ -464,6 +464,7 @@ mod rand {
     use std::hash::{Hash, Hasher};
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    #[allow(dead_code)]
     pub fn random<T: From<u64>>() -> T {
         let mut hasher = DefaultHasher::new();
         SystemTime::now()
