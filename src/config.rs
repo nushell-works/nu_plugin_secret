@@ -132,6 +132,9 @@ pub struct RedactionConfig {
     pub show_type_info: bool,
     /// Whether to preserve length information in redaction
     pub preserve_length: bool,
+    /// Whether to disable redaction entirely (SHOW_UNREDACTED)
+    #[serde(default)]
+    pub show_unredacted: bool,
     /// Per-type redaction overrides
     #[serde(default)]
     pub per_type: HashMap<String, RedactionStyle>,
@@ -149,6 +152,7 @@ impl Default for RedactionConfig {
             custom_text: None,
             show_type_info: true,
             preserve_length: false,
+            show_unredacted: false,
             per_type: HashMap::new(),
             per_context: HashMap::new(),
             partial: PartialRedactionConfig::default(),
@@ -307,7 +311,7 @@ impl ConfigManager {
     }
 
     /// Apply environment variable overrides
-    fn apply_env_overrides(config: &mut PluginConfig) -> Result<(), ConfigError> {
+    pub fn apply_env_overrides(config: &mut PluginConfig) -> Result<(), ConfigError> {
         // Redaction style override
         if let Ok(style_str) = std::env::var("NU_PLUGIN_SECRET_REDACTION_STYLE") {
             config.redaction.style = match style_str.as_str() {
@@ -350,6 +354,19 @@ impl ConfigManager {
             config.security.allow_partial_redaction = allow_partial.parse().map_err(|_| {
                 ConfigError::Environment("Invalid boolean for ALLOW_PARTIAL_REDACTION".to_string())
             })?;
+        }
+
+        // Show unredacted override
+        if let Ok(show_unredacted) = std::env::var("SHOW_UNREDACTED") {
+            config.redaction.show_unredacted = match show_unredacted.as_str() {
+                "1" | "true" | "True" | "TRUE" => true,
+                "0" | "false" | "False" | "FALSE" => false,
+                _ => {
+                    return Err(ConfigError::Environment(
+                        "Invalid value for SHOW_UNREDACTED (use 1/true or 0/false)".to_string(),
+                    ))
+                }
+            };
         }
 
         Ok(())
@@ -864,5 +881,51 @@ mod tests {
         let result = ConfigManager::validate_config(&config);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("too long"));
+    }
+
+    #[test]
+    fn test_show_unredacted_env_var() {
+        use std::env;
+
+        // Test valid values for SHOW_UNREDACTED
+        let test_cases = vec![
+            ("1", true),
+            ("true", true),
+            ("True", true),
+            ("TRUE", true),
+            ("0", false),
+            ("false", false),
+            ("False", false),
+            ("FALSE", false),
+        ];
+
+        for (env_value, expected) in test_cases {
+            env::set_var("SHOW_UNREDACTED", env_value);
+
+            let mut config = PluginConfig::default();
+            let result = ConfigManager::apply_env_overrides(&mut config);
+
+            assert!(result.is_ok(), "Failed for value: {}", env_value);
+            assert_eq!(
+                config.redaction.show_unredacted, expected,
+                "Failed for value: {}",
+                env_value
+            );
+        }
+
+        // Test invalid value
+        env::set_var("SHOW_UNREDACTED", "invalid");
+        let mut config = PluginConfig::default();
+        let result = ConfigManager::apply_env_overrides(&mut config);
+        assert!(result.is_err());
+
+        // Clean up
+        env::remove_var("SHOW_UNREDACTED");
+    }
+
+    #[test]
+    fn test_show_unredacted_default_value() {
+        let config = PluginConfig::default();
+        assert!(!config.redaction.show_unredacted);
     }
 }
