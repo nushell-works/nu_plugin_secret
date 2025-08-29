@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-08-29
+
+### ✨ Added
+
+#### New Commands
+- **`secret length`**: Added length command for determining the size of secret strings, lists, and binary data
+- **`secret contains`**: Added contains command for secure value comparison operations
+- **`secret wrap`**: Added unified wrap command with automatic type detection for streamlined secret creation
+
+#### Enhanced Features
+- **Equality Operators**: Added comprehensive equality operator support across all secret types with constant-time comparison
+- **Type Detection**: Automatic type detection in the unified wrap command for improved user experience
+- **Comprehensive Testing**: Added extensive test coverage for new commands and equality operations
+
+#### Development Tools
+- **Pre-commit Hooks**: Added automated pre-commit hook for code quality checks including rustfmt and clippy validation
+- **Code Quality**: Enhanced development workflow with automated code formatting and linting enforcement
+
+### 🔧 Enhanced
+
+#### Security Features
+- **Constant-Time Comparisons**: All equality operations use constant-time algorithms to prevent timing attacks
+- **Secure Value Comparison**: Contains command performs secure comparisons without exposing secret content
+- **Memory Safety**: All new commands maintain secure memory handling with automatic zeroing
+
+#### Developer Experience
+- **Unified Interface**: Single `secret wrap` command reduces cognitive load and simplifies secret creation
+- **Improved Ergonomics**: Length and contains commands provide intuitive operations on secret data
+- **Quality Assurance**: Pre-commit hooks ensure consistent code quality and prevent common issues
+
+### 🛡️ Security
+
+#### Enhanced Protection
+- **Side-Channel Resistance**: New comparison operations are resistant to timing-based side-channel attacks
+- **Memory Protection**: All new functionality maintains secure memory cleanup and zeroing
+- **Constant-Time Operations**: Length calculations and comparisons use constant-time algorithms where applicable
+
+#### Secure Operations
+- **Safe Comparisons**: Contains operations never expose the actual secret values during comparison
+- **Protected Metadata**: Length operations provide size information without exposing content
+- **Type Safety**: Unified wrap command maintains strict type safety during automatic detection
+
 ## [0.2.0] - 2025-08-28
 
 ### ✨ Added
@@ -207,6 +249,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: Complete user and developer documentation
 - **Community**: Contributing guidelines and security vulnerability disclosure
 
+[0.3.0]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/nushell-works/nu_plugin_secret/releases/tag/v0.1.0
