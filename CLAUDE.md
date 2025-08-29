@@ -17,10 +17,12 @@ This document contains specific guidelines for Claude when working on this codeb
 - For non-mathematical test values, use clear, descriptive values like `42` or `"test_value"`
 - Avoid magic numbers that could trigger clippy warnings
 
-### Linting
+### Linting and Formatting
 - Always run `cargo clippy --all-targets --all-features -- -D warnings` before completing tasks
-- Fix all clippy warnings, especially `approx_constant` warnings
+- Fix all clippy warnings, especially `approx_constant` warnings  
 - Add `#[allow(dead_code)]` for genuinely unused helper functions in tests
+- Run `cargo fmt` to ensure consistent code formatting
+- The project has a pre-commit hook that automatically runs `cargo fmt --check` and `cargo clippy`
 
 ## Project-Specific Guidelines
 
@@ -35,9 +37,18 @@ This document contains specific guidelines for Claude when working on this codeb
 - Use Miri-compatible code where possible (avoid system time in tests under Miri)
 
 ### Commands
-To run linting and fix common issues:
+To run linting, formatting, and testing:
 ```bash
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test
+cargo fmt                                                    # Format code
+cargo clippy --all-targets --all-features -- -D warnings    # Check for warnings
+cargo test                                                   # Run tests
 cargo +nightly miri test  # with MIRIFLAGS=-Zmiri-disable-isolation if needed
 ```
+
+### Pre-commit Hook
+The project includes a pre-commit hook at `.git/hooks/pre-commit` that automatically:
+- Runs `cargo fmt --check` to ensure code is formatted
+- Runs `cargo clippy --all-targets --all-features -- -D warnings` to check for warnings
+- Prevents commits if either check fails
+
+To bypass the hook in emergency situations, use `git commit --no-verify`, but this should be avoided.
