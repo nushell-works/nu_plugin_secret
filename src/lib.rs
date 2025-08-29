@@ -44,6 +44,7 @@ impl Plugin for SecretPlugin {
             // Utility commands
             Box::new(SecretUnwrapCommand),
             Box::new(SecretContainsCommand),
+            Box::new(SecretHashCommand),
             Box::new(SecretLengthCommand),
             Box::new(SecretInfoCommand),
             Box::new(SecretValidateCommand),
@@ -73,7 +74,7 @@ mod tests {
     fn test_plugin_commands() {
         let plugin = SecretPlugin;
         let commands = plugin.commands();
-        assert_eq!(commands.len(), 21);
+        assert_eq!(commands.len(), 22);
 
         // Test all commands to ensure they're registered correctly
         let command_names: Vec<&str> = commands.iter().map(|cmd| cmd.name()).collect();
@@ -91,6 +92,7 @@ mod tests {
         // Utility commands
         assert!(command_names.contains(&"secret unwrap"));
         assert!(command_names.contains(&"secret contains"));
+        assert!(command_names.contains(&"secret hash"));
         assert!(command_names.contains(&"secret info"));
         assert!(command_names.contains(&"secret validate"));
         assert!(command_names.contains(&"secret type-of"));
