@@ -1,5 +1,6 @@
 use crate::config::RedactionContext;
 use crate::memory_optimizations::get_configurable_redacted_string;
+use nu_protocol::ast::{Comparison, Operator};
 use nu_protocol::{CustomValue, Record};
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -101,6 +102,54 @@ impl CustomValue for SecretRecord {
     fn notify_plugin_on_drop(&self) -> bool {
         false // We handle cleanup via ZeroizeOnDrop
     }
+
+    fn operation(
+        &self,
+        lhs_span: Span,
+        operator: Operator,
+        op: Span,
+        right: &Value,
+    ) -> Result<Value, ShellError> {
+        match operator {
+            Operator::Comparison(Comparison::Equal) => {
+                if let Value::Custom { val, .. } = right {
+                    if let Some(other_secret) = val.as_any().downcast_ref::<SecretRecord>() {
+                        // Use our existing PartialEq implementation for comparison
+                        let result = self == other_secret;
+                        Ok(Value::bool(result, lhs_span))
+                    } else {
+                        // Different custom type, so not equal
+                        Ok(Value::bool(false, lhs_span))
+                    }
+                } else {
+                    // Comparing with non-custom value, so not equal
+                    Ok(Value::bool(false, lhs_span))
+                }
+            }
+            Operator::Comparison(Comparison::NotEqual) => {
+                if let Value::Custom { val, .. } = right {
+                    if let Some(other_secret) = val.as_any().downcast_ref::<SecretRecord>() {
+                        // Use our existing PartialEq implementation for comparison
+                        let result = self != other_secret;
+                        Ok(Value::bool(result, lhs_span))
+                    } else {
+                        // Different custom type, so not equal (therefore not-equal is true)
+                        Ok(Value::bool(true, lhs_span))
+                    }
+                } else {
+                    // Comparing with non-custom value, so not equal (therefore not-equal is true)
+                    Ok(Value::bool(true, lhs_span))
+                }
+            }
+            _ => Err(ShellError::GenericError {
+                error: format!("Operator {:?} is not supported for secret_record", operator),
+                msg: "".to_string(),
+                span: Some(op),
+                help: None,
+                inner: vec![],
+            }),
+        }
+    }
 }
 
 impl fmt::Display for SecretRecord {
@@ -119,20 +168,26 @@ impl fmt::Debug for SecretRecord {
 
 impl PartialEq for SecretRecord {
     fn eq(&self, other: &Self) -> bool {
-        // Compare records by serializing and using constant-time comparison
-        // This is a simplified approach - in production, we might want more sophisticated comparison
-        let self_ser = bincode::serialize(&self.inner).unwrap_or_default();
-        let other_ser = bincode::serialize(&other.inner).unwrap_or_default();
-
-        if self_ser.len() != other_ser.len() {
+        // Compare records field by field for proper logical equality
+        if self.inner.len() != other.inner.len() {
             return false;
         }
 
-        let mut result = 0u8;
-        for i in 0..self_ser.len() {
-            result |= self_ser[i] ^ other_ser[i];
+        // Check that all fields in self exist in other and have equal values
+        for (key, self_value) in self.inner.iter() {
+            match other.inner.get(key) {
+                Some(other_value) => {
+                    if self_value != other_value {
+                        return false;
+                    }
+                }
+                None => return false,
+            }
         }
-        result == 0
+
+        // Since we already checked lengths are equal and all fields in self
+        // exist in other with equal values, the records are equal
+        true
     }
 }
 
@@ -290,5 +345,267 @@ mod tests {
             original_record.get("active").unwrap(),
             "Bincode active field should match"
         );
+    }
+
+    #[test]
+    fn test_secret_record_into_inner() {
+        let mut record = Record::new();
+        record.push("key1", Value::test_string("value1"));
+        record.push("key2", Value::test_int(42));
+        let secret = SecretRecord::new(record.clone());
+
+        let inner = secret.into_inner();
+        assert_eq!(inner.get("key1").unwrap(), record.get("key1").unwrap());
+        assert_eq!(inner.get("key2").unwrap(), record.get("key2").unwrap());
+        assert_eq!(inner.len(), 2);
+    }
+
+    #[test]
+    fn test_secret_record_reveal() {
+        let mut record = Record::new();
+        record.push("api_token", Value::test_string("secret123"));
+        let secret = SecretRecord::new(record.clone());
+
+        let revealed = secret.reveal();
+        assert_eq!(
+            revealed.get("api_token").unwrap(),
+            record.get("api_token").unwrap()
+        );
+        assert_eq!(revealed.len(), 1);
+    }
+
+    #[test]
+    fn test_secret_record_clone_value() {
+        let mut record = Record::new();
+        record.push("data", Value::test_string("sensitive"));
+        let secret = SecretRecord::new(record);
+
+        let cloned_value = secret.clone_value(Span::test_data());
+        assert!(matches!(cloned_value, Value::Custom { .. }));
+
+        if let Value::Custom { val, .. } = cloned_value {
+            let cloned_secret = val.as_any().downcast_ref::<SecretRecord>().unwrap();
+            assert_eq!(cloned_secret.get_field("data"), secret.get_field("data"));
+        }
+    }
+
+    #[test]
+    fn test_secret_record_as_any_methods() {
+        let mut record = Record::new();
+        record.push("test", Value::test_string("value"));
+        let mut secret = SecretRecord::new(record);
+
+        // Test as_any
+        let any_ref = secret.as_any();
+        assert!(any_ref.downcast_ref::<SecretRecord>().is_some());
+
+        // Test as_mut_any
+        let any_mut_ref = secret.as_mut_any();
+        assert!(any_mut_ref.downcast_mut::<SecretRecord>().is_some());
+    }
+
+    #[test]
+    fn test_secret_record_notify_plugin_on_drop() {
+        let record = Record::new();
+        let secret = SecretRecord::new(record);
+
+        assert!(!secret.notify_plugin_on_drop());
+    }
+
+    #[test]
+    fn test_secret_record_operation_not_equal() {
+        let mut record1 = Record::new();
+        record1.push("key", Value::test_string("value1"));
+        let secret1 = SecretRecord::new(record1.clone());
+
+        let mut record2 = Record::new();
+        record2.push("key", Value::test_string("value2"));
+        let secret2 = SecretRecord::new(record2);
+
+        // Test not equal with different SecretRecord
+        let right_value = Value::custom(Box::new(secret2.clone()), Span::test_data());
+        let result = secret1
+            .operation(
+                Span::test_data(),
+                Operator::Comparison(Comparison::NotEqual),
+                Span::test_data(),
+                &right_value,
+            )
+            .unwrap();
+
+        assert!(matches!(result, Value::Bool { val: true, .. }));
+
+        // Test not equal with same SecretRecord
+        let same_secret = SecretRecord::new(record1.clone());
+        let right_value = Value::custom(Box::new(same_secret), Span::test_data());
+        let result = secret1
+            .operation(
+                Span::test_data(),
+                Operator::Comparison(Comparison::NotEqual),
+                Span::test_data(),
+                &right_value,
+            )
+            .unwrap();
+
+        assert!(matches!(result, Value::Bool { val: false, .. }));
+    }
+
+    #[test]
+    fn test_secret_record_operation_not_equal_non_custom() {
+        let mut record = Record::new();
+        record.push("key", Value::test_string("value"));
+        let secret = SecretRecord::new(record);
+
+        // Test not equal with non-custom value
+        let right_value = Value::test_string("not a secret");
+        let result = secret
+            .operation(
+                Span::test_data(),
+                Operator::Comparison(Comparison::NotEqual),
+                Span::test_data(),
+                &right_value,
+            )
+            .unwrap();
+
+        assert!(matches!(result, Value::Bool { val: true, .. }));
+    }
+
+    #[test]
+    fn test_secret_record_operation_equal_non_custom() {
+        let mut record = Record::new();
+        record.push("key", Value::test_string("value"));
+        let secret = SecretRecord::new(record);
+
+        // Test equal with non-custom value
+        let right_value = Value::test_string("not a secret");
+        let result = secret
+            .operation(
+                Span::test_data(),
+                Operator::Comparison(Comparison::Equal),
+                Span::test_data(),
+                &right_value,
+            )
+            .unwrap();
+
+        assert!(matches!(result, Value::Bool { val: false, .. }));
+    }
+
+    #[test]
+    fn test_secret_record_operation_unsupported() {
+        let mut record = Record::new();
+        record.push("key", Value::test_string("value"));
+        let secret = SecretRecord::new(record);
+
+        let right_value = Value::test_int(42);
+        let result = secret.operation(
+            Span::test_data(),
+            Operator::Math(nu_protocol::ast::Math::Add),
+            Span::test_data(),
+            &right_value,
+        );
+
+        assert!(result.is_err());
+        if let Err(ShellError::GenericError { error, .. }) = result {
+            assert!(error.contains("not supported"));
+        }
+    }
+
+    #[test]
+    fn test_secret_record_equality_edge_cases() {
+        // Test empty records
+        let empty1 = SecretRecord::new(Record::new());
+        let empty2 = SecretRecord::new(Record::new());
+        assert_eq!(empty1, empty2);
+
+        // Test different field orders (should still be equal)
+        let mut record1 = Record::new();
+        record1.push("a", Value::test_string("value1"));
+        record1.push("b", Value::test_string("value2"));
+
+        let mut record2 = Record::new();
+        record2.push("b", Value::test_string("value2"));
+        record2.push("a", Value::test_string("value1"));
+
+        let secret1 = SecretRecord::new(record1);
+        let secret2 = SecretRecord::new(record2);
+        assert_eq!(secret1, secret2);
+
+        // Test different lengths
+        let mut record3 = Record::new();
+        record3.push("a", Value::test_string("value1"));
+
+        let secret3 = SecretRecord::new(record3);
+        assert_ne!(secret1, secret3);
+
+        // Test same keys, different values
+        let mut record4 = Record::new();
+        record4.push("a", Value::test_string("different"));
+        record4.push("b", Value::test_string("value2"));
+
+        let secret4 = SecretRecord::new(record4);
+        assert_ne!(secret1, secret4);
+    }
+
+    #[test]
+    fn test_secret_record_get_field_missing() {
+        let mut record = Record::new();
+        record.push("existing", Value::test_string("value"));
+        let secret = SecretRecord::new(record);
+
+        assert!(secret.get_field("existing").is_some());
+        assert!(secret.get_field("missing").is_none());
+    }
+
+    #[test]
+    fn test_secret_record_empty_serialization() {
+        let empty_record = Record::new();
+        let secret = SecretRecord::new(empty_record);
+
+        // Test JSON serialization of empty record
+        let json_result = serde_json::to_string(&secret);
+        assert!(json_result.is_ok());
+        let json = json_result.unwrap();
+        assert_eq!(json, "{}");
+
+        // Test deserialization of empty record
+        let deserialized: Result<SecretRecord, _> = serde_json::from_str(&json);
+        assert!(deserialized.is_ok());
+        let restored = deserialized.unwrap();
+        assert_eq!(restored.fields().count(), 0);
+    }
+
+    #[test]
+    fn test_secret_record_complex_nested_values() {
+        let mut inner_record = Record::new();
+        inner_record.push("nested", Value::test_string("deep"));
+
+        let mut record = Record::new();
+        record.push("simple", Value::test_string("value"));
+        record.push("number", Value::test_int(123));
+        record.push("boolean", Value::test_bool(true));
+        record.push(
+            "list",
+            Value::test_list(vec![Value::test_string("item1"), Value::test_int(456)]),
+        );
+        record.push("record", Value::test_record(inner_record));
+
+        let secret = SecretRecord::new(record.clone());
+
+        // Test serialization with complex nested values
+        let json_result = serde_json::to_string(&secret);
+        assert!(json_result.is_ok());
+
+        // Test deserialization with complex nested values
+        let json = json_result.unwrap();
+        let deserialized: Result<SecretRecord, _> = serde_json::from_str(&json);
+        assert!(deserialized.is_ok());
+
+        let restored = deserialized.unwrap();
+        assert_eq!(restored.fields().count(), 5);
+        assert!(restored.get_field("simple").is_some());
+        assert!(restored.get_field("number").is_some());
+        assert!(restored.get_field("boolean").is_some());
+        assert!(restored.get_field("list").is_some());
+        assert!(restored.get_field("record").is_some());
     }
 }
