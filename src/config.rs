@@ -35,8 +35,7 @@ pub enum ConfigError {
 }
 
 /// Redaction styles available for secret display
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RedactionStyle {
     /// Default: `<redacted:type>`
     TypedBrackets,
@@ -48,6 +47,49 @@ pub enum RedactionStyle {
     Brackets,
     /// Custom user-defined text
     Custom(String),
+}
+
+// Custom serde implementation to handle TOML format compatibility
+impl<'de> serde::Deserialize<'de> for RedactionStyle {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "typed_brackets" => Ok(RedactionStyle::TypedBrackets),
+            "simple" => Ok(RedactionStyle::Simple),
+            "asterisks" => Ok(RedactionStyle::Asterisks),
+            "brackets" => Ok(RedactionStyle::Brackets),
+            "custom" => Ok(RedactionStyle::Custom(String::new())), // Will be filled from custom_text
+            _ => Err(serde::de::Error::unknown_variant(
+                &s,
+                &[
+                    "typed_brackets",
+                    "simple",
+                    "asterisks",
+                    "brackets",
+                    "custom",
+                ],
+            )),
+        }
+    }
+}
+
+impl serde::Serialize for RedactionStyle {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let s = match self {
+            RedactionStyle::TypedBrackets => "typed_brackets",
+            RedactionStyle::Simple => "simple",
+            RedactionStyle::Asterisks => "asterisks",
+            RedactionStyle::Brackets => "brackets",
+            RedactionStyle::Custom(_) => "custom",
+        };
+        serializer.serialize_str(s)
+    }
 }
 
 impl Default for RedactionStyle {
@@ -92,18 +134,25 @@ impl Default for SecurityLevel {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PartialRedactionConfig {
     /// Whether partial redaction is enabled
+    #[serde(default)]
     pub enabled: bool,
     /// Number of characters to show from the beginning
+    #[serde(default = "default_show_first")]
     pub show_first: usize,
     /// Number of characters to show from the end
+    #[serde(default = "default_show_last")]
     pub show_last: usize,
     /// Minimum length required for partial redaction
+    #[serde(default = "default_min_length")]
     pub min_length: usize,
     /// Maximum length to show (security limit)
+    #[serde(default = "default_max_reveal")]
     pub max_reveal: usize,
     /// Use salted hash instead of actual characters
+    #[serde(default)]
     pub use_hash: bool,
     /// Salt for hash-based partial redaction (base64 encoded)
+    #[serde(default = "default_hash_salt")]
     pub hash_salt: String,
 }
 
@@ -125,12 +174,16 @@ impl Default for PartialRedactionConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RedactionConfig {
     /// Global redaction style
+    #[serde(default)]
     pub style: RedactionStyle,
     /// Custom redaction text (when style is Custom)
+    #[serde(default)]
     pub custom_text: Option<String>,
     /// Whether to show type information
+    #[serde(default = "default_true")]
     pub show_type_info: bool,
     /// Whether to preserve length information in redaction
+    #[serde(default)]
     pub preserve_length: bool,
     /// Whether to disable redaction entirely (SHOW_UNREDACTED)
     #[serde(default)]
@@ -142,7 +195,19 @@ pub struct RedactionConfig {
     #[serde(default)]
     pub per_context: HashMap<RedactionContext, RedactionStyle>,
     /// Partial redaction configuration
+    #[serde(default)]
     pub partial: PartialRedactionConfig,
+}
+
+impl RedactionConfig {
+    /// Post-deserialization method to merge custom_text into Custom variant
+    pub fn post_deserialize(&mut self) {
+        if matches!(self.style, RedactionStyle::Custom(_)) {
+            if let Some(ref custom_text) = self.custom_text {
+                self.style = RedactionStyle::Custom(custom_text.clone());
+            }
+        }
+    }
 }
 
 impl Default for RedactionConfig {
@@ -164,14 +229,19 @@ impl Default for RedactionConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SecurityConfig {
     /// Security level for validation
+    #[serde(default)]
     pub level: SecurityLevel,
     /// Whether to audit configuration changes
+    #[serde(default = "default_true")]
     pub audit_config_changes: bool,
     /// Maximum custom redaction text length
+    #[serde(default = "default_max_custom_text_length")]
     pub max_custom_text_length: usize,
     /// Allow partial redaction (can reveal information)
+    #[serde(default)]
     pub allow_partial_redaction: bool,
     /// Minimum secret length to allow partial redaction
+    #[serde(default = "default_min_partial_redaction_length")]
     pub min_partial_redaction_length: usize,
 }
 
@@ -191,8 +261,10 @@ impl Default for SecurityConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PluginConfig {
     /// Redaction configuration
+    #[serde(default)]
     pub redaction: RedactionConfig,
     /// Security configuration
+    #[serde(default)]
     pub security: SecurityConfig,
     /// Configuration file version (for migration)
     #[serde(default = "default_config_version")]
@@ -201,6 +273,39 @@ pub struct PluginConfig {
 
 fn default_config_version() -> String {
     "1.0".to_string()
+}
+
+// Helper functions for default values
+fn default_show_first() -> usize {
+    4
+}
+fn default_show_last() -> usize {
+    4
+}
+fn default_min_length() -> usize {
+    12
+}
+fn default_max_reveal() -> usize {
+    8
+}
+fn default_hash_salt() -> String {
+    "nu_plugin_secret_default_salt".to_string()
+}
+fn default_true() -> bool {
+    true
+}
+fn default_max_custom_text_length() -> usize {
+    50
+}
+fn default_min_partial_redaction_length() -> usize {
+    16
+}
+
+impl PluginConfig {
+    /// Post-deserialization method to apply fixups
+    pub fn post_deserialize(&mut self) {
+        self.redaction.post_deserialize();
+    }
 }
 
 impl Default for PluginConfig {
@@ -238,6 +343,7 @@ impl ConfigManager {
             if path.exists() {
                 let content = std::fs::read_to_string(path)?;
                 config = toml::from_str(&content)?;
+                config.post_deserialize();
             }
         }
 
@@ -287,7 +393,8 @@ impl ConfigManager {
         }
 
         let content = std::fs::read_to_string(path)?;
-        let config: PluginConfig = toml::from_str(&content)?;
+        let mut config: PluginConfig = toml::from_str(&content)?;
+        config.post_deserialize();
 
         // Validate the loaded configuration
         Self::validate_config(&config)?;
@@ -927,5 +1034,248 @@ mod tests {
     fn test_show_unredacted_default_value() {
         let config = PluginConfig::default();
         assert!(!config.redaction.show_unredacted);
+    }
+
+    // Phase 1 Schema Compatibility Tests for Issue #10
+
+    #[test]
+    fn test_config_schema_compatibility() {
+        // Test minimal config (Issue #10)
+        let minimal_toml = r#"
+version = "1.0"
+[redaction]
+style = "typed_brackets"
+[redaction.partial]
+enabled = false
+[security]
+level = "standard"
+"#;
+
+        let mut config: PluginConfig =
+            toml::from_str(minimal_toml).expect("Should parse minimal config");
+        config.post_deserialize();
+        assert_eq!(config.redaction.style, RedactionStyle::TypedBrackets);
+        assert!(!config.redaction.partial.enabled);
+        ConfigManager::validate_config(&config).expect("Should validate minimal config");
+    }
+
+    #[test]
+    fn test_custom_style_compatibility() {
+        // Test custom style with separate custom_text field
+        let custom_toml = r#"
+version = "1.0"
+[redaction]
+style = "custom"
+custom_text = "[SECRET_DATA]"
+[redaction.partial]
+enabled = false  
+[security]
+level = "standard"
+"#;
+
+        let mut config: PluginConfig =
+            toml::from_str(custom_toml).expect("Should parse custom config");
+        config.post_deserialize();
+
+        match config.redaction.style {
+            RedactionStyle::Custom(text) => assert_eq!(text, "[SECRET_DATA]"),
+            _ => panic!("Expected Custom variant"),
+        }
+    }
+
+    #[test]
+    fn test_partial_redaction_defaults() {
+        // Test that partial redaction fields have proper defaults when not specified
+        let partial_minimal_toml = r#"
+version = "1.0"
+[redaction]
+style = "simple"
+[redaction.partial]
+enabled = true
+[security]
+level = "minimal"
+"#;
+
+        let mut config: PluginConfig =
+            toml::from_str(partial_minimal_toml).expect("Should parse partial minimal config");
+        config.post_deserialize();
+
+        assert!(config.redaction.partial.enabled);
+        assert_eq!(config.redaction.partial.show_first, 4); // default value
+        assert_eq!(config.redaction.partial.show_last, 4); // default value
+        assert_eq!(config.redaction.partial.min_length, 12); // default value
+        assert_eq!(config.redaction.partial.max_reveal, 8); // default value
+        assert!(!config.redaction.partial.use_hash); // default value
+    }
+
+    #[test]
+    fn test_security_config_defaults() {
+        // Test that security config fields have proper defaults when not specified
+        let security_minimal_toml = r#"
+version = "1.0"
+[redaction]
+style = "simple"
+[security]
+level = "paranoid"
+"#;
+
+        let mut config: PluginConfig =
+            toml::from_str(security_minimal_toml).expect("Should parse security minimal config");
+        config.post_deserialize();
+
+        assert_eq!(config.security.level, SecurityLevel::Paranoid);
+        assert!(config.security.audit_config_changes); // default true
+        assert_eq!(config.security.max_custom_text_length, 50); // default value
+        assert!(!config.security.allow_partial_redaction); // default false
+        assert_eq!(config.security.min_partial_redaction_length, 16); // default value
+    }
+
+    #[test]
+    #[cfg(not(miri))]
+    fn test_existing_config_files() {
+        // Test all existing test configuration files parse correctly now
+        // Note: This test is disabled under Miri because it requires filesystem access
+        let config_files = [
+            "tests/configurations/nushell/plugins/secret/custom.toml",
+            "tests/configurations/nushell/plugins/secret/minimal.toml",
+            "tests/configurations/nushell/plugins/secret/paranoid.toml",
+            "tests/configurations/nushell/plugins/secret/default.toml",
+            "tests/configurations/nushell/plugins/secret/simple.toml",
+            "tests/configurations/nushell/plugins/secret/asterisks.toml",
+            "tests/configurations/nushell/plugins/secret/brackets.toml",
+        ];
+
+        for file_path in &config_files {
+            if let Ok(content) = std::fs::read_to_string(file_path) {
+                let mut config: PluginConfig = toml::from_str(&content)
+                    .unwrap_or_else(|_| panic!("Should parse {}", file_path));
+                config.post_deserialize();
+                ConfigManager::validate_config(&config)
+                    .unwrap_or_else(|_| panic!("Should validate {}", file_path));
+            }
+        }
+    }
+
+    #[test]
+    fn test_backward_compatibility() {
+        // Test configs that might exist in user environments
+        let legacy_configs = vec![
+            // Minimal legacy config
+            (
+                "minimal_legacy",
+                r#"
+version = "1.0"
+[redaction]
+style = "simple"
+"#,
+            ),
+            // Partial config without all fields
+            (
+                "partial_legacy",
+                r#"
+version = "1.0"  
+[redaction]
+style = "typed_brackets"
+[redaction.partial]
+enabled = true
+min_length = 16
+[security]
+level = "minimal"
+allow_partial_redaction = true
+min_partial_redaction_length = 16
+"#,
+            ),
+            // Only security level specified
+            (
+                "security_only",
+                r#"
+version = "1.0"
+[security]
+level = "minimal"
+"#,
+            ),
+        ];
+
+        for (name, toml_content) in legacy_configs {
+            let mut config: PluginConfig = toml::from_str(toml_content)
+                .unwrap_or_else(|_| panic!("Legacy config {} should parse", name));
+            config.post_deserialize();
+            ConfigManager::validate_config(&config)
+                .unwrap_or_else(|_| panic!("Legacy config {} should validate", name));
+        }
+    }
+
+    #[test]
+    fn test_redaction_style_serialization() {
+        // Test that all redaction styles serialize/deserialize correctly within a config context
+        let test_cases = vec![
+            (RedactionStyle::TypedBrackets, "typed_brackets"),
+            (RedactionStyle::Simple, "simple"),
+            (RedactionStyle::Asterisks, "asterisks"),
+            (RedactionStyle::Brackets, "brackets"),
+        ];
+
+        for (style, expected_str) in test_cases {
+            // Create a minimal config with the style
+            let mut config = PluginConfig::default();
+            config.redaction.style = style.clone();
+
+            // Test serialization
+            let serialized = toml::to_string(&config).expect("Should serialize config");
+            assert!(
+                serialized.contains(expected_str),
+                "Serialized config should contain {}",
+                expected_str
+            );
+
+            // Test deserialization
+            let deserialized: PluginConfig =
+                toml::from_str(&serialized).expect("Should deserialize config");
+            match (&style, &deserialized.redaction.style) {
+                (RedactionStyle::TypedBrackets, RedactionStyle::TypedBrackets) => {}
+                (RedactionStyle::Simple, RedactionStyle::Simple) => {}
+                (RedactionStyle::Asterisks, RedactionStyle::Asterisks) => {}
+                (RedactionStyle::Brackets, RedactionStyle::Brackets) => {}
+                _ => panic!("Mismatched deserialization for {}", expected_str),
+            }
+        }
+
+        // Test custom style separately
+        let custom_config_toml = r#"
+version = "1.0"
+[redaction]
+style = "custom"
+custom_text = "test_custom_text"
+"#;
+
+        let mut config: PluginConfig =
+            toml::from_str(custom_config_toml).expect("Should parse custom config");
+        config.post_deserialize();
+
+        match config.redaction.style {
+            RedactionStyle::Custom(text) => assert_eq!(text, "test_custom_text"),
+            _ => panic!("Expected Custom variant"),
+        }
+    }
+
+    #[test]
+    fn test_empty_config_sections() {
+        // Test that empty sections get proper defaults
+        let empty_sections_toml = r#"
+version = "1.0"
+"#;
+
+        let mut config: PluginConfig =
+            toml::from_str(empty_sections_toml).expect("Should parse config with empty sections");
+        config.post_deserialize();
+
+        // Should have all defaults
+        assert_eq!(config.redaction.style, RedactionStyle::TypedBrackets);
+        assert!(config.redaction.show_type_info);
+        assert!(!config.redaction.partial.enabled);
+        assert_eq!(config.security.level, SecurityLevel::Standard);
+        assert!(config.security.audit_config_changes);
+
+        ConfigManager::validate_config(&config).expect("Should validate empty sections config");
     }
 }
