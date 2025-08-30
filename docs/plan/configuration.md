@@ -592,3 +592,429 @@ This implementation follows Nushell best practices by:
 - ✅ Cross-platform path handling verified
 - ✅ Error handling for missing configurations implemented
 - ✅ Integration with Nushell's native configuration system confirmed
+
+---
+
+## 🚨 **CRITICAL ISSUE IDENTIFIED: Issue #10 Configuration Schema Mismatch**
+
+### Problem Summary
+
+**Status**: **CRITICAL - Configuration System Broken**  
+**GitHub Issue**: [#10](https://github.com/nushell-works/nu_plugin_secret/issues/10)  
+**Impact**: ALL test configuration files fail to parse, plugin falls back to hardcoded defaults
+
+### Investigation Results
+
+After comprehensive analysis, the configuration system has **fundamental schema incompatibilities**:
+
+#### 1. **Missing `#[serde(default)]` Annotations**
+```rust
+// BROKEN: Requires ALL fields even when disabled
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PartialRedactionConfig {
+    pub enabled: bool,
+    pub show_first: usize,    // ❌ Required even when enabled = false
+    pub show_last: usize,     // ❌ Required even when enabled = false
+    pub min_length: usize,    // ❌ Required even when enabled = false
+    // ... other fields
+}
+```
+
+#### 2. **Enum Serialization Format Mismatch** 
+```toml
+# TOML files use (BROKEN):
+style = "custom"
+custom_text = "[SECRET_DATA]"
+
+# But enum expects (newtype variant):
+style = { custom = "text" }
+```
+
+#### 3. **Schema Evolution Issues**
+Required fields like `audit_config_changes` added but existing TOML files not updated.
+
+### Test Results Confirming Failure
+
+```
+❌ partial-char.toml: missing field `show_first`
+❌ custom.toml: invalid type: unit variant, expected newtype variant  
+❌ minimal.toml: missing field `show_first`
+❌ paranoid.toml: missing field `audit_config_changes`
+✅ config.example.toml: parsing succeeded (only complete file works)
+```
+
+### **IMPLEMENTATION PLAN: Critical Fix Required**
+
+#### Phase 1: Schema Compatibility Fixes (CRITICAL - Week 1)
+
+**1.1 Fix Serde Default Annotations**
+```rust
+// File: src/config.rs
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PartialRedactionConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_show_first")]
+    pub show_first: usize,
+    #[serde(default = "default_show_last")] 
+    pub show_last: usize,
+    #[serde(default = "default_min_length")]
+    pub min_length: usize,
+    #[serde(default = "default_max_reveal")]
+    pub max_reveal: usize,
+    #[serde(default)]
+    pub use_hash: bool,
+    #[serde(default = "default_hash_salt")]
+    pub hash_salt: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RedactionConfig {
+    pub style: RedactionStyle,
+    #[serde(default)]
+    pub custom_text: Option<String>,
+    #[serde(default = "default_true")]
+    pub show_type_info: bool,
+    #[serde(default)]
+    pub preserve_length: bool,
+    #[serde(default)]
+    pub show_unredacted: bool,
+    #[serde(default)]
+    pub per_type: HashMap<String, RedactionStyle>,
+    #[serde(default)]
+    pub per_context: HashMap<RedactionContext, RedactionStyle>,
+    #[serde(default)]
+    pub partial: PartialRedactionConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SecurityConfig {
+    #[serde(default)]
+    pub level: SecurityLevel,
+    #[serde(default = "default_true")]
+    pub audit_config_changes: bool,
+    #[serde(default = "default_max_custom_text_length")]
+    pub max_custom_text_length: usize,
+    #[serde(default)]
+    pub allow_partial_redaction: bool,
+    #[serde(default = "default_min_partial_redaction_length")]
+    pub min_partial_redaction_length: usize,
+}
+
+// Helper functions
+fn default_show_first() -> usize { 4 }
+fn default_show_last() -> usize { 4 }
+fn default_min_length() -> usize { 12 }
+fn default_max_reveal() -> usize { 8 }
+fn default_hash_salt() -> String { "nu_plugin_secret_default_salt".to_string() }
+fn default_true() -> bool { true }
+fn default_max_custom_text_length() -> usize { 50 }
+fn default_min_partial_redaction_length() -> usize { 16 }
+```
+
+**1.2 Fix Custom RedactionStyle Serialization**
+```rust
+// Option A: Custom serde implementation
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RedactionStyle {
+    TypedBrackets,
+    Simple,
+    Asterisks,
+    Brackets,
+    Custom(String),
+}
+
+impl<'de> Deserialize<'de> for RedactionStyle {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "typed_brackets" => Ok(RedactionStyle::TypedBrackets),
+            "simple" => Ok(RedactionStyle::Simple),
+            "asterisks" => Ok(RedactionStyle::Asterisks),
+            "brackets" => Ok(RedactionStyle::Brackets),
+            "custom" => Ok(RedactionStyle::Custom(String::new())), // Will be filled from custom_text
+            _ => Err(serde::de::Error::unknown_variant(&s, &["typed_brackets", "simple", "asterisks", "brackets", "custom"])),
+        }
+    }
+}
+
+impl Serialize for RedactionStyle {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let s = match self {
+            RedactionStyle::TypedBrackets => "typed_brackets",
+            RedactionStyle::Simple => "simple", 
+            RedactionStyle::Asterisks => "asterisks",
+            RedactionStyle::Brackets => "brackets",
+            RedactionStyle::Custom(_) => "custom",
+        };
+        serializer.serialize_str(s)
+    }
+}
+
+// Post-deserization logic to merge custom_text into Custom variant
+impl RedactionConfig {
+    fn post_deserialize(&mut self) {
+        if matches!(self.style, RedactionStyle::Custom(_)) {
+            if let Some(ref custom_text) = self.custom_text {
+                self.style = RedactionStyle::Custom(custom_text.clone());
+            }
+        }
+    }
+}
+```
+
+**1.3 Add Schema Compatibility Tests**
+```rust
+// File: src/config.rs (tests module)
+#[test]
+fn test_config_schema_compatibility() {
+    // Test minimal config (Issue #10)
+    let minimal_toml = r#"
+version = "1.0"
+[redaction]
+style = "typed_brackets"
+[redaction.partial]
+enabled = false
+[security]
+level = "standard"
+"#;
+    
+    let config: PluginConfig = toml::from_str(minimal_toml).expect("Should parse minimal config");
+    assert_eq!(config.redaction.style, RedactionStyle::TypedBrackets);
+    assert!(!config.redaction.partial.enabled);
+    ConfigManager::validate_config(&config).expect("Should validate minimal config");
+}
+
+#[test]
+fn test_custom_style_compatibility() {
+    // Test custom style with separate custom_text field  
+    let custom_toml = r#"
+version = "1.0"
+[redaction]
+style = "custom"
+custom_text = "[SECRET_DATA]"
+[redaction.partial]
+enabled = false  
+[security]
+level = "standard"
+"#;
+    
+    let mut config: PluginConfig = toml::from_str(custom_toml).expect("Should parse custom config");
+    config.redaction.post_deserialize();
+    
+    match config.redaction.style {
+        RedactionStyle::Custom(text) => assert_eq!(text, "[SECRET_DATA]"),
+        _ => panic!("Expected Custom variant"),
+    }
+}
+
+#[test]
+fn test_existing_config_files() {
+    // Test all existing test configuration files
+    let config_files = [
+        "tests/configurations/nushell/plugins/secret/partial-char.toml",
+        "tests/configurations/nushell/plugins/secret/custom.toml",
+        "tests/configurations/nushell/plugins/secret/minimal.toml",
+        "tests/configurations/nushell/plugins/secret/paranoid.toml",
+    ];
+    
+    for file_path in &config_files {
+        if let Ok(content) = std::fs::read_to_string(file_path) {
+            let config: PluginConfig = toml::from_str(&content)
+                .expect(&format!("Should parse {}", file_path));
+            ConfigManager::validate_config(&config)
+                .expect(&format!("Should validate {}", file_path));
+        }
+    }
+}
+```
+
+#### Phase 2: Update Test Configuration Files (HIGH - Week 1)
+
+**2.1 Fix All Test TOML Files**
+Update files to include all required fields with proper defaults:
+
+```toml
+# tests/configurations/nushell/plugins/secret/partial-char.toml
+version = "1.0"
+
+[redaction]
+style = "typed_brackets"
+show_type_info = true
+preserve_length = false
+
+[redaction.partial]
+enabled = true
+show_first = 3
+show_last = 3
+min_length = 10
+max_reveal = 6
+use_hash = false
+hash_salt = "test_char_partial_salt"
+
+[security]
+level = "standard"
+audit_config_changes = true
+max_custom_text_length = 50
+allow_partial_redaction = true
+min_partial_redaction_length = 10
+```
+
+**2.2 Custom Style Configuration Fix**
+```toml  
+# tests/configurations/nushell/plugins/secret/custom.toml
+version = "1.0"
+
+[redaction]
+style = "custom"
+custom_text = "[SECRET_DATA]"
+show_type_info = false
+preserve_length = false
+
+[redaction.partial]
+enabled = false
+
+[security]
+level = "standard" 
+audit_config_changes = true
+max_custom_text_length = 50
+allow_partial_redaction = false
+min_partial_redaction_length = 16
+```
+
+#### Phase 3: Comprehensive Testing (MEDIUM - Week 2)
+
+**3.1 Integration Test Suite**
+```rust
+// tests/config_schema_integration.rs
+mod config_schema_integration {
+    use nu_plugin_secret::config::*;
+    use tempfile::TempDir;
+    use std::fs;
+
+    #[test]
+    fn test_all_config_files_parse_and_validate() {
+        let config_dir = "tests/configurations/nushell/plugins/secret";
+        let config_files = fs::read_dir(config_dir).unwrap()
+            .filter_map(|entry| {
+                let path = entry.ok()?.path();
+                if path.extension()? == "toml" {
+                    Some(path)
+                } else {
+                    None
+                }
+            });
+            
+        for config_file in config_files {
+            let content = fs::read_to_string(&config_file).unwrap();
+            let mut config: PluginConfig = toml::from_str(&content)
+                .expect(&format!("Failed to parse {:?}", config_file));
+            
+            // Apply post-deserialize logic
+            config.redaction.post_deserialize();
+            
+            ConfigManager::validate_config(&config)
+                .expect(&format!("Failed to validate {:?}", config_file));
+        }
+    }
+    
+    #[test]
+    fn test_backward_compatibility() {
+        // Test configs that might exist in user environments
+        let legacy_configs = vec![
+            // Minimal legacy config
+            r#"
+version = "1.0"
+[redaction]
+style = "simple"
+"#,
+            // Partial config without all fields
+            r#"
+version = "1.0"  
+[redaction]
+style = "typed_brackets"
+[redaction.partial]
+enabled = true
+"#,
+        ];
+        
+        for (i, toml_content) in legacy_configs.iter().enumerate() {
+            let mut config: PluginConfig = toml::from_str(toml_content)
+                .expect(&format!("Legacy config {} should parse", i));
+            config.redaction.post_deserialize();
+            ConfigManager::validate_config(&config)
+                .expect(&format!("Legacy config {} should validate", i));
+        }
+    }
+}
+```
+
+#### Phase 4: Migration and Documentation (LOW - Week 2)
+
+**4.1 Migration Guide**
+Create `docs/CONFIGURATION_MIGRATION.md`:
+```markdown
+# Configuration Migration Guide
+
+## Issue #10 Fix: Schema Compatibility 
+
+### Changes Made
+1. Made all nested struct fields optional with sensible defaults
+2. Fixed Custom redaction style serialization format
+3. Updated all test configuration files
+
+### Migration Required
+If you have existing `~/.config/nushell/plugins/secret/config.toml`:
+
+#### Before (Broken)
+```toml
+[redaction]
+style = "custom"
+[redaction.partial]  
+enabled = false
+```
+
+#### After (Fixed) 
+```toml
+[redaction]
+style = "custom"
+custom_text = "[YOUR_CUSTOM_TEXT]"
+[redaction.partial]
+enabled = false
+# All other fields now have defaults
+```
+
+### Validation
+Test your config: `cargo run --bin test_config_schema`
+```
+
+**4.2 Update Documentation**
+- Update `config.example.toml` with comprehensive examples
+- Add troubleshooting section to README.md
+- Document schema compatibility in API docs
+
+### **Success Criteria for Issue #10 Resolution**
+
+- [ ] **Critical**: All test configuration files parse successfully  
+- [ ] **Critical**: Backward compatibility maintained for existing user configs
+- [ ] **Critical**: Custom redaction style works with TOML format
+- [ ] **High**: Comprehensive test suite prevents future regressions
+- [ ] **Medium**: Migration documentation for existing users
+- [ ] **Medium**: Schema validation tooling available
+
+### **Priority Timeline**
+
+| Priority | Phase | Timeline | Tasks |
+|----------|-------|----------|-------|  
+| **CRITICAL** | Phase 1 | Week 1 | Fix serde annotations, enum serialization |
+| **HIGH** | Phase 2 | Week 1 | Update all TOML test files |
+| **MEDIUM** | Phase 3 | Week 2 | Comprehensive testing suite |
+| **LOW** | Phase 4 | Week 2 | Migration docs, tooling |
+
+**This issue must be resolved before the configuration system can be considered functional.**
