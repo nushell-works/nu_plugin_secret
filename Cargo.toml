@@ -74,6 +74,9 @@ dirs = "5.0"
 sha2 = "0.10"
 thiserror = "2.0"
 
+# Templating for redaction
+tera = "1.20"
+
 [dev-dependencies]
 nu-test-support = "0.106.1"
 criterion = { version = "0.5", features = ["html_reports"] }

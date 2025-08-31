@@ -3,53 +3,19 @@
 //! This module contains optimizations to reduce memory usage and improve
 //! performance while maintaining security guarantees.
 
-use std::collections::HashMap;
-use std::sync::OnceLock;
-
-/// Static string interning for common redacted messages
-/// This reduces memory allocation for repeated redaction strings
-static REDACTED_STRINGS: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
-
-/// Initialize the interned string cache
-pub fn init_string_cache() {
-    REDACTED_STRINGS.get_or_init(|| {
-        let mut map = HashMap::new();
-        map.insert("string", "<redacted:string>");
-        map.insert("int", "<redacted:int>");
-        map.insert("bool", "<redacted:bool>");
-        map.insert("float", "<redacted:float>");
-        map.insert("binary", "<redacted:binary>");
-        map.insert("date", "<redacted:date>");
-        map.insert("record", "<redacted:record>");
-        map.insert("list", "<redacted:list>");
-        map
-    });
-}
-
-/// Get an interned redacted string for a given type
-/// This avoids repeated allocations of the same strings
-/// Falls back to hardcoded values if configuration is not available
-pub fn get_redacted_string(type_name: &str) -> &'static str {
-    let cache = REDACTED_STRINGS.get().unwrap_or_else(|| {
-        init_string_cache();
-        REDACTED_STRINGS.get().unwrap()
-    });
-
-    cache.get(type_name).copied().unwrap_or("<redacted>")
+/// Get an interned redacted string for a given type using Tera templating
+/// This avoids repeated allocations of the same strings and uses the new Tera system
+pub fn get_redacted_string(type_name: &str) -> String {
+    crate::redaction::get_cached_redacted_string(type_name)
 }
 
 /// Get configurable redacted string for a given type and context
-/// This uses the new configuration system when available
+/// This uses the new Tera templating system
 pub fn get_configurable_redacted_string(
     type_name: &str,
     context: crate::config::RedactionContext,
 ) -> String {
-    if let Ok(config) = crate::config::get_config() {
-        config.get_redaction_text(type_name, context)
-    } else {
-        // Fallback to static string if config not available
-        get_redacted_string(type_name).to_string()
-    }
+    crate::redaction::get_redacted_string_with_value::<String>(type_name, context, None)
 }
 
 /// Get configurable redacted string with optional actual value for unredacted mode
@@ -59,17 +25,7 @@ pub fn get_configurable_redacted_string_with_value(
     context: crate::config::RedactionContext,
     actual_value: Option<&str>,
 ) -> String {
-    if let Ok(config) = crate::config::get_config() {
-        if config.config().redaction.show_unredacted {
-            if let Some(value) = actual_value {
-                return value.to_string();
-            }
-        }
-        config.get_redaction_text(type_name, context)
-    } else {
-        // Fallback to static string if config not available
-        get_redacted_string(type_name).to_string()
-    }
+    crate::redaction::get_redacted_string_with_value(type_name, context, actual_value)
 }
 
 /// Get configurable redacted string with optional actual value (generic) for unredacted mode
@@ -79,17 +35,7 @@ pub fn get_configurable_redacted_string_with_generic_value<T: std::fmt::Display>
     context: crate::config::RedactionContext,
     actual_value: Option<&T>,
 ) -> String {
-    if let Ok(config) = crate::config::get_config() {
-        if config.config().redaction.show_unredacted {
-            if let Some(value) = actual_value {
-                return value.to_string();
-            }
-        }
-        config.get_redaction_text(type_name, context)
-    } else {
-        // Fallback to static string if config not available
-        get_redacted_string(type_name).to_string()
-    }
+    crate::redaction::get_redacted_string_with_value(type_name, context, actual_value)
 }
 
 /// Memory pool for small allocations
@@ -309,15 +255,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_string_interning() {
-        init_string_cache();
-
+    fn test_redacted_string_templating() {
         let s1 = get_redacted_string("string");
         let s2 = get_redacted_string("string");
 
-        // Should be the same memory location (interned)
-        assert_eq!(s1.as_ptr(), s2.as_ptr());
+        // Should return correct Tera-templated format
         assert_eq!(s1, "<redacted:string>");
+        assert_eq!(s2, "<redacted:string>");
+
+        // Test other types
+        assert_eq!(get_redacted_string("int"), "<redacted:int>");
+        assert_eq!(get_redacted_string("float"), "<redacted:float>");
+        assert_eq!(get_redacted_string("bool"), "<redacted:bool>");
     }
 
     #[test]
