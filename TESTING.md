@@ -60,7 +60,6 @@ tests/nushell/
 │   └── basic_operations.nu
 └── fixtures/               # Test data and configuration
     ├── test_data.json
-    ├── config_samples.toml
     └── secrets.nu
 ```
 

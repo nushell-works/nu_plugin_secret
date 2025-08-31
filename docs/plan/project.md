@@ -694,7 +694,6 @@ tests/
 ├── nushell/
 │   ├── fixtures/           # Test data and setup files
 │   │   ├── test_data.json
-│   │   ├── config_samples.toml
 │   │   └── secrets.nu
 │   ├── integration/        # Full workflow tests
 │   │   ├── basic_operations.nu

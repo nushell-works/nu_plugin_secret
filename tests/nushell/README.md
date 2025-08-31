@@ -10,7 +10,6 @@ This directory contains comprehensive Nushell script tests that complement the e
 tests/nushell/
 ├── fixtures/              # Test data and configuration samples
 │   ├── test_data.json     # Comprehensive test data for all types
-│   ├── config_samples.toml # Configuration variations for testing
 │   └── secrets.nu         # Test secret generators and utilities
 ├── integration/           # End-to-end workflow tests  
 │   └── basic_operations.nu # Core plugin functionality testing
@@ -45,7 +44,6 @@ tests/nushell/
 - Unicode, special characters, edge cases
 - Performance testing configurations
 - Real-world API keys, tokens, connection strings
-- Configuration samples for different redaction styles
 
 #### 4. **Initial Test Suites**
 - **Wrap Commands** (`commands/wrap_commands.nu`): 20 test functions covering all 8 secret types
