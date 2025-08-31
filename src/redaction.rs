@@ -1,8 +1,9 @@
 //! Tera-based redaction templating system
 //!
-//! This module provides a templating system for redaction using the Tera template engine.
-//! It uses the template `<redacted:{{secret_type}}>` where `secret_type` is the type name
+//! This module provides a configurable templating system for redaction using the Tera template engine.
+//! The default template is `<redacted:{{secret_type}}>` where `secret_type` is the type name
 //! of the secret (e.g., "string", "float", "int", etc.).
+//! Templates can be customized through the configuration file's `redaction_template` field.
 
 use std::sync::OnceLock;
 use tera::{Context, Tera};
@@ -33,10 +34,21 @@ pub fn init_redaction_templating() -> Result<(), tera::Error> {
 /// Generate redacted string using Tera template
 /// This is the core function that uses Tera templating
 fn generate_redacted_string(secret_type: &str) -> String {
+    // Get template from config, fallback to default if config unavailable
+    let template = if let Ok(config) = crate::config::get_config() {
+        config
+            .config()
+            .redaction
+            .get_redaction_template()
+            .to_string()
+    } else {
+        REDACTION_TEMPLATE.to_string()
+    };
+
     // Always create a fresh Tera instance to pick up template changes
     // This is slightly less efficient but allows for dynamic template updates
     let mut tera = Tera::default();
-    let _ = tera.add_raw_template(TEMPLATE_NAME, REDACTION_TEMPLATE);
+    let _ = tera.add_raw_template(TEMPLATE_NAME, &template);
 
     let mut context = Context::new();
     context.insert("secret_type", secret_type);
@@ -125,6 +137,54 @@ mod tests {
             get_cached_redacted_string("unusual_type"),
             "<redacted:unusual_type>"
         );
+    }
+
+    #[test]
+    fn test_configurable_template_usage() {
+        use crate::config::PluginConfig;
+
+        // Test that redaction uses custom template from config
+        let mut config = PluginConfig::default();
+        config.redaction.redaction_template = Some("[SECRET:{{secret_type}}]".to_string());
+
+        // Since we can't easily mock the global config, we test the template retrieval
+        assert_eq!(
+            config.redaction.get_redaction_template(),
+            "[SECRET:{{secret_type}}]"
+        );
+
+        // Test default template fallback
+        let default_config = PluginConfig::default();
+        assert_eq!(
+            default_config.redaction.get_redaction_template(),
+            "<redacted:{{secret_type}}>"
+        );
+    }
+
+    #[test]
+    fn test_template_rendering_formats() {
+        // Test that different template formats render correctly
+        let mut tera = tera::Tera::default();
+        let mut context = tera::Context::new();
+        context.insert("secret_type", "string");
+
+        // Test default format
+        tera.add_raw_template("default", "<redacted:{{secret_type}}>")
+            .unwrap();
+        assert_eq!(
+            tera.render("default", &context).unwrap(),
+            "<redacted:string>"
+        );
+
+        // Test custom format
+        tera.add_raw_template("custom", "[HIDDEN:{{secret_type}}]")
+            .unwrap();
+        assert_eq!(tera.render("custom", &context).unwrap(), "[HIDDEN:string]");
+
+        // Test simple format
+        tera.add_raw_template("simple", "{{secret_type}}_redacted")
+            .unwrap();
+        assert_eq!(tera.render("simple", &context).unwrap(), "string_redacted");
     }
 
     #[test]
