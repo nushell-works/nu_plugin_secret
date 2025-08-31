@@ -48,39 +48,6 @@ impl PluginCommand for SecretConfigureCommand {
                 "Set security level (minimal, standard, paranoid)",
                 Some('s'),
             )
-            .switch(
-                "enable-partial",
-                "Enable partial redaction for string secrets",
-                Some('p'),
-            )
-            .switch(
-                "disable-partial",
-                "Disable partial redaction for string secrets",
-                None,
-            )
-            .named(
-                "show-first",
-                SyntaxShape::Int,
-                "Number of characters to show from beginning (partial redaction)",
-                None,
-            )
-            .named(
-                "show-last",
-                SyntaxShape::Int,
-                "Number of characters to show from end (partial redaction)",
-                None,
-            )
-            .switch(
-                "use-hash",
-                "Use hash-based partial redaction instead of character-based",
-                None,
-            )
-            .named(
-                "hash-salt",
-                SyntaxShape::String,
-                "Salt for hash-based partial redaction",
-                None,
-            )
             .category(Category::Custom("secret".into()))
     }
 
@@ -94,11 +61,6 @@ impl PluginCommand for SecretConfigureCommand {
             Example {
                 example: "secret configure --redaction-style custom --custom-text '[HIDDEN]'",
                 description: "Set custom redaction text",
-                result: None,
-            },
-            Example {
-                example: "secret configure --enable-partial --show-first 3 --show-last 3",
-                description: "Enable partial redaction showing first 3 and last 3 characters",
                 result: None,
             },
             Example {
@@ -170,43 +132,6 @@ impl PluginCommand for SecretConfigureCommand {
             config_changed = true;
         }
 
-        // Handle partial redaction settings
-        if call.has_flag("enable-partial")? {
-            manager.config_mut().redaction.partial.enabled = true;
-            config_changed = true;
-        } else if call.has_flag("disable-partial")? {
-            manager.config_mut().redaction.partial.enabled = false;
-            config_changed = true;
-        }
-
-        if let Some(show_first) = call.get_flag::<i64>("show-first")? {
-            if show_first < 0 {
-                return Err(LabeledError::new("Invalid Parameter")
-                    .with_label("show-first must be non-negative", span));
-            }
-            manager.config_mut().redaction.partial.show_first = show_first as usize;
-            config_changed = true;
-        }
-
-        if let Some(show_last) = call.get_flag::<i64>("show-last")? {
-            if show_last < 0 {
-                return Err(LabeledError::new("Invalid Parameter")
-                    .with_label("show-last must be non-negative", span));
-            }
-            manager.config_mut().redaction.partial.show_last = show_last as usize;
-            config_changed = true;
-        }
-
-        if call.has_flag("use-hash")? {
-            manager.config_mut().redaction.partial.use_hash = true;
-            config_changed = true;
-        }
-
-        if let Some(salt) = call.get_flag::<String>("hash-salt")? {
-            manager.config_mut().redaction.partial.hash_salt = salt;
-            config_changed = true;
-        }
-
         // Validate configuration if changes were made
         if config_changed {
             if let Err(e) = ConfigManager::validate_config(manager.config()) {
@@ -247,26 +172,6 @@ impl PluginCommand for SecretConfigureCommand {
                 span,
             ),
         );
-
-        record.push(
-            "partial_redaction_enabled",
-            Value::bool(manager.config().redaction.partial.enabled, span),
-        );
-
-        if manager.config().redaction.partial.enabled {
-            record.push(
-                "show_first",
-                Value::int(manager.config().redaction.partial.show_first as i64, span),
-            );
-            record.push(
-                "show_last",
-                Value::int(manager.config().redaction.partial.show_last as i64, span),
-            );
-            record.push(
-                "use_hash",
-                Value::bool(manager.config().redaction.partial.use_hash, span),
-            );
-        }
 
         if config_changed {
             record.push(

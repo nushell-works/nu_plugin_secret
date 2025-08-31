@@ -7,7 +7,6 @@
 //! - Hierarchical configuration loading with security validation
 
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{OnceLock, RwLock};
@@ -130,46 +129,6 @@ impl Default for SecurityLevel {
     }
 }
 
-/// Partial redaction configuration for string secrets
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct PartialRedactionConfig {
-    /// Whether partial redaction is enabled
-    #[serde(default)]
-    pub enabled: bool,
-    /// Number of characters to show from the beginning
-    #[serde(default = "default_show_first")]
-    pub show_first: usize,
-    /// Number of characters to show from the end
-    #[serde(default = "default_show_last")]
-    pub show_last: usize,
-    /// Minimum length required for partial redaction
-    #[serde(default = "default_min_length")]
-    pub min_length: usize,
-    /// Maximum length to show (security limit)
-    #[serde(default = "default_max_reveal")]
-    pub max_reveal: usize,
-    /// Use salted hash instead of actual characters
-    #[serde(default)]
-    pub use_hash: bool,
-    /// Salt for hash-based partial redaction (base64 encoded)
-    #[serde(default = "default_hash_salt")]
-    pub hash_salt: String,
-}
-
-impl Default for PartialRedactionConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            show_first: 4,
-            show_last: 4,
-            min_length: 12,
-            max_reveal: 8,
-            use_hash: false,
-            hash_salt: "nu_plugin_secret_default_salt".to_string(),
-        }
-    }
-}
-
 /// Main redaction configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RedactionConfig {
@@ -194,9 +153,6 @@ pub struct RedactionConfig {
     /// Per-context redaction overrides
     #[serde(default)]
     pub per_context: HashMap<RedactionContext, RedactionStyle>,
-    /// Partial redaction configuration
-    #[serde(default)]
-    pub partial: PartialRedactionConfig,
 }
 
 impl RedactionConfig {
@@ -220,7 +176,6 @@ impl Default for RedactionConfig {
             show_unredacted: false,
             per_type: HashMap::new(),
             per_context: HashMap::new(),
-            partial: PartialRedactionConfig::default(),
         }
     }
 }
@@ -237,12 +192,6 @@ pub struct SecurityConfig {
     /// Maximum custom redaction text length
     #[serde(default = "default_max_custom_text_length")]
     pub max_custom_text_length: usize,
-    /// Allow partial redaction (can reveal information)
-    #[serde(default)]
-    pub allow_partial_redaction: bool,
-    /// Minimum secret length to allow partial redaction
-    #[serde(default = "default_min_partial_redaction_length")]
-    pub min_partial_redaction_length: usize,
 }
 
 impl Default for SecurityConfig {
@@ -251,8 +200,6 @@ impl Default for SecurityConfig {
             level: SecurityLevel::default(),
             audit_config_changes: true,
             max_custom_text_length: 50,
-            allow_partial_redaction: false,
-            min_partial_redaction_length: 16,
         }
     }
 }
@@ -276,29 +223,11 @@ fn default_config_version() -> String {
 }
 
 // Helper functions for default values
-fn default_show_first() -> usize {
-    4
-}
-fn default_show_last() -> usize {
-    4
-}
-fn default_min_length() -> usize {
-    12
-}
-fn default_max_reveal() -> usize {
-    8
-}
-fn default_hash_salt() -> String {
-    "nu_plugin_secret_default_salt".to_string()
-}
 fn default_true() -> bool {
     true
 }
 fn default_max_custom_text_length() -> usize {
     50
-}
-fn default_min_partial_redaction_length() -> usize {
-    16
 }
 
 impl PluginConfig {
@@ -456,13 +385,6 @@ impl ConfigManager {
             };
         }
 
-        // Partial redaction override
-        if let Ok(allow_partial) = std::env::var("NU_PLUGIN_SECRET_ALLOW_PARTIAL_REDACTION") {
-            config.security.allow_partial_redaction = allow_partial.parse().map_err(|_| {
-                ConfigError::Environment("Invalid boolean for ALLOW_PARTIAL_REDACTION".to_string())
-            })?;
-        }
-
         // Show unredacted override
         if let Ok(show_unredacted) = std::env::var("SHOW_UNREDACTED") {
             config.redaction.show_unredacted = match show_unredacted.as_str() {
@@ -506,32 +428,6 @@ impl ConfigManager {
             }
         }
 
-        // Validate partial redaction settings
-        if config.redaction.partial.enabled {
-            if !config.security.allow_partial_redaction {
-                return Err(ConfigError::Security(
-                    "Partial redaction is disabled by security policy".to_string(),
-                ));
-            }
-
-            let partial = &config.redaction.partial;
-            let total_reveal = partial.show_first + partial.show_last;
-
-            if total_reveal > partial.max_reveal {
-                return Err(ConfigError::Security(format!(
-                    "Total partial reveal {} > max allowed {}",
-                    total_reveal, partial.max_reveal
-                )));
-            }
-
-            if partial.min_length < config.security.min_partial_redaction_length {
-                return Err(ConfigError::Security(format!(
-                    "Minimum partial redaction length {} < security minimum {}",
-                    partial.min_length, config.security.min_partial_redaction_length
-                )));
-            }
-        }
-
         // Enhanced security validation based on security level
         Self::validate_security_level_constraints(config)?;
 
@@ -543,16 +439,6 @@ impl ConfigManager {
         match config.security.level {
             SecurityLevel::Minimal => {
                 // Minimal security allows most configurations, but still has basic limits
-                if config.redaction.partial.enabled {
-                    let total_reveal =
-                        config.redaction.partial.show_first + config.redaction.partial.show_last;
-                    if total_reveal > 20 {
-                        return Err(ConfigError::Security(
-                            "Even minimal security requires some content to remain hidden"
-                                .to_string(),
-                        ));
-                    }
-                }
             }
             SecurityLevel::Standard => {
                 // Standard security requires audit logging by default
@@ -560,17 +446,6 @@ impl ConfigManager {
                     return Err(ConfigError::Security(
                         "Standard security level requires audit logging to be enabled".to_string(),
                     ));
-                }
-
-                // Enhanced partial redaction limits for standard security
-                if config.redaction.partial.enabled {
-                    let total_reveal =
-                        config.redaction.partial.show_first + config.redaction.partial.show_last;
-                    if total_reveal > 8 {
-                        return Err(ConfigError::Security(
-                            "Standard security level limits partial redaction to 8 characters total".to_string(),
-                        ));
-                    }
                 }
             }
             SecurityLevel::Paranoid => {
@@ -598,30 +473,6 @@ impl ConfigManager {
                         "Paranoid security level prohibits preserving length information"
                             .to_string(),
                     ));
-                }
-
-                // Very strict partial redaction limits
-                if config.redaction.partial.enabled {
-                    let total_reveal =
-                        config.redaction.partial.show_first + config.redaction.partial.show_last;
-                    if total_reveal > 4 {
-                        return Err(ConfigError::Security(
-                            "Paranoid security level limits partial redaction to 4 characters total".to_string(),
-                        ));
-                    }
-
-                    if config.redaction.partial.min_length < 32 {
-                        return Err(ConfigError::Security(
-                            "Paranoid security level requires secrets to be at least 32 characters for partial redaction".to_string(),
-                        ));
-                    }
-
-                    if !config.redaction.partial.use_hash {
-                        return Err(ConfigError::Security(
-                            "Paranoid security level requires hash-based partial redaction"
-                                .to_string(),
-                        ));
-                    }
                 }
             }
         }
@@ -665,65 +516,6 @@ impl ConfigManager {
             RedactionStyle::Brackets => "[HIDDEN]".to_string(),
             RedactionStyle::Custom(text) => text.clone(),
         }
-    }
-
-    /// Apply partial redaction to a string secret
-    pub fn apply_partial_redaction(&self, secret: &str, type_name: &str) -> Option<String> {
-        if !self.config.redaction.partial.enabled
-            || secret.len() < self.config.redaction.partial.min_length
-        {
-            return None;
-        }
-
-        let partial = &self.config.redaction.partial;
-
-        if partial.use_hash {
-            self.apply_hash_partial_redaction(secret, type_name)
-        } else {
-            self.apply_char_partial_redaction(secret, type_name)
-        }
-    }
-
-    /// Apply character-based partial redaction
-    fn apply_char_partial_redaction(&self, secret: &str, _type_name: &str) -> Option<String> {
-        let partial = &self.config.redaction.partial;
-        let chars: Vec<char> = secret.chars().collect();
-
-        if chars.len() < partial.min_length {
-            return None;
-        }
-
-        let show_first = partial.show_first.min(chars.len() / 3);
-        let show_last = partial.show_last.min(chars.len() / 3);
-        let total_show = show_first + show_last;
-
-        if total_show >= chars.len() || total_show > partial.max_reveal {
-            return None;
-        }
-
-        let first_part: String = chars.iter().take(show_first).collect();
-        let last_part: String = chars.iter().skip(chars.len() - show_last).collect();
-        let middle_len = chars.len() - total_show;
-        let middle = "*".repeat(middle_len.min(10));
-
-        Some(format!("{}{}...{}", first_part, middle, last_part))
-    }
-
-    /// Apply hash-based partial redaction
-    fn apply_hash_partial_redaction(&self, secret: &str, type_name: &str) -> Option<String> {
-        let partial = &self.config.redaction.partial;
-
-        let mut hasher = Sha256::new();
-        hasher.update(partial.hash_salt.as_bytes());
-        hasher.update(secret.as_bytes());
-        hasher.update(type_name.as_bytes());
-        let hash = hasher.finalize();
-
-        // Take first 8 characters of hex hash for partial reveal
-        let hash_str = format!("{:x}", hash);
-        let partial_hash = &hash_str[..8];
-
-        Some(format!("{}...{}", partial_hash, secret.len()))
     }
 }
 
@@ -812,28 +604,6 @@ fn audit_config_change(
         changes.push(format!(
             "security.level: {:?} -> {:?}",
             old_config.security.level, new_config.security.level
-        ));
-    }
-
-    // Track partial redaction changes
-    if old_config.redaction.partial.enabled != new_config.redaction.partial.enabled {
-        changes.push(format!(
-            "partial_redaction.enabled: {} -> {}",
-            old_config.redaction.partial.enabled, new_config.redaction.partial.enabled
-        ));
-    }
-
-    if old_config.redaction.partial.show_first != new_config.redaction.partial.show_first {
-        changes.push(format!(
-            "partial_redaction.show_first: {} -> {}",
-            old_config.redaction.partial.show_first, new_config.redaction.partial.show_first
-        ));
-    }
-
-    if old_config.redaction.partial.show_last != new_config.redaction.partial.show_last {
-        changes.push(format!(
-            "partial_redaction.show_last: {} -> {}",
-            old_config.redaction.partial.show_last, new_config.redaction.partial.show_last
         ));
     }
 
@@ -956,29 +726,6 @@ mod tests {
     }
 
     #[test]
-    fn test_partial_redaction() {
-        let mut config = PluginConfig::default();
-        config.redaction.partial.enabled = true;
-        config.redaction.partial.show_first = 2;
-        config.redaction.partial.show_last = 2;
-        config.redaction.partial.min_length = 8;
-        config.security.allow_partial_redaction = true;
-
-        let manager = ConfigManager {
-            config,
-            config_path: None,
-        };
-
-        let result = manager.apply_partial_redaction("verylongsecret", "string");
-        assert!(result.is_some());
-        let result_str = result.unwrap();
-        assert!(result_str.contains("ve") && result_str.contains("et"));
-
-        let short_result = manager.apply_partial_redaction("short", "string");
-        assert!(short_result.is_none());
-    }
-
-    #[test]
     fn test_security_validation() {
         let mut config = PluginConfig::default();
         config.redaction.style =
@@ -1045,8 +792,6 @@ mod tests {
 version = "1.0"
 [redaction]
 style = "typed_brackets"
-[redaction.partial]
-enabled = false
 [security]
 level = "standard"
 "#;
@@ -1055,7 +800,6 @@ level = "standard"
             toml::from_str(minimal_toml).expect("Should parse minimal config");
         config.post_deserialize();
         assert_eq!(config.redaction.style, RedactionStyle::TypedBrackets);
-        assert!(!config.redaction.partial.enabled);
         ConfigManager::validate_config(&config).expect("Should validate minimal config");
     }
 
@@ -1067,8 +811,6 @@ version = "1.0"
 [redaction]
 style = "custom"
 custom_text = "[SECRET_DATA]"
-[redaction.partial]
-enabled = false  
 [security]
 level = "standard"
 "#;
@@ -1081,31 +823,6 @@ level = "standard"
             RedactionStyle::Custom(text) => assert_eq!(text, "[SECRET_DATA]"),
             _ => panic!("Expected Custom variant"),
         }
-    }
-
-    #[test]
-    fn test_partial_redaction_defaults() {
-        // Test that partial redaction fields have proper defaults when not specified
-        let partial_minimal_toml = r#"
-version = "1.0"
-[redaction]
-style = "simple"
-[redaction.partial]
-enabled = true
-[security]
-level = "minimal"
-"#;
-
-        let mut config: PluginConfig =
-            toml::from_str(partial_minimal_toml).expect("Should parse partial minimal config");
-        config.post_deserialize();
-
-        assert!(config.redaction.partial.enabled);
-        assert_eq!(config.redaction.partial.show_first, 4); // default value
-        assert_eq!(config.redaction.partial.show_last, 4); // default value
-        assert_eq!(config.redaction.partial.min_length, 12); // default value
-        assert_eq!(config.redaction.partial.max_reveal, 8); // default value
-        assert!(!config.redaction.partial.use_hash); // default value
     }
 
     #[test]
@@ -1126,33 +843,104 @@ level = "paranoid"
         assert_eq!(config.security.level, SecurityLevel::Paranoid);
         assert!(config.security.audit_config_changes); // default true
         assert_eq!(config.security.max_custom_text_length, 50); // default value
-        assert!(!config.security.allow_partial_redaction); // default false
-        assert_eq!(config.security.min_partial_redaction_length, 16); // default value
     }
 
     #[test]
-    #[cfg(not(miri))]
     fn test_existing_config_files() {
-        // Test all existing test configuration files parse correctly now
-        // Note: This test is disabled under Miri because it requires filesystem access
-        let config_files = [
-            "tests/configurations/nushell/plugins/secret/custom.toml",
-            "tests/configurations/nushell/plugins/secret/minimal.toml",
-            "tests/configurations/nushell/plugins/secret/paranoid.toml",
-            "tests/configurations/nushell/plugins/secret/default.toml",
-            "tests/configurations/nushell/plugins/secret/simple.toml",
-            "tests/configurations/nushell/plugins/secret/asterisks.toml",
-            "tests/configurations/nushell/plugins/secret/brackets.toml",
+        // Test representative configuration patterns that would be in test files
+        // Using inline TOML to be Miri-compatible (no file system access)
+        let test_configs = [
+            // Custom style config
+            (
+                "custom",
+                r#"
+version = "1.0"
+[redaction]
+style = "custom"
+custom_text = "[SECRET_DATA]"
+[security]
+level = "standard"
+"#,
+            ),
+            // Minimal config
+            (
+                "minimal",
+                r#"
+version = "1.0"
+[redaction]
+style = "simple"
+[security]
+level = "minimal"
+"#,
+            ),
+            // Paranoid config
+            (
+                "paranoid",
+                r#"
+version = "1.0"
+[redaction]
+style = "simple"
+show_type_info = false
+preserve_length = false
+[security]
+level = "paranoid"
+max_custom_text_length = 20
+"#,
+            ),
+            // Default-style config
+            (
+                "default",
+                r#"
+version = "1.0"
+[redaction]
+style = "typed_brackets"
+show_type_info = true
+[security]
+level = "standard"
+"#,
+            ),
+            // Simple style config
+            (
+                "simple",
+                r#"
+version = "1.0"
+[redaction]
+style = "simple"
+show_type_info = false
+[security]
+level = "standard"
+"#,
+            ),
+            // Asterisks style config
+            (
+                "asterisks",
+                r#"
+version = "1.0"
+[redaction]
+style = "asterisks"
+[security]
+level = "standard"
+"#,
+            ),
+            // Brackets style config
+            (
+                "brackets",
+                r#"
+version = "1.0"
+[redaction]
+style = "brackets"
+[security]
+level = "standard"
+"#,
+            ),
         ];
 
-        for file_path in &config_files {
-            if let Ok(content) = std::fs::read_to_string(file_path) {
-                let mut config: PluginConfig = toml::from_str(&content)
-                    .unwrap_or_else(|_| panic!("Should parse {}", file_path));
-                config.post_deserialize();
-                ConfigManager::validate_config(&config)
-                    .unwrap_or_else(|_| panic!("Should validate {}", file_path));
-            }
+        for (name, content) in &test_configs {
+            let mut config: PluginConfig = toml::from_str(content)
+                .unwrap_or_else(|e| panic!("Should parse {} config: {}", name, e));
+            config.post_deserialize();
+            ConfigManager::validate_config(&config)
+                .unwrap_or_else(|e| panic!("Should validate {} config: {}", name, e));
         }
     }
 
@@ -1167,22 +955,6 @@ level = "paranoid"
 version = "1.0"
 [redaction]
 style = "simple"
-"#,
-            ),
-            // Partial config without all fields
-            (
-                "partial_legacy",
-                r#"
-version = "1.0"  
-[redaction]
-style = "typed_brackets"
-[redaction.partial]
-enabled = true
-min_length = 16
-[security]
-level = "minimal"
-allow_partial_redaction = true
-min_partial_redaction_length = 16
 "#,
             ),
             // Only security level specified
@@ -1272,7 +1044,6 @@ version = "1.0"
         // Should have all defaults
         assert_eq!(config.redaction.style, RedactionStyle::TypedBrackets);
         assert!(config.redaction.show_type_info);
-        assert!(!config.redaction.partial.enabled);
         assert_eq!(config.security.level, SecurityLevel::Standard);
         assert!(config.security.audit_config_changes);
 

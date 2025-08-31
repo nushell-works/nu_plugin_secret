@@ -184,10 +184,6 @@ impl PluginCommand for SecretConfigImportCommand {
                 span,
             ),
         );
-        result_record.push(
-            "partial_redaction_enabled",
-            Value::bool(imported_manager.config().redaction.partial.enabled, span),
-        );
 
         Ok(PipelineData::Value(
             Value::record(result_record, span),

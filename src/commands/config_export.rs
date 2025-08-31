@@ -119,10 +119,6 @@ impl PluginCommand for SecretConfigExportCommand {
                 span,
             ),
         );
-        record.push(
-            "partial_redaction_enabled",
-            Value::bool(manager.config().redaction.partial.enabled, span),
-        );
 
         Ok(PipelineData::Value(Value::record(record, span), None))
     }
