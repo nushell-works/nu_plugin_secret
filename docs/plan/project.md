@@ -210,8 +210,8 @@ Create a secure Nushell plugin that provides a family of secret custom types to:
 - [x] Backup and disaster recovery planning
 - [x] Performance and uptime monitoring
 
-### Phase 5: Enhanced Configuration & Partial Redaction (Week 6)
-**Goal**: Add configurable redaction settings and advanced partial redaction features
+### Phase 5: Enhanced Configuration & Security Improvements (Week 6)
+**Goal**: Add configurable redaction settings and enhanced security features
 
 #### 5.1 Configuration System ✅ COMPLETED
 - [x] Configuration file support at `~/.config/nushell/plugins/secret/config.toml`
@@ -230,17 +230,12 @@ Create a secure Nushell plugin that provides a family of secret custom types to:
 - [x] Flexible test assertions supporting any redaction style
 - [x] Graceful fallbacks when configuration unavailable
 
-#### 5.3 Partial Redaction System ✅ COMPLETED
-- [x] Configurable partial reveal for string secrets (first N + last N characters)
-- [x] Intelligent length-based partial redaction with minimums
-- [x] Salted hash-based partial redaction with configurable salt
-- [x] Security controls for partial redaction (minimum secret length, max reveal)  
-- [x] Performance optimization for partial redaction operations
-- [x] **Character-based partial redaction** with configurable first/last character counts
-- [x] **Hash-based partial redaction** using SHA256 with configurable salt
-- [x] **SecretString integration** with `partial_redact()` and `redacted_display()` methods
-- [x] **Security validation** preventing information leakage through partial redaction
-- [x] **Comprehensive test coverage** for all partial redaction scenarios
+#### 5.3 Enhanced Security Features ✅ COMPLETED (Partial Redaction Removed)
+- [x] Enhanced security model with complete content redaction
+- [x] Removal of partial redaction functionality for improved security posture
+- [x] Simplified configuration system focused on core redaction styles
+- [x] Comprehensive security validation ensuring no information leakage
+- [x] Performance optimization for secure redaction operations
 
 #### 5.4 Configuration Commands ✅ COMPLETED
 - [x] `secret configure` command for runtime configuration changes
@@ -252,7 +247,7 @@ Create a secure Nushell plugin that provides a family of secret custom types to:
 #### 5.5 Enhanced Security Features ✅ COMPLETED
 - [x] Configurable security levels (minimal, standard, paranoid)
 - [x] Audit logging for configuration changes
-- [x] Security validation of partial redaction settings
+- [x] Security validation of configuration settings
 - [x] Protection against information leakage through configuration
 - [x] Configuration-based access controls
 
@@ -732,7 +727,7 @@ tests/
 - **Wrap Commands**: Test all 8 wrap commands with edge cases (empty strings, Unicode, long content)
 - **Unwrap Tests**: Round-trip validation, type preservation, error handling
 - **Utility Commands**: `secret validate`, `secret type-of`, `secret info` functionality
-- **Configuration Commands**: Settings management, partial redaction, security levels
+- **Configuration Commands**: Settings management, redaction styles, security levels
 
 #### Integration/Workflow Testing (`integration/*.nu`)
 - **Pipeline Workflows**: Secrets in complex data structures and transformations
