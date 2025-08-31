@@ -23,8 +23,8 @@ fn main() {
 
     startup_optimizations::profiling::mark_init_complete();
 
-    // Initialize string cache early for faster redaction
-    nu_plugin_secret::memory_optimizations::init_string_cache();
+    // Initialize redaction templating system early for faster redaction
+    let _ = nu_plugin_secret::redaction::init_redaction_templating();
 
     startup_optimizations::profiling::mark_commands_ready();
 

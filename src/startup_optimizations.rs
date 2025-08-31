@@ -30,8 +30,8 @@ impl Default for StartupConfig {
 /// Optimized plugin initialization
 pub fn initialize_plugin(config: StartupConfig) -> crate::SecretPlugin {
     if config.fast_mode {
-        // Initialize string cache early if needed
-        crate::memory_optimizations::init_string_cache();
+        // Initialize redaction templating system early if needed
+        let _ = crate::redaction::init_redaction_templating();
     }
 
     if config.pre_allocate {

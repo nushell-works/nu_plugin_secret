@@ -4,6 +4,7 @@ pub mod commands;
 pub mod config;
 pub mod memory_optimizations;
 pub mod performance_monitoring;
+pub mod redaction;
 mod secret_types;
 pub mod startup_optimizations;
 
@@ -23,6 +24,9 @@ impl Plugin for SecretPlugin {
     fn commands(&self) -> Vec<Box<dyn PluginCommand<Plugin = Self>>> {
         // Initialize optimizations and configuration on first command access
         startup_optimizations::command_optimizations::init_command_cache();
+
+        // Initialize Tera-based redaction templating system
+        let _ = redaction::init_redaction_templating();
 
         // Initialize configuration system (ignore errors for now)
         // Skip config initialization under Miri since it involves file system operations
