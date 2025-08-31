@@ -32,26 +32,6 @@ preserve_length = false
 # serialization = "simple"
 # audit = "simple"
 
-# Partial redaction configuration (SECURITY SENSITIVE)
-[redaction.partial]
-# Enable partial redaction (shows parts of actual secret)
-enabled = false
-
-# Number of characters to show from beginning and end
-show_first = 4
-show_last = 4
-
-# Minimum secret length required for partial redaction
-min_length = 12
-
-# Maximum total characters that can be revealed
-max_reveal = 8
-
-# Use salted hash instead of actual characters (more secure)
-use_hash = false
-
-# Salt for hash-based partial redaction (change this!)
-hash_salt = "your_unique_salt_here_change_me"
 
 [security]
 # Security level: "minimal", "standard", "paranoid"
@@ -63,11 +43,6 @@ audit_config_changes = true
 # Maximum length for custom redaction text
 max_custom_text_length = 50
 
-# Allow partial redaction (can reveal information about secrets)
-allow_partial_redaction = false
-
-# Minimum secret length to allow partial redaction
-min_partial_redaction_length = 16
 
 # Example configurations for different use cases:
 
@@ -76,25 +51,16 @@ min_partial_redaction_length = 16
 # style = "simple"
 # show_type_info = false
 # preserve_length = false
-# [redaction.partial]
-# enabled = false
 # [security]
 # level = "paranoid"
-# allow_partial_redaction = false
 
 # Development Environment (more informative):
 # [redaction]
 # style = "typed_brackets" 
 # show_type_info = true
 # preserve_length = true
-# [redaction.partial]
-# enabled = true
-# show_first = 2
-# show_last = 2
-# use_hash = true
 # [security]
 # level = "minimal"
-# allow_partial_redaction = true
 
 # Custom Branded Environment:
 # [redaction]
