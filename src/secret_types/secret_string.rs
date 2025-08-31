@@ -73,25 +73,9 @@ impl SecretString {
         self.inner.is_empty()
     }
 
-    /// Get a partially redacted version of the string if configured
-    /// Returns None if partial redaction is not enabled or not applicable
-    pub fn partial_redact(&self) -> Option<String> {
-        if let Ok(config) = crate::config::get_config() {
-            config.apply_partial_redaction(&self.inner, "string")
-        } else {
-            None
-        }
-    }
-
-    /// Get redacted string with optional partial redaction
+    /// Get redacted string according to user configuration
     /// This respects the user's configuration for redaction style
     pub fn redacted_display(&self) -> String {
-        // First try partial redaction if configured
-        if let Some(partial) = self.partial_redact() {
-            return partial;
-        }
-
-        // Fall back to configured full redaction (with potential unredacted mode)
         get_configurable_redacted_string_with_value(
             "string",
             RedactionContext::Display,
@@ -337,27 +321,6 @@ mod tests {
                 || redacted.contains("***")
                 || redacted.contains("HIDDEN")
         );
-    }
-
-    #[test]
-    fn test_secret_string_partial_redact() {
-        let secret = SecretString::new("test-secret".to_string());
-
-        // Without specific config, this should return None
-        // (since we can't easily mock the config in unit tests)
-        let partial = secret.partial_redact();
-
-        // The method should not panic and should handle config errors gracefully
-        // The return value depends on the configuration state
-        match partial {
-            Some(redacted) => {
-                // If partial redaction is configured, verify it doesn't expose full secret
-                assert!(!redacted.contains("test-secret") || redacted.len() < "test-secret".len());
-            }
-            None => {
-                // No partial redaction configured - this is acceptable
-            }
-        }
     }
 
     #[test]

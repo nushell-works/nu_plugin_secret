@@ -144,7 +144,6 @@ impl PluginCommand for SecretConfigResetCommand {
         let mut defaults_record = Record::new();
         defaults_record.push("redaction_style", Value::string("typed_brackets", span));
         defaults_record.push("security_level", Value::string("standard", span));
-        defaults_record.push("partial_redaction_enabled", Value::bool(false, span));
         defaults_record.push("show_type_info", Value::bool(true, span));
         defaults_record.push("preserve_length", Value::bool(false, span));
 

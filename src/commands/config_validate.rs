@@ -121,44 +121,6 @@ impl PluginCommand for SecretConfigValidateCommand {
             }
         }
 
-        // Validate partial redaction settings
-        let partial = &config.redaction.partial;
-        if partial.enabled {
-            if partial.show_first + partial.show_last >= partial.min_length {
-                validation_results.push(("Partial Redaction", "Warning", 
-                    "show_first + show_last should be less than min_length to ensure some content is redacted"));
-                has_warnings = true;
-            }
-
-            if partial.show_first + partial.show_last > partial.max_reveal {
-                validation_results.push((
-                    "Partial Redaction",
-                    "Error",
-                    "show_first + show_last exceeds max_reveal limit",
-                ));
-                has_errors = true;
-            }
-
-            if partial.use_hash && partial.hash_salt.is_empty() {
-                validation_results.push((
-                    "Partial Redaction",
-                    "Warning",
-                    "Hash-based partial redaction enabled but no salt configured",
-                ));
-                has_warnings = true;
-            }
-
-            if !has_errors && !has_warnings {
-                validation_results.push((
-                    "Partial Redaction",
-                    "Valid",
-                    "Partial redaction settings are valid",
-                ));
-            }
-        } else {
-            validation_results.push(("Partial Redaction", "Info", "Partial redaction is disabled"));
-        }
-
         // Validate security settings
         match config.security.level {
             crate::config::SecurityLevel::Minimal => {

@@ -147,23 +147,6 @@ impl PluginCommand for SecretConfigShowCommand {
             );
         }
 
-        // Partial redaction configuration
-        let partial = &manager.config().redaction.partial;
-        let mut partial_record = Record::new();
-        partial_record.push("enabled", Value::bool(partial.enabled, span));
-        partial_record.push("show_first", Value::int(partial.show_first as i64, span));
-        partial_record.push("show_last", Value::int(partial.show_last as i64, span));
-        partial_record.push("min_length", Value::int(partial.min_length as i64, span));
-        partial_record.push("max_reveal", Value::int(partial.max_reveal as i64, span));
-        partial_record.push("use_hash", Value::bool(partial.use_hash, span));
-
-        // Only show salt info, not the actual salt for security
-        partial_record.push(
-            "hash_salt_configured",
-            Value::bool(!partial.hash_salt.is_empty(), span),
-        );
-
-        redaction_record.push("partial", Value::record(partial_record, span));
         record.push("redaction", Value::record(redaction_record, span));
 
         // Security configuration
@@ -180,20 +163,9 @@ impl PluginCommand for SecretConfigShowCommand {
             Value::bool(manager.config().security.audit_config_changes, span),
         );
         security_record.push(
-            "allow_partial_redaction",
-            Value::bool(manager.config().security.allow_partial_redaction, span),
-        );
-        security_record.push(
             "max_custom_text_length",
             Value::int(
                 manager.config().security.max_custom_text_length as i64,
-                span,
-            ),
-        );
-        security_record.push(
-            "min_partial_redaction_length",
-            Value::int(
-                manager.config().security.min_partial_redaction_length as i64,
                 span,
             ),
         );
