@@ -21,3 +21,5 @@ If according to the result there are untracked changes then stop.
 If according to the result the PR needs to be rebased on the remote main branch, then stop.
 
 If a PR for this branch doesn't yet exist, then create a PR with a PR description based on the PR template in the result.
+
+The PR creation should be done with the `gh` command.
