@@ -12,6 +12,7 @@ use zeroize::ZeroizeOnDrop;
 #[derive(Clone)]
 pub struct SecretRecord {
     inner: Record,
+    redaction_template: Option<String>,
 }
 
 // Functional serialization - serialize actual content for pipeline operations
@@ -20,8 +21,11 @@ impl Serialize for SecretRecord {
     where
         S: Serializer,
     {
-        // Serialize the actual content to make pipeline operations work
-        self.inner.serialize(serializer)
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("SecretRecord", 2)?;
+        state.serialize_field("inner", &self.inner)?;
+        state.serialize_field("redaction_template", &self.redaction_template)?;
+        state.end()
     }
 }
 
@@ -31,9 +35,17 @@ impl<'de> Deserialize<'de> for SecretRecord {
     where
         D: Deserializer<'de>,
     {
-        // Deserialize the actual content to make pipeline operations work
-        let content = Record::deserialize(deserializer)?;
-        Ok(SecretRecord::new(content))
+        #[derive(Deserialize)]
+        struct SecretRecordData {
+            inner: Record,
+            redaction_template: Option<String>,
+        }
+
+        let data = SecretRecordData::deserialize(deserializer)?;
+        Ok(SecretRecord {
+            inner: data.inner,
+            redaction_template: data.redaction_template,
+        })
     }
 }
 
@@ -51,7 +63,18 @@ impl ZeroizeOnDrop for SecretRecord {}
 impl SecretRecord {
     /// Create a new SecretRecord from a regular record
     pub fn new(value: Record) -> Self {
-        Self { inner: value }
+        Self {
+            inner: value,
+            redaction_template: None,
+        }
+    }
+
+    /// Create a new SecretRecord with a custom redaction template
+    pub fn new_with_template(value: Record, template: String) -> Self {
+        Self {
+            inner: value,
+            redaction_template: Some(template),
+        }
     }
 
     /// Get a reference to the inner record (for controlled access)
@@ -86,8 +109,13 @@ impl CustomValue for SecretRecord {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        let redacted_text =
-            get_configurable_redacted_string("record", RedactionContext::Serialization);
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::generate_redacted_string_with_custom_template(
+                "record", template, None, // Length not meaningful for complex types
+            )
+        } else {
+            get_configurable_redacted_string("record", RedactionContext::Serialization)
+        };
         Ok(Value::string(redacted_text, span))
     }
 
@@ -154,14 +182,26 @@ impl CustomValue for SecretRecord {
 
 impl fmt::Display for SecretRecord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string("record", RedactionContext::Display);
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::generate_redacted_string_with_custom_template(
+                "record", template, None, // Length not meaningful for complex types
+            )
+        } else {
+            get_configurable_redacted_string("record", RedactionContext::Display)
+        };
         write!(f, "{}", redacted_text)
     }
 }
 
 impl fmt::Debug for SecretRecord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string("record", RedactionContext::Debug);
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::generate_redacted_string_with_custom_template(
+                "record", template, None, // Length not meaningful for complex types
+            )
+        } else {
+            get_configurable_redacted_string("record", RedactionContext::Debug)
+        };
         write!(f, "SecretRecord({})", redacted_text)
     }
 }
@@ -565,7 +605,8 @@ mod tests {
         let json_result = serde_json::to_string(&secret);
         assert!(json_result.is_ok());
         let json = json_result.unwrap();
-        assert_eq!(json, "{}");
+        // Now includes the struct format with both inner and redaction_template fields
+        assert_eq!(json, "{\"inner\":{},\"redaction_template\":null}");
 
         // Test deserialization of empty record
         let deserialized: Result<SecretRecord, _> = serde_json::from_str(&json);
@@ -607,5 +648,38 @@ mod tests {
         assert!(restored.get_field("boolean").is_some());
         assert!(restored.get_field("list").is_some());
         assert!(restored.get_field("record").is_some());
+    }
+
+    #[test]
+    fn test_secret_record_with_custom_template() {
+        let mut record = Record::new();
+        record.push("name", Value::test_string("Alice"));
+        record.push("age", Value::test_int(30));
+        let secret =
+            SecretRecord::new_with_template(record.clone(), "moo:{{secret_type}}".to_string());
+
+        // Test Display - should show template with secret_type substituted
+        let display = format!("{}", secret);
+        assert_eq!(display, "moo:record");
+
+        // Test Debug
+        let debug = format!("{:?}", secret);
+        assert_eq!(debug, "SecretRecord(moo:record)");
+
+        // Test to_base_value
+        let base_value = secret
+            .to_base_value(nu_protocol::Span::test_data())
+            .unwrap();
+        if let nu_protocol::Value::String { val, .. } = base_value {
+            assert_eq!(val, "moo:record");
+        } else {
+            panic!("Expected string value");
+        }
+
+        // Test reveal still works
+        let revealed = secret.reveal();
+        assert_eq!(revealed.len(), 2);
+        assert!(revealed.get("name").is_some());
+        assert!(revealed.get("age").is_some());
     }
 }

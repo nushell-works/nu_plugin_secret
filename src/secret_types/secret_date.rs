@@ -12,6 +12,7 @@ use zeroize::ZeroizeOnDrop;
 #[derive(Clone)]
 pub struct SecretDate {
     inner: chrono::DateTime<chrono::FixedOffset>,
+    redaction_template: Option<String>,
 }
 
 // Functional serialization - serialize actual content for pipeline operations
@@ -20,8 +21,11 @@ impl Serialize for SecretDate {
     where
         S: Serializer,
     {
-        // Serialize the actual content to make pipeline operations work
-        self.inner.serialize(serializer)
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("SecretDate", 2)?;
+        state.serialize_field("inner", &self.inner)?;
+        state.serialize_field("redaction_template", &self.redaction_template)?;
+        state.end()
     }
 }
 
@@ -31,9 +35,17 @@ impl<'de> Deserialize<'de> for SecretDate {
     where
         D: Deserializer<'de>,
     {
-        // Deserialize the actual content to make pipeline operations work
-        let content = chrono::DateTime::<chrono::FixedOffset>::deserialize(deserializer)?;
-        Ok(SecretDate::new(content))
+        #[derive(Deserialize)]
+        struct SecretDateData {
+            inner: chrono::DateTime<chrono::FixedOffset>,
+            redaction_template: Option<String>,
+        }
+
+        let data = SecretDateData::deserialize(deserializer)?;
+        Ok(SecretDate {
+            inner: data.inner,
+            redaction_template: data.redaction_template,
+        })
     }
 }
 
@@ -51,7 +63,21 @@ impl ZeroizeOnDrop for SecretDate {}
 impl SecretDate {
     /// Create a new SecretDate from a DateTime
     pub fn new(value: chrono::DateTime<chrono::FixedOffset>) -> Self {
-        Self { inner: value }
+        Self {
+            inner: value,
+            redaction_template: None,
+        }
+    }
+
+    /// Create a new SecretDate with a custom redaction template
+    pub fn new_with_template(
+        value: chrono::DateTime<chrono::FixedOffset>,
+        template: String,
+    ) -> Self {
+        Self {
+            inner: value,
+            redaction_template: Some(template),
+        }
     }
 
     /// Get a reference to the inner DateTime (for controlled access)
@@ -91,11 +117,20 @@ impl CustomValue for SecretDate {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        let redacted_text = get_configurable_redacted_string_with_generic_value(
-            "date",
-            RedactionContext::Serialization,
-            Some(&self.inner),
-        );
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::get_redacted_string_with_custom_template_and_value(
+                "date",
+                template,
+                RedactionContext::Serialization,
+                Some(&self.inner),
+            )
+        } else {
+            get_configurable_redacted_string_with_generic_value(
+                "date",
+                RedactionContext::Serialization,
+                Some(&self.inner),
+            )
+        };
         Ok(Value::string(redacted_text, span))
     }
 
@@ -114,22 +149,40 @@ impl CustomValue for SecretDate {
 
 impl fmt::Display for SecretDate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string_with_generic_value(
-            "date",
-            RedactionContext::Display,
-            Some(&self.inner),
-        );
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::get_redacted_string_with_custom_template_and_value(
+                "date",
+                template,
+                RedactionContext::Display,
+                Some(&self.inner),
+            )
+        } else {
+            get_configurable_redacted_string_with_generic_value(
+                "date",
+                RedactionContext::Display,
+                Some(&self.inner),
+            )
+        };
         write!(f, "{}", redacted_text)
     }
 }
 
 impl fmt::Debug for SecretDate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string_with_generic_value(
-            "date",
-            RedactionContext::Debug,
-            Some(&self.inner),
-        );
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::get_redacted_string_with_custom_template_and_value(
+                "date",
+                template,
+                RedactionContext::Debug,
+                Some(&self.inner),
+            )
+        } else {
+            get_configurable_redacted_string_with_generic_value(
+                "date",
+                RedactionContext::Debug,
+                Some(&self.inner),
+            )
+        };
         write!(f, "SecretDate({})", redacted_text)
     }
 }

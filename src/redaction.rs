@@ -152,6 +152,83 @@ pub fn get_redacted_string_with_length(secret_type: &str, secret_length: Option<
     get_cached_redacted_string_with_length(secret_type, secret_length)
 }
 
+/// Generate redacted string using a custom template with optional length
+/// This function allows secrets to use their own redaction template instead of the global one
+pub fn generate_redacted_string_with_custom_template(
+    secret_type: &str,
+    custom_template: &str,
+    secret_length: Option<usize>,
+) -> String {
+    // Create a fresh Tera instance with the custom template
+    let mut tera = tera::Tera::default();
+
+    // Register the replicate function
+    tera.register_function(
+        "replicate",
+        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+            let character = args
+                .get("character")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    tera::Error::msg("replicate function requires 'character' parameter")
+                })?;
+
+            let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
+                tera::Error::msg("replicate function requires 'length' parameter")
+            })?;
+
+            if length < 0 {
+                return Ok(tera::Value::String("".to_string()));
+            }
+
+            let mask_char = character.chars().next().unwrap_or('*');
+            let result = mask_char.to_string().repeat(length as usize);
+            Ok(tera::Value::String(result))
+        },
+    );
+
+    if tera
+        .add_raw_template(TEMPLATE_NAME, custom_template)
+        .is_err()
+    {
+        // If template adding fails, fall back to simple format
+        return format!("<redacted:{}>", secret_type);
+    }
+
+    let mut context = tera::Context::new();
+    context.insert("secret_type", secret_type);
+    if let Some(length) = secret_length {
+        context.insert("secret_length", &length);
+    }
+
+    // Use Tera to render the template, fallback to format if it fails
+    tera.render(TEMPLATE_NAME, &context)
+        .unwrap_or_else(|_| format!("<redacted:{}>", secret_type))
+}
+
+/// Get redacted string using a custom template with optional value and length
+pub fn get_redacted_string_with_custom_template_and_value<T: std::fmt::Display + ?Sized>(
+    secret_type: &str,
+    custom_template: &str,
+    _context: crate::config::RedactionContext,
+    actual_value: Option<&T>,
+) -> String {
+    // Check if unredacted mode is enabled
+    if let Ok(config) = crate::config::get_config() {
+        if config.config().redaction.show_unredacted {
+            if let Some(value) = actual_value {
+                return value.to_string();
+            }
+        }
+    }
+
+    // Calculate length if we have a value
+    let secret_length = actual_value.map(|v| v.to_string().len());
+
+    // Return redacted string using custom template with length
+    generate_redacted_string_with_custom_template(secret_type, custom_template, secret_length)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -507,5 +584,55 @@ mod tests {
         // Since we're using the default template, it should still be the basic format
         // but the length should be available for custom templates
         assert_eq!(result, "<redacted:string>");
+    }
+
+    #[test]
+    fn test_generate_redacted_string_with_custom_template() {
+        // Test custom template with basic replacement
+        let result = generate_redacted_string_with_custom_template(
+            "password",
+            "[HIDDEN:{{secret_type}}]",
+            None,
+        );
+        assert_eq!(result, "[HIDDEN:password]");
+
+        // Test custom template with length
+        let result = generate_redacted_string_with_custom_template(
+            "password",
+            "{{secret_type}}({{secret_length}})",
+            Some(8),
+        );
+        assert_eq!(result, "password(8)");
+
+        // Test template with replicate function
+        let result = generate_redacted_string_with_custom_template(
+            "secret",
+            "{{replicate(character='*', length=5)}}",
+            None,
+        );
+        assert_eq!(result, "*****");
+    }
+
+    #[test]
+    fn test_get_redacted_string_with_custom_template_and_value() {
+        use crate::config::RedactionContext;
+
+        // Test custom template with value
+        let result = get_redacted_string_with_custom_template_and_value(
+            "password",
+            "[SECRET:{{secret_type}}]",
+            RedactionContext::Display,
+            Some(&"test123"),
+        );
+        assert_eq!(result, "[SECRET:password]");
+
+        // Test custom template with length calculated from value
+        let result = get_redacted_string_with_custom_template_and_value(
+            "password",
+            "{{replicate(character='*', length=secret_length)}}",
+            RedactionContext::Display,
+            Some(&"test123"),
+        );
+        assert_eq!(result, "*******"); // "test123" has 7 characters
     }
 }

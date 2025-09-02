@@ -20,6 +20,7 @@ mod wrap_int;
 mod wrap_list;
 mod wrap_record;
 mod wrap_string;
+mod wrap_with;
 
 pub use config_export::SecretConfigExportCommand;
 pub use config_import::SecretConfigImportCommand;
@@ -43,3 +44,4 @@ pub use wrap_int::SecretWrapIntCommand;
 pub use wrap_list::SecretWrapListCommand;
 pub use wrap_record::SecretWrapRecordCommand;
 pub use wrap_string::SecretWrapStringCommand;
+pub use wrap_with::SecretWrapWithCommand;

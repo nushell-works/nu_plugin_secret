@@ -11,6 +11,7 @@ use zeroize::ZeroizeOnDrop;
 #[derive(Clone)]
 pub struct SecretList {
     inner: Vec<Value>,
+    redaction_template: Option<String>,
 }
 
 // Functional serialization - serialize actual content for pipeline operations
@@ -19,8 +20,11 @@ impl Serialize for SecretList {
     where
         S: Serializer,
     {
-        // Serialize the actual content to make pipeline operations work
-        self.inner.serialize(serializer)
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("SecretList", 2)?;
+        state.serialize_field("inner", &self.inner)?;
+        state.serialize_field("redaction_template", &self.redaction_template)?;
+        state.end()
     }
 }
 
@@ -30,9 +34,17 @@ impl<'de> Deserialize<'de> for SecretList {
     where
         D: Deserializer<'de>,
     {
-        // Deserialize the actual content to make pipeline operations work
-        let content = Vec::<Value>::deserialize(deserializer)?;
-        Ok(SecretList::new(content))
+        #[derive(Deserialize)]
+        struct SecretListData {
+            inner: Vec<Value>,
+            redaction_template: Option<String>,
+        }
+
+        let data = SecretListData::deserialize(deserializer)?;
+        Ok(SecretList {
+            inner: data.inner,
+            redaction_template: data.redaction_template,
+        })
     }
 }
 
@@ -52,7 +64,18 @@ impl ZeroizeOnDrop for SecretList {}
 impl SecretList {
     /// Create a new SecretList from a regular vector of values
     pub fn new(value: Vec<Value>) -> Self {
-        Self { inner: value }
+        Self {
+            inner: value,
+            redaction_template: None,
+        }
+    }
+
+    /// Create a new SecretList with a custom redaction template
+    pub fn new_with_template(value: Vec<Value>, template: String) -> Self {
+        Self {
+            inner: value,
+            redaction_template: Some(template),
+        }
     }
 
     /// Get a reference to the inner list (for controlled access)
@@ -92,8 +115,13 @@ impl CustomValue for SecretList {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        let redacted_text =
-            get_configurable_redacted_string("list", RedactionContext::Serialization);
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::generate_redacted_string_with_custom_template(
+                "list", template, None, // Length not meaningful for complex types
+            )
+        } else {
+            get_configurable_redacted_string("list", RedactionContext::Serialization)
+        };
         Ok(Value::string(redacted_text, span))
     }
 
@@ -112,14 +140,26 @@ impl CustomValue for SecretList {
 
 impl fmt::Display for SecretList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string("list", RedactionContext::Display);
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::generate_redacted_string_with_custom_template(
+                "list", template, None, // Length not meaningful for complex types
+            )
+        } else {
+            get_configurable_redacted_string("list", RedactionContext::Display)
+        };
         write!(f, "{}", redacted_text)
     }
 }
 
 impl fmt::Debug for SecretList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string("list", RedactionContext::Debug);
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::generate_redacted_string_with_custom_template(
+                "list", template, None, // Length not meaningful for complex types
+            )
+        } else {
+            get_configurable_redacted_string("list", RedactionContext::Debug)
+        };
         write!(f, "SecretList({})", redacted_text)
     }
 }
