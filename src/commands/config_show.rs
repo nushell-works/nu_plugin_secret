@@ -100,52 +100,9 @@ impl PluginCommand for SecretConfigShowCommand {
         // Redaction configuration
         let mut redaction_record = Record::new();
         redaction_record.push(
-            "style",
-            Value::string(
-                format!("{:?}", manager.config().redaction.style).to_lowercase(),
-                span,
-            ),
+            "redaction_template",
+            Value::string(manager.config().redaction.get_redaction_template(), span),
         );
-        redaction_record.push(
-            "show_type_info",
-            Value::bool(manager.config().redaction.show_type_info, span),
-        );
-        redaction_record.push(
-            "preserve_length",
-            Value::bool(manager.config().redaction.preserve_length, span),
-        );
-
-        // Custom text if applicable
-        if let Some(ref custom_text) = manager.config().redaction.custom_text {
-            redaction_record.push("custom_text", Value::string(custom_text.clone(), span));
-        }
-
-        // Per-type overrides
-        if !manager.config().redaction.per_type.is_empty() {
-            let mut per_type_record = Record::new();
-            for (type_name, style) in &manager.config().redaction.per_type {
-                per_type_record.push(
-                    type_name.clone(),
-                    Value::string(format!("{:?}", style).to_lowercase(), span),
-                );
-            }
-            redaction_record.push("per_type_overrides", Value::record(per_type_record, span));
-        }
-
-        // Per-context overrides
-        if !manager.config().redaction.per_context.is_empty() {
-            let mut per_context_record = Record::new();
-            for (context, style) in &manager.config().redaction.per_context {
-                per_context_record.push(
-                    format!("{:?}", context).to_lowercase(),
-                    Value::string(format!("{:?}", style).to_lowercase(), span),
-                );
-            }
-            redaction_record.push(
-                "per_context_overrides",
-                Value::record(per_context_record, span),
-            );
-        }
 
         record.push("redaction", Value::record(redaction_record, span));
 

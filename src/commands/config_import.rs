@@ -171,9 +171,9 @@ impl PluginCommand for SecretConfigImportCommand {
 
         // Add configuration summary
         result_record.push(
-            "redaction_style",
+            "redaction_template",
             Value::string(
-                format!("{:?}", imported_manager.config().redaction.style).to_lowercase(),
+                imported_manager.config().redaction.get_redaction_template(),
                 span,
             ),
         );

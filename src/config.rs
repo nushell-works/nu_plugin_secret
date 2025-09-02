@@ -7,7 +7,6 @@
 //! - Hierarchical configuration loading with security validation
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{OnceLock, RwLock};
 
@@ -31,70 +30,6 @@ pub enum ConfigError {
 
     #[error("Environment variable error: {0}")]
     Environment(String),
-}
-
-/// Redaction styles available for secret display
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RedactionStyle {
-    /// Default: `<redacted:type>`
-    TypedBrackets,
-    /// Simple: `<redacted>`
-    Simple,
-    /// Asterisks: `***` or `****` (length-based)
-    Asterisks,
-    /// Square brackets: `[HIDDEN]`
-    Brackets,
-    /// Custom user-defined text
-    Custom(String),
-}
-
-// Custom serde implementation to handle TOML format compatibility
-impl<'de> serde::Deserialize<'de> for RedactionStyle {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        match s.as_str() {
-            "typed_brackets" => Ok(RedactionStyle::TypedBrackets),
-            "simple" => Ok(RedactionStyle::Simple),
-            "asterisks" => Ok(RedactionStyle::Asterisks),
-            "brackets" => Ok(RedactionStyle::Brackets),
-            "custom" => Ok(RedactionStyle::Custom(String::new())), // Will be filled from custom_text
-            _ => Err(serde::de::Error::unknown_variant(
-                &s,
-                &[
-                    "typed_brackets",
-                    "simple",
-                    "asterisks",
-                    "brackets",
-                    "custom",
-                ],
-            )),
-        }
-    }
-}
-
-impl serde::Serialize for RedactionStyle {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let s = match self {
-            RedactionStyle::TypedBrackets => "typed_brackets",
-            RedactionStyle::Simple => "simple",
-            RedactionStyle::Asterisks => "asterisks",
-            RedactionStyle::Brackets => "brackets",
-            RedactionStyle::Custom(_) => "custom",
-        };
-        serializer.serialize_str(s)
-    }
-}
-
-impl Default for RedactionStyle {
-    fn default() -> Self {
-        Self::TypedBrackets
-    }
 }
 
 /// Context where redaction is being applied
@@ -130,67 +65,25 @@ impl Default for SecurityLevel {
 }
 
 /// Main redaction configuration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct RedactionConfig {
-    /// Global redaction style
-    #[serde(default)]
-    pub style: RedactionStyle,
-    /// Custom redaction text (when style is Custom)
-    #[serde(default)]
-    pub custom_text: Option<String>,
-    /// Whether to show type information
-    #[serde(default = "default_true")]
-    pub show_type_info: bool,
-    /// Whether to preserve length information in redaction
-    #[serde(default)]
-    pub preserve_length: bool,
     /// Whether to disable redaction entirely (SHOW_UNREDACTED)
     #[serde(default)]
     pub show_unredacted: bool,
-    /// Custom Tera template for redaction (overrides style-based redaction)
+    /// Custom Tera template for redaction
     /// Example: "<redacted:{{secret_type}}>" or "[HIDDEN:{{secret_type}}]" or "moo"
-    /// Available variables: secret_type (optional), length (if preserve_length is true)
+    /// Available variables: secret_type, secret_length
     #[serde(default)]
     pub redaction_template: Option<String>,
-    /// Per-type redaction overrides
-    #[serde(default)]
-    pub per_type: HashMap<String, RedactionStyle>,
-    /// Per-context redaction overrides
-    #[serde(default)]
-    pub per_context: HashMap<RedactionContext, RedactionStyle>,
 }
 
 impl RedactionConfig {
-    /// Post-deserialization method to merge custom_text into Custom variant
-    pub fn post_deserialize(&mut self) {
-        if matches!(self.style, RedactionStyle::Custom(_)) {
-            if let Some(ref custom_text) = self.custom_text {
-                self.style = RedactionStyle::Custom(custom_text.clone());
-            }
-        }
-    }
-
     /// Get the effective redaction template
     /// Returns the custom template if configured, otherwise the default template
     pub fn get_redaction_template(&self) -> &str {
         self.redaction_template
             .as_deref()
             .unwrap_or("<redacted:{{secret_type}}>")
-    }
-}
-
-impl Default for RedactionConfig {
-    fn default() -> Self {
-        Self {
-            style: RedactionStyle::default(),
-            custom_text: None,
-            show_type_info: true,
-            preserve_length: false,
-            show_unredacted: false,
-            redaction_template: None,
-            per_type: HashMap::new(),
-            per_context: HashMap::new(),
-        }
     }
 }
 
@@ -244,13 +137,6 @@ fn default_max_custom_text_length() -> usize {
     50
 }
 
-impl PluginConfig {
-    /// Post-deserialization method to apply fixups
-    pub fn post_deserialize(&mut self) {
-        self.redaction.post_deserialize();
-    }
-}
-
 impl Default for PluginConfig {
     fn default() -> Self {
         Self {
@@ -286,7 +172,6 @@ impl ConfigManager {
             if path.exists() {
                 let content = std::fs::read_to_string(path)?;
                 config = toml::from_str(&content)?;
-                config.post_deserialize();
             }
         }
 
@@ -336,8 +221,7 @@ impl ConfigManager {
         }
 
         let content = std::fs::read_to_string(path)?;
-        let mut config: PluginConfig = toml::from_str(&content)?;
-        config.post_deserialize();
+        let config: PluginConfig = toml::from_str(&content)?;
 
         // Validate the loaded configuration
         Self::validate_config(&config)?;
@@ -362,29 +246,6 @@ impl ConfigManager {
 
     /// Apply environment variable overrides
     pub fn apply_env_overrides(config: &mut PluginConfig) -> Result<(), ConfigError> {
-        // Redaction style override
-        if let Ok(style_str) = std::env::var("NU_PLUGIN_SECRET_REDACTION_STYLE") {
-            config.redaction.style = match style_str.as_str() {
-                "typed_brackets" => RedactionStyle::TypedBrackets,
-                "simple" => RedactionStyle::Simple,
-                "asterisks" => RedactionStyle::Asterisks,
-                "brackets" => RedactionStyle::Brackets,
-                custom => RedactionStyle::Custom(custom.to_string()),
-            };
-        }
-
-        // Custom text override
-        if let Ok(custom_text) = std::env::var("NU_PLUGIN_SECRET_CUSTOM_TEXT") {
-            config.redaction.custom_text = Some(custom_text);
-        }
-
-        // Type info override
-        if let Ok(show_type) = std::env::var("NU_PLUGIN_SECRET_SHOW_TYPE_INFO") {
-            config.redaction.show_type_info = show_type.parse().map_err(|_| {
-                ConfigError::Environment("Invalid boolean for SHOW_TYPE_INFO".to_string())
-            })?;
-        }
-
         // Security level override
         if let Ok(security_level) = std::env::var("NU_PLUGIN_SECRET_SECURITY_LEVEL") {
             config.security.level = match security_level.as_str() {
@@ -420,30 +281,6 @@ impl ConfigManager {
         // Validate redaction template if present
         if let Some(ref template) = config.redaction.redaction_template {
             Self::validate_redaction_template(template)?;
-        }
-        // Validate custom redaction text
-        if let RedactionStyle::Custom(ref text) = config.redaction.style {
-            if text.len() > config.security.max_custom_text_length {
-                return Err(ConfigError::Security(format!(
-                    "Custom redaction text too long: {} > {}",
-                    text.len(),
-                    config.security.max_custom_text_length
-                )));
-            }
-
-            // Check for potentially revealing custom text
-            if config.security.level == SecurityLevel::Paranoid {
-                let lower_text = text.to_lowercase();
-                let suspicious_words = ["pass", "key", "secret", "token", "auth"];
-                for word in suspicious_words {
-                    if lower_text.contains(word) {
-                        return Err(ConfigError::Security(
-                            "Custom redaction text may reveal information about secret type"
-                                .to_string(),
-                        ));
-                    }
-                }
-            }
         }
 
         // Enhanced security validation based on security level
@@ -497,67 +334,10 @@ impl ConfigManager {
                         "Paranoid security level requires audit logging to be enabled".to_string(),
                     ));
                 }
-
-                if config.security.max_custom_text_length > 20 {
-                    return Err(ConfigError::Security(
-                        "Paranoid security level limits custom text to 20 characters".to_string(),
-                    ));
-                }
-
-                if config.redaction.show_type_info {
-                    return Err(ConfigError::Security(
-                        "Paranoid security level prohibits showing type information".to_string(),
-                    ));
-                }
-
-                if config.redaction.preserve_length {
-                    return Err(ConfigError::Security(
-                        "Paranoid security level prohibits preserving length information"
-                            .to_string(),
-                    ));
-                }
             }
         }
 
         Ok(())
-    }
-
-    /// Get redaction text for a specific type and context
-    pub fn get_redaction_text(&self, type_name: &str, context: RedactionContext) -> String {
-        // Priority order: per_context -> per_type -> global
-        let style = self
-            .config
-            .redaction
-            .per_context
-            .get(&context)
-            .or_else(|| self.config.redaction.per_type.get(type_name))
-            .unwrap_or(&self.config.redaction.style);
-
-        self.format_redaction_text(style, type_name)
-    }
-
-    /// Format redaction text based on style and type
-    fn format_redaction_text(&self, style: &RedactionStyle, type_name: &str) -> String {
-        match style {
-            RedactionStyle::TypedBrackets => {
-                if self.config.redaction.show_type_info {
-                    format!("<redacted:{}>", type_name)
-                } else {
-                    "<redacted>".to_string()
-                }
-            }
-            RedactionStyle::Simple => "<redacted>".to_string(),
-            RedactionStyle::Asterisks => {
-                if self.config.redaction.preserve_length {
-                    // This would need length information passed in
-                    "***".to_string()
-                } else {
-                    "***".to_string()
-                }
-            }
-            RedactionStyle::Brackets => "[HIDDEN]".to_string(),
-            RedactionStyle::Custom(text) => text.clone(),
-        }
     }
 }
 
@@ -633,11 +413,11 @@ fn audit_config_change(
     let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
     let mut changes = Vec::new();
 
-    // Track redaction style changes
-    if old_config.redaction.style != new_config.redaction.style {
+    // Track redaction template changes
+    if old_config.redaction.redaction_template != new_config.redaction.redaction_template {
         changes.push(format!(
-            "redaction.style: {:?} -> {:?}",
-            old_config.redaction.style, new_config.redaction.style
+            "redaction.redaction_template: {:?} -> {:?}",
+            old_config.redaction.redaction_template, new_config.redaction.redaction_template
         ));
     }
 
@@ -709,9 +489,7 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = PluginConfig::default();
-        assert_eq!(config.redaction.style, RedactionStyle::TypedBrackets);
-        assert!(config.redaction.show_type_info);
-        assert!(!config.redaction.preserve_length);
+        assert!(!config.redaction.show_unredacted);
         assert_eq!(config.security.level, SecurityLevel::Standard);
     }
 
@@ -721,7 +499,10 @@ mod tests {
         let toml_str = toml::to_string(&config).unwrap();
         let deserialized: PluginConfig = toml::from_str(&toml_str).unwrap();
 
-        assert_eq!(config.redaction.style, deserialized.redaction.style);
+        assert_eq!(
+            config.redaction.show_unredacted,
+            deserialized.redaction.show_unredacted
+        );
         assert_eq!(config.security.level, deserialized.security.level);
     }
 
@@ -740,43 +521,6 @@ mod tests {
         let loaded_config: PluginConfig = toml::from_str(&loaded_content).unwrap();
 
         assert_eq!(config.version, loaded_config.version);
-    }
-
-    #[test]
-    fn test_redaction_text_formatting() {
-        let manager = ConfigManager {
-            config: PluginConfig::default(),
-            config_path: None,
-        };
-
-        assert_eq!(
-            manager.get_redaction_text("string", RedactionContext::Display),
-            "<redacted:string>"
-        );
-
-        let mut config_with_simple = PluginConfig::default();
-        config_with_simple.redaction.style = RedactionStyle::Simple;
-        let manager_simple = ConfigManager {
-            config: config_with_simple,
-            config_path: None,
-        };
-
-        assert_eq!(
-            manager_simple.get_redaction_text("string", RedactionContext::Display),
-            "<redacted>"
-        );
-    }
-
-    #[test]
-    fn test_security_validation() {
-        let mut config = PluginConfig::default();
-        config.redaction.style =
-            RedactionStyle::Custom("verylongcustomtextthatexceedsthelimit".to_string());
-        config.security.max_custom_text_length = 20;
-
-        let result = ConfigManager::validate_config(&config);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("too long"));
     }
 
     #[test]
@@ -833,38 +577,34 @@ mod tests {
         let minimal_toml = r#"
 version = "1.0"
 [redaction]
-style = "typed_brackets"
+redaction_template = "<redacted:{{secret_type}}>"
 [security]
 level = "standard"
 "#;
 
-        let mut config: PluginConfig =
+        let config: PluginConfig =
             toml::from_str(minimal_toml).expect("Should parse minimal config");
-        config.post_deserialize();
-        assert_eq!(config.redaction.style, RedactionStyle::TypedBrackets);
+        assert_eq!(
+            config.redaction.get_redaction_template(),
+            "<redacted:{{secret_type}}>"
+        );
         ConfigManager::validate_config(&config).expect("Should validate minimal config");
     }
 
     #[test]
-    fn test_custom_style_compatibility() {
-        // Test custom style with separate custom_text field
+    fn test_custom_template_compatibility() {
+        // Test custom redaction template
         let custom_toml = r#"
 version = "1.0"
 [redaction]
-style = "custom"
-custom_text = "[SECRET_DATA]"
+redaction_template = "[SECRET_DATA]"
 [security]
 level = "standard"
 "#;
 
-        let mut config: PluginConfig =
-            toml::from_str(custom_toml).expect("Should parse custom config");
-        config.post_deserialize();
+        let config: PluginConfig = toml::from_str(custom_toml).expect("Should parse custom config");
 
-        match config.redaction.style {
-            RedactionStyle::Custom(text) => assert_eq!(text, "[SECRET_DATA]"),
-            _ => panic!("Expected Custom variant"),
-        }
+        assert_eq!(config.redaction.get_redaction_template(), "[SECRET_DATA]");
     }
 
     #[test]
@@ -873,14 +613,12 @@ level = "standard"
         let security_minimal_toml = r#"
 version = "1.0"
 [redaction]
-style = "simple"
 [security]
 level = "paranoid"
 "#;
 
-        let mut config: PluginConfig =
+        let config: PluginConfig =
             toml::from_str(security_minimal_toml).expect("Should parse security minimal config");
-        config.post_deserialize();
 
         assert_eq!(config.security.level, SecurityLevel::Paranoid);
         assert!(config.security.audit_config_changes); // default true
@@ -892,14 +630,13 @@ level = "paranoid"
         // Test representative configuration patterns that would be in test files
         // Using inline TOML to be Miri-compatible (no file system access)
         let test_configs = [
-            // Custom style config
+            // Custom template config
             (
                 "custom",
                 r#"
 version = "1.0"
 [redaction]
-style = "custom"
-custom_text = "[SECRET_DATA]"
+redaction_template = "[SECRET_DATA]"
 [security]
 level = "standard"
 "#,
@@ -910,7 +647,6 @@ level = "standard"
                 r#"
 version = "1.0"
 [redaction]
-style = "simple"
 [security]
 level = "minimal"
 "#,
@@ -921,66 +657,16 @@ level = "minimal"
                 r#"
 version = "1.0"
 [redaction]
-style = "simple"
-show_type_info = false
-preserve_length = false
+redaction_template = "<redacted>"
 [security]
 level = "paranoid"
-max_custom_text_length = 20
-"#,
-            ),
-            // Default-style config
-            (
-                "default",
-                r#"
-version = "1.0"
-[redaction]
-style = "typed_brackets"
-show_type_info = true
-[security]
-level = "standard"
-"#,
-            ),
-            // Simple style config
-            (
-                "simple",
-                r#"
-version = "1.0"
-[redaction]
-style = "simple"
-show_type_info = false
-[security]
-level = "standard"
-"#,
-            ),
-            // Asterisks style config
-            (
-                "asterisks",
-                r#"
-version = "1.0"
-[redaction]
-style = "asterisks"
-[security]
-level = "standard"
-"#,
-            ),
-            // Brackets style config
-            (
-                "brackets",
-                r#"
-version = "1.0"
-[redaction]
-style = "brackets"
-[security]
-level = "standard"
 "#,
             ),
         ];
 
         for (name, content) in &test_configs {
-            let mut config: PluginConfig = toml::from_str(content)
+            let config: PluginConfig = toml::from_str(content)
                 .unwrap_or_else(|e| panic!("Should parse {} config: {}", name, e));
-            config.post_deserialize();
             ConfigManager::validate_config(&config)
                 .unwrap_or_else(|e| panic!("Should validate {} config: {}", name, e));
         }
@@ -996,7 +682,6 @@ level = "standard"
                 r#"
 version = "1.0"
 [redaction]
-style = "simple"
 "#,
             ),
             // Only security level specified
@@ -1011,64 +696,10 @@ level = "minimal"
         ];
 
         for (name, toml_content) in legacy_configs {
-            let mut config: PluginConfig = toml::from_str(toml_content)
+            let config: PluginConfig = toml::from_str(toml_content)
                 .unwrap_or_else(|_| panic!("Legacy config {} should parse", name));
-            config.post_deserialize();
             ConfigManager::validate_config(&config)
                 .unwrap_or_else(|_| panic!("Legacy config {} should validate", name));
-        }
-    }
-
-    #[test]
-    fn test_redaction_style_serialization() {
-        // Test that all redaction styles serialize/deserialize correctly within a config context
-        let test_cases = vec![
-            (RedactionStyle::TypedBrackets, "typed_brackets"),
-            (RedactionStyle::Simple, "simple"),
-            (RedactionStyle::Asterisks, "asterisks"),
-            (RedactionStyle::Brackets, "brackets"),
-        ];
-
-        for (style, expected_str) in test_cases {
-            // Create a minimal config with the style
-            let mut config = PluginConfig::default();
-            config.redaction.style = style.clone();
-
-            // Test serialization
-            let serialized = toml::to_string(&config).expect("Should serialize config");
-            assert!(
-                serialized.contains(expected_str),
-                "Serialized config should contain {}",
-                expected_str
-            );
-
-            // Test deserialization
-            let deserialized: PluginConfig =
-                toml::from_str(&serialized).expect("Should deserialize config");
-            match (&style, &deserialized.redaction.style) {
-                (RedactionStyle::TypedBrackets, RedactionStyle::TypedBrackets) => {}
-                (RedactionStyle::Simple, RedactionStyle::Simple) => {}
-                (RedactionStyle::Asterisks, RedactionStyle::Asterisks) => {}
-                (RedactionStyle::Brackets, RedactionStyle::Brackets) => {}
-                _ => panic!("Mismatched deserialization for {}", expected_str),
-            }
-        }
-
-        // Test custom style separately
-        let custom_config_toml = r#"
-version = "1.0"
-[redaction]
-style = "custom"
-custom_text = "test_custom_text"
-"#;
-
-        let mut config: PluginConfig =
-            toml::from_str(custom_config_toml).expect("Should parse custom config");
-        config.post_deserialize();
-
-        match config.redaction.style {
-            RedactionStyle::Custom(text) => assert_eq!(text, "test_custom_text"),
-            _ => panic!("Expected Custom variant"),
         }
     }
 
@@ -1113,9 +744,8 @@ redaction_template = "<custom:{{secret_type}}>"
 level = "standard"
 "#;
 
-        let mut config: PluginConfig =
+        let config: PluginConfig =
             toml::from_str(config_toml).expect("Should parse config with custom template");
-        config.post_deserialize();
 
         ConfigManager::validate_config(&config)
             .expect("Should validate config with custom template");
@@ -1139,9 +769,8 @@ redaction_template = "moo"
 level = "standard"
 "#;
 
-        let mut config: PluginConfig =
+        let config: PluginConfig =
             toml::from_str(simple_config_content).expect("Should parse config");
-        config.post_deserialize();
 
         // This should now pass validation
         let result = ConfigManager::validate_config(&config);
@@ -1156,8 +785,6 @@ level = "standard"
 version = "1.0"
 
 [redaction]
-style = "typed_brackets"
-show_type_info = true
 redaction_template = "[HIDDEN:{{secret_type}}]"
 
 [security]
@@ -1166,9 +793,8 @@ audit_config_changes = true
 max_custom_text_length = 50
 "#;
 
-        let mut config: PluginConfig =
+        let config: PluginConfig =
             toml::from_str(config_content).expect("Should parse test config file");
-        config.post_deserialize();
 
         // Validate the configuration
         ConfigManager::validate_config(&config).expect("Should validate test config file");
@@ -1178,8 +804,7 @@ max_custom_text_length = 50
             config.redaction.get_redaction_template(),
             "[HIDDEN:{{secret_type}}]"
         );
-        assert_eq!(config.redaction.style, RedactionStyle::TypedBrackets);
-        assert!(config.redaction.show_type_info);
+        assert!(!config.redaction.show_unredacted);
         assert_eq!(config.security.level, SecurityLevel::Standard);
     }
 
@@ -1190,13 +815,11 @@ max_custom_text_length = 50
 version = "1.0"
 "#;
 
-        let mut config: PluginConfig =
+        let config: PluginConfig =
             toml::from_str(empty_sections_toml).expect("Should parse config with empty sections");
-        config.post_deserialize();
 
         // Should have all defaults
-        assert_eq!(config.redaction.style, RedactionStyle::TypedBrackets);
-        assert!(config.redaction.show_type_info);
+        assert!(!config.redaction.show_unredacted);
         assert_eq!(config.security.level, SecurityLevel::Standard);
         assert!(config.security.audit_config_changes);
 

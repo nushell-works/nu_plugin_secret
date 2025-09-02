@@ -106,11 +106,8 @@ impl PluginCommand for SecretConfigExportCommand {
 
         // Add configuration summary
         record.push(
-            "redaction_style",
-            Value::string(
-                format!("{:?}", manager.config().redaction.style).to_lowercase(),
-                span,
-            ),
+            "redaction_template",
+            Value::string(manager.config().redaction.get_redaction_template(), span),
         );
         record.push(
             "security_level",
