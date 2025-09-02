@@ -10,7 +10,7 @@
 //! - `secret_length`: The length of the secret value (only available when length is provided)
 //!
 //! Available template functions:
-//! - `mask(character="*", length=5)`: Returns a string of the given character repeated length times.
+//! - `replicate(character="*", length=5)`: Returns a string of the given character repeated length times.
 //!   Returns empty string if length is negative.
 
 use std::sync::OnceLock;
@@ -63,19 +63,20 @@ fn generate_redacted_string_with_length(secret_type: &str, secret_length: Option
     // This is slightly less efficient but allows for dynamic template updates
     let mut tera = Tera::default();
 
-    // Register the mask function
+    // Register the replicate function
     tera.register_function(
-        "mask",
+        "replicate",
         |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
             let character = args
                 .get("character")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| tera::Error::msg("mask function requires 'character' parameter"))?;
+                .ok_or_else(|| {
+                    tera::Error::msg("replicate function requires 'character' parameter")
+                })?;
 
-            let length = args
-                .get("length")
-                .and_then(|v| v.as_i64())
-                .ok_or_else(|| tera::Error::msg("mask function requires 'length' parameter"))?;
+            let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
+                tera::Error::msg("replicate function requires 'length' parameter")
+            })?;
 
             if length < 0 {
                 return Ok(tera::Value::String("".to_string()));
@@ -302,23 +303,22 @@ mod tests {
     }
 
     #[test]
-    fn test_mask_function() {
-        // Test mask function with positive length
+    fn test_replicate_function() {
+        // Test replicate function with positive length
         let mut tera = tera::Tera::default();
         tera.register_function(
-            "mask",
+            "replicate",
             |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
                 let character =
                     args.get("character")
                         .and_then(|v| v.as_str())
                         .ok_or_else(|| {
-                            tera::Error::msg("mask function requires 'character' parameter")
+                            tera::Error::msg("replicate function requires 'character' parameter")
                         })?;
 
-                let length = args
-                    .get("length")
-                    .and_then(|v| v.as_i64())
-                    .ok_or_else(|| tera::Error::msg("mask function requires 'length' parameter"))?;
+                let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
+                    tera::Error::msg("replicate function requires 'length' parameter")
+                })?;
 
                 if length < 0 {
                     return Ok(tera::Value::String("".to_string()));
@@ -330,31 +330,30 @@ mod tests {
             },
         );
 
-        tera.add_raw_template("mask_test", "{{mask(character='*', length=5)}}")
+        tera.add_raw_template("replicate_test", "{{replicate(character='*', length=5)}}")
             .unwrap();
 
         let context = tera::Context::new();
-        let result = tera.render("mask_test", &context).unwrap();
+        let result = tera.render("replicate_test", &context).unwrap();
         assert_eq!(result, "*****");
     }
 
     #[test]
-    fn test_mask_function_different_characters() {
+    fn test_replicate_function_different_characters() {
         let mut tera = tera::Tera::default();
         tera.register_function(
-            "mask",
+            "replicate",
             |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
                 let character =
                     args.get("character")
                         .and_then(|v| v.as_str())
                         .ok_or_else(|| {
-                            tera::Error::msg("mask function requires 'character' parameter")
+                            tera::Error::msg("replicate function requires 'character' parameter")
                         })?;
 
-                let length = args
-                    .get("length")
-                    .and_then(|v| v.as_i64())
-                    .ok_or_else(|| tera::Error::msg("mask function requires 'length' parameter"))?;
+                let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
+                    tera::Error::msg("replicate function requires 'length' parameter")
+                })?;
 
                 if length < 0 {
                     return Ok(tera::Value::String("".to_string()));
@@ -367,37 +366,36 @@ mod tests {
         );
 
         // Test with different characters
-        tera.add_raw_template("mask_x", "{{mask(character='X', length=3)}}")
+        tera.add_raw_template("replicate_x", "{{replicate(character='X', length=3)}}")
             .unwrap();
-        tera.add_raw_template("mask_dash", "{{mask(character='-', length=7)}}")
+        tera.add_raw_template("replicate_dash", "{{replicate(character='-', length=7)}}")
             .unwrap();
-        tera.add_raw_template("mask_dot", "{{mask(character='.', length=4)}}")
+        tera.add_raw_template("replicate_dot", "{{replicate(character='.', length=4)}}")
             .unwrap();
 
         let context = tera::Context::new();
 
-        assert_eq!(tera.render("mask_x", &context).unwrap(), "XXX");
-        assert_eq!(tera.render("mask_dash", &context).unwrap(), "-------");
-        assert_eq!(tera.render("mask_dot", &context).unwrap(), "....");
+        assert_eq!(tera.render("replicate_x", &context).unwrap(), "XXX");
+        assert_eq!(tera.render("replicate_dash", &context).unwrap(), "-------");
+        assert_eq!(tera.render("replicate_dot", &context).unwrap(), "....");
     }
 
     #[test]
-    fn test_mask_function_negative_length() {
+    fn test_replicate_function_negative_length() {
         let mut tera = tera::Tera::default();
         tera.register_function(
-            "mask",
+            "replicate",
             |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
                 let character =
                     args.get("character")
                         .and_then(|v| v.as_str())
                         .ok_or_else(|| {
-                            tera::Error::msg("mask function requires 'character' parameter")
+                            tera::Error::msg("replicate function requires 'character' parameter")
                         })?;
 
-                let length = args
-                    .get("length")
-                    .and_then(|v| v.as_i64())
-                    .ok_or_else(|| tera::Error::msg("mask function requires 'length' parameter"))?;
+                let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
+                    tera::Error::msg("replicate function requires 'length' parameter")
+                })?;
 
                 if length < 0 {
                     return Ok(tera::Value::String("".to_string()));
@@ -409,31 +407,33 @@ mod tests {
             },
         );
 
-        tera.add_raw_template("mask_negative", "{{mask(character='*', length=-1)}}")
-            .unwrap();
+        tera.add_raw_template(
+            "replicate_negative",
+            "{{replicate(character='*', length=-1)}}",
+        )
+        .unwrap();
 
         let context = tera::Context::new();
-        let result = tera.render("mask_negative", &context).unwrap();
+        let result = tera.render("replicate_negative", &context).unwrap();
         assert_eq!(result, "");
     }
 
     #[test]
-    fn test_mask_function_zero_length() {
+    fn test_replicate_function_zero_length() {
         let mut tera = tera::Tera::default();
         tera.register_function(
-            "mask",
+            "replicate",
             |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
                 let character =
                     args.get("character")
                         .and_then(|v| v.as_str())
                         .ok_or_else(|| {
-                            tera::Error::msg("mask function requires 'character' parameter")
+                            tera::Error::msg("replicate function requires 'character' parameter")
                         })?;
 
-                let length = args
-                    .get("length")
-                    .and_then(|v| v.as_i64())
-                    .ok_or_else(|| tera::Error::msg("mask function requires 'length' parameter"))?;
+                let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
+                    tera::Error::msg("replicate function requires 'length' parameter")
+                })?;
 
                 if length < 0 {
                     return Ok(tera::Value::String("".to_string()));
@@ -445,31 +445,30 @@ mod tests {
             },
         );
 
-        tera.add_raw_template("mask_zero", "{{mask(character='*', length=0)}}")
+        tera.add_raw_template("replicate_zero", "{{replicate(character='*', length=0)}}")
             .unwrap();
 
         let context = tera::Context::new();
-        let result = tera.render("mask_zero", &context).unwrap();
+        let result = tera.render("replicate_zero", &context).unwrap();
         assert_eq!(result, "");
     }
 
     #[test]
-    fn test_template_with_length_and_mask() {
+    fn test_template_with_length_and_replicate() {
         let mut tera = tera::Tera::default();
         tera.register_function(
-            "mask",
+            "replicate",
             |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
                 let character =
                     args.get("character")
                         .and_then(|v| v.as_str())
                         .ok_or_else(|| {
-                            tera::Error::msg("mask function requires 'character' parameter")
+                            tera::Error::msg("replicate function requires 'character' parameter")
                         })?;
 
-                let length = args
-                    .get("length")
-                    .and_then(|v| v.as_i64())
-                    .ok_or_else(|| tera::Error::msg("mask function requires 'length' parameter"))?;
+                let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
+                    tera::Error::msg("replicate function requires 'length' parameter")
+                })?;
 
                 if length < 0 {
                     return Ok(tera::Value::String("".to_string()));
@@ -481,10 +480,10 @@ mod tests {
             },
         );
 
-        // Template that uses both secret_length and mask function
+        // Template that uses both secret_length and replicate function
         tera.add_raw_template(
             "complex",
-            "<{{secret_type}}:{{mask(character='*', length=secret_length)}}>",
+            "<{{secret_type}}:{{replicate(character='*', length=secret_length)}}>",
         )
         .unwrap();
 
