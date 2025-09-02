@@ -7,7 +7,7 @@
 //! - `secret config validate` - Validate configuration
 //! - `secret config export/import` - Configuration backup/restore
 
-use crate::config::{ConfigManager, RedactionStyle, SecurityLevel};
+use crate::config::{ConfigManager, SecurityLevel};
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
@@ -31,18 +31,6 @@ impl PluginCommand for SecretConfigureCommand {
         Signature::build(self.name())
             .input_output_types(vec![(Type::Nothing, Type::Record(Box::new([])))])
             .named(
-                "redaction-style",
-                SyntaxShape::String,
-                "Set global redaction style (typed_brackets, simple, asterisks, brackets, custom)",
-                Some('r'),
-            )
-            .named(
-                "custom-text",
-                SyntaxShape::String,
-                "Custom redaction text (when style is 'custom')",
-                Some('c'),
-            )
-            .named(
                 "security-level",
                 SyntaxShape::String,
                 "Set security level (minimal, standard, paranoid)",
@@ -52,23 +40,11 @@ impl PluginCommand for SecretConfigureCommand {
     }
 
     fn examples(&self) -> Vec<Example<'_>> {
-        vec![
-            Example {
-                example: "secret configure --redaction-style simple",
-                description: "Set redaction style to simple '<redacted>'",
-                result: None,
-            },
-            Example {
-                example: "secret configure --redaction-style custom --custom-text '[HIDDEN]'",
-                description: "Set custom redaction text",
-                result: None,
-            },
-            Example {
-                example: "secret configure --security-level paranoid",
-                description: "Set security level to paranoid (maximum security)",
-                result: None,
-            },
-        ]
+        vec![Example {
+            example: "secret configure --security-level paranoid",
+            description: "Set security level to paranoid (maximum security)",
+            result: None,
+        }]
     }
 
     fn run(
@@ -87,30 +63,6 @@ impl PluginCommand for SecretConfigureCommand {
         })?;
 
         let mut config_changed = false;
-
-        // Handle redaction style changes
-        if let Some(style_str) = call.get_flag::<String>("redaction-style")? {
-            let style = match style_str.as_str() {
-                "typed_brackets" => RedactionStyle::TypedBrackets,
-                "simple" => RedactionStyle::Simple,
-                "asterisks" => RedactionStyle::Asterisks,
-                "brackets" => RedactionStyle::Brackets,
-                "custom" => {
-                    if let Some(custom_text) = call.get_flag::<String>("custom-text")? {
-                        RedactionStyle::Custom(custom_text)
-                    } else {
-                        return Err(LabeledError::new("Invalid Configuration")
-                            .with_label("Custom redaction style requires --custom-text", span));
-                    }
-                }
-                _ => {
-                    return Err(LabeledError::new("Invalid Redaction Style")
-                        .with_label(format!("Unknown style '{}'. Valid options: typed_brackets, simple, asterisks, brackets, custom", style_str), span));
-                }
-            };
-            manager.config_mut().redaction.style = style;
-            config_changed = true;
-        }
 
         // Handle security level changes
         if let Some(level_str) = call.get_flag::<String>("security-level")? {
@@ -158,11 +110,8 @@ impl PluginCommand for SecretConfigureCommand {
         let mut record = Record::new();
 
         record.push(
-            "redaction_style",
-            Value::string(
-                format!("{:?}", manager.config().redaction.style).to_lowercase(),
-                span,
-            ),
+            "redaction_template",
+            Value::string(manager.config().redaction.get_redaction_template(), span),
         );
 
         record.push(
@@ -202,7 +151,6 @@ mod tests {
         let signature = command.signature();
 
         assert_eq!(signature.name, "secret configure");
-        assert!(signature.named.iter().any(|n| n.long == "redaction-style"));
         assert!(signature.named.iter().any(|n| n.long == "security-level"));
     }
 }
