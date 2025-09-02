@@ -147,6 +147,11 @@ pub struct RedactionConfig {
     /// Whether to disable redaction entirely (SHOW_UNREDACTED)
     #[serde(default)]
     pub show_unredacted: bool,
+    /// Custom Tera template for redaction (overrides style-based redaction)
+    /// Example: "<redacted:{{secret_type}}>" or "[HIDDEN:{{secret_type}}]" or "moo"
+    /// Available variables: secret_type (optional), length (if preserve_length is true)
+    #[serde(default)]
+    pub redaction_template: Option<String>,
     /// Per-type redaction overrides
     #[serde(default)]
     pub per_type: HashMap<String, RedactionStyle>,
@@ -164,6 +169,14 @@ impl RedactionConfig {
             }
         }
     }
+
+    /// Get the effective redaction template
+    /// Returns the custom template if configured, otherwise the default template
+    pub fn get_redaction_template(&self) -> &str {
+        self.redaction_template
+            .as_deref()
+            .unwrap_or("<redacted:{{secret_type}}>")
+    }
 }
 
 impl Default for RedactionConfig {
@@ -174,6 +187,7 @@ impl Default for RedactionConfig {
             show_type_info: true,
             preserve_length: false,
             show_unredacted: false,
+            redaction_template: None,
             per_type: HashMap::new(),
             per_context: HashMap::new(),
         }
@@ -403,6 +417,10 @@ impl ConfigManager {
 
     /// Validate configuration against security constraints
     pub fn validate_config(config: &PluginConfig) -> Result<(), ConfigError> {
+        // Validate redaction template if present
+        if let Some(ref template) = config.redaction.redaction_template {
+            Self::validate_redaction_template(template)?;
+        }
         // Validate custom redaction text
         if let RedactionStyle::Custom(ref text) = config.redaction.style {
             if text.len() > config.security.max_custom_text_length {
@@ -430,6 +448,30 @@ impl ConfigManager {
 
         // Enhanced security validation based on security level
         Self::validate_security_level_constraints(config)?;
+
+        Ok(())
+    }
+
+    /// Validate redaction template syntax and content
+    fn validate_redaction_template(template: &str) -> Result<(), ConfigError> {
+        // Validate Tera template syntax by attempting to compile it
+        let mut tera = tera::Tera::default();
+        if let Err(e) = tera.add_raw_template("validation", template) {
+            return Err(ConfigError::Invalid(format!(
+                "Invalid Tera template syntax: {}",
+                e
+            )));
+        }
+
+        // Test template rendering with a sample value
+        let mut context = tera::Context::new();
+        context.insert("secret_type", "string");
+        if let Err(e) = tera.render("validation", &context) {
+            return Err(ConfigError::Invalid(format!(
+                "Template failed to render with test data: {}",
+                e
+            )));
+        }
 
         Ok(())
     }
@@ -1028,6 +1070,117 @@ custom_text = "test_custom_text"
             RedactionStyle::Custom(text) => assert_eq!(text, "test_custom_text"),
             _ => panic!("Expected Custom variant"),
         }
+    }
+
+    #[test]
+    fn test_redaction_template_validation() {
+        // Test valid template with secret_type
+        let valid_template = "<redacted:{{secret_type}}>";
+        let result = ConfigManager::validate_redaction_template(valid_template);
+        assert!(result.is_ok());
+
+        // Test template without secret_type variable (now valid)
+        let simple_template = "moo";
+        let result = ConfigManager::validate_redaction_template(simple_template);
+        assert!(result.is_ok());
+
+        // Test another simple template
+        let static_template = "<redacted>";
+        let result = ConfigManager::validate_redaction_template(static_template);
+        assert!(result.is_ok());
+
+        // Test template with invalid Tera syntax
+        let syntax_error_template = "{{unclosed";
+        let result = ConfigManager::validate_redaction_template(syntax_error_template);
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Invalid Tera template syntax"));
+
+        // Test valid custom template
+        let custom_template = "[HIDDEN:{{secret_type}}]";
+        let result = ConfigManager::validate_redaction_template(custom_template);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_config_with_custom_template() {
+        let config_toml = r#"
+version = "1.0"
+[redaction]
+style = "typed_brackets"
+redaction_template = "<custom:{{secret_type}}>"
+[security]
+level = "standard"
+"#;
+
+        let mut config: PluginConfig =
+            toml::from_str(config_toml).expect("Should parse config with custom template");
+        config.post_deserialize();
+
+        ConfigManager::validate_config(&config)
+            .expect("Should validate config with custom template");
+        assert_eq!(
+            config.redaction.get_redaction_template(),
+            "<custom:{{secret_type}}>"
+        );
+    }
+
+    #[test]
+    fn test_simple_template_acceptance() {
+        // Test that simple template without {{secret_type}} is now accepted
+        let simple_config_content = r#"
+version = "1.0"
+
+[redaction]
+style = "typed_brackets"
+redaction_template = "moo"
+
+[security]
+level = "standard"
+"#;
+
+        let mut config: PluginConfig =
+            toml::from_str(simple_config_content).expect("Should parse config");
+        config.post_deserialize();
+
+        // This should now pass validation
+        let result = ConfigManager::validate_config(&config);
+        assert!(result.is_ok());
+        assert_eq!(config.redaction.get_redaction_template(), "moo");
+    }
+
+    #[test]
+    fn test_real_config_file_integration() {
+        // Test loading configuration from file (inline to be Miri-compatible)
+        let config_content = r#"
+version = "1.0"
+
+[redaction]
+style = "typed_brackets"
+show_type_info = true
+redaction_template = "[HIDDEN:{{secret_type}}]"
+
+[security]
+level = "standard"
+audit_config_changes = true
+max_custom_text_length = 50
+"#;
+
+        let mut config: PluginConfig =
+            toml::from_str(config_content).expect("Should parse test config file");
+        config.post_deserialize();
+
+        // Validate the configuration
+        ConfigManager::validate_config(&config).expect("Should validate test config file");
+
+        // Test that custom template is properly set
+        assert_eq!(
+            config.redaction.get_redaction_template(),
+            "[HIDDEN:{{secret_type}}]"
+        );
+        assert_eq!(config.redaction.style, RedactionStyle::TypedBrackets);
+        assert!(config.redaction.show_type_info);
+        assert_eq!(config.security.level, SecurityLevel::Standard);
     }
 
     #[test]
