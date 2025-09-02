@@ -38,6 +38,12 @@ pub fn get_configurable_redacted_string_with_generic_value<T: std::fmt::Display>
     crate::redaction::get_redacted_string_with_value(type_name, context, actual_value)
 }
 
+/// Get redacted string with explicit length for template usage
+/// This allows templates to access secret_length variable and mask function
+pub fn get_redacted_string_with_length(type_name: &str, secret_length: Option<usize>) -> String {
+    crate::redaction::get_redacted_string_with_length(type_name, secret_length)
+}
+
 /// Memory pool for small allocations
 /// This reduces allocation overhead for small secret values
 pub struct SecretMemoryPool {
@@ -377,5 +383,16 @@ mod tests {
             Some(&2.5),
         );
         assert!(result.contains("redacted"));
+    }
+
+    #[test]
+    fn test_redacted_string_with_length() {
+        // Test the new length-aware function
+        let result = get_redacted_string_with_length("password", Some(12));
+        assert_eq!(result, "<redacted:password>");
+
+        // Test without length
+        let result = get_redacted_string_with_length("token", None);
+        assert_eq!(result, "<redacted:token>");
     }
 }
