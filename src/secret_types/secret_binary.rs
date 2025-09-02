@@ -13,6 +13,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 #[derive(Clone)]
 pub struct SecretBinary {
     inner: OptimizedBinary,
+    redaction_template: Option<String>,
 }
 
 // Functional serialization - serialize actual content for pipeline operations
@@ -21,9 +22,12 @@ impl Serialize for SecretBinary {
     where
         S: Serializer,
     {
-        // Serialize the actual content to make pipeline operations work
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("SecretBinary", 2)?;
         let bytes = self.inner.as_bytes();
-        bytes.as_ref().serialize(serializer)
+        state.serialize_field("inner", bytes.as_ref())?;
+        state.serialize_field("redaction_template", &self.redaction_template)?;
+        state.end()
     }
 }
 
@@ -33,9 +37,17 @@ impl<'de> Deserialize<'de> for SecretBinary {
     where
         D: Deserializer<'de>,
     {
-        // Deserialize the actual content to make pipeline operations work
-        let content = Vec::<u8>::deserialize(deserializer)?;
-        Ok(SecretBinary::new(content))
+        #[derive(Deserialize)]
+        struct SecretBinaryData {
+            inner: Vec<u8>,
+            redaction_template: Option<String>,
+        }
+
+        let data = SecretBinaryData::deserialize(deserializer)?;
+        Ok(SecretBinary {
+            inner: OptimizedBinary::from_slice(&data.inner),
+            redaction_template: data.redaction_template,
+        })
     }
 }
 
@@ -54,6 +66,15 @@ impl SecretBinary {
     pub fn new(value: Vec<u8>) -> Self {
         Self {
             inner: OptimizedBinary::from_slice(&value),
+            redaction_template: None,
+        }
+    }
+
+    /// Create a new SecretBinary with a custom redaction template
+    pub fn new_with_template(value: Vec<u8>, template: String) -> Self {
+        Self {
+            inner: OptimizedBinary::from_slice(&value),
+            redaction_template: Some(template),
         }
     }
 
@@ -95,8 +116,15 @@ impl CustomValue for SecretBinary {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        let redacted_text =
-            get_configurable_redacted_string("binary", RedactionContext::Serialization);
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::generate_redacted_string_with_custom_template(
+                "binary",
+                template,
+                Some(self.inner.len()), // Binary length is meaningful (number of bytes)
+            )
+        } else {
+            get_configurable_redacted_string("binary", RedactionContext::Serialization)
+        };
         Ok(Value::string(redacted_text, span))
     }
 
@@ -115,14 +143,30 @@ impl CustomValue for SecretBinary {
 
 impl fmt::Display for SecretBinary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string("binary", RedactionContext::Display);
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::generate_redacted_string_with_custom_template(
+                "binary",
+                template,
+                Some(self.inner.len()), // Binary length is meaningful (number of bytes)
+            )
+        } else {
+            get_configurable_redacted_string("binary", RedactionContext::Display)
+        };
         write!(f, "{}", redacted_text)
     }
 }
 
 impl fmt::Debug for SecretBinary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string("binary", RedactionContext::Debug);
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::generate_redacted_string_with_custom_template(
+                "binary",
+                template,
+                Some(self.inner.len()), // Binary length is meaningful (number of bytes)
+            )
+        } else {
+            get_configurable_redacted_string("binary", RedactionContext::Debug)
+        };
         write!(f, "SecretBinary({})", redacted_text)
     }
 }

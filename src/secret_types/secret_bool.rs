@@ -11,6 +11,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 #[derive(Clone)]
 pub struct SecretBool {
     inner: bool,
+    redaction_template: Option<String>,
 }
 
 // Functional serialization - serialize actual content for pipeline operations
@@ -19,8 +20,11 @@ impl Serialize for SecretBool {
     where
         S: Serializer,
     {
-        // Serialize the actual content to make pipeline operations work
-        self.inner.serialize(serializer)
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("SecretBool", 2)?;
+        state.serialize_field("inner", &self.inner)?;
+        state.serialize_field("redaction_template", &self.redaction_template)?;
+        state.end()
     }
 }
 
@@ -30,9 +34,17 @@ impl<'de> Deserialize<'de> for SecretBool {
     where
         D: Deserializer<'de>,
     {
-        // Deserialize the actual content to make pipeline operations work
-        let content = bool::deserialize(deserializer)?;
-        Ok(SecretBool::new(content))
+        #[derive(Deserialize)]
+        struct SecretBoolData {
+            inner: bool,
+            redaction_template: Option<String>,
+        }
+
+        let data = SecretBoolData::deserialize(deserializer)?;
+        Ok(SecretBool {
+            inner: data.inner,
+            redaction_template: data.redaction_template,
+        })
     }
 }
 
@@ -49,7 +61,18 @@ impl ZeroizeOnDrop for SecretBool {}
 impl SecretBool {
     /// Create a new SecretBool from a regular boolean
     pub fn new(value: bool) -> Self {
-        Self { inner: value }
+        Self {
+            inner: value,
+            redaction_template: None,
+        }
+    }
+
+    /// Create a new SecretBool with a custom redaction template
+    pub fn new_with_template(value: bool, template: String) -> Self {
+        Self {
+            inner: value,
+            redaction_template: Some(template),
+        }
     }
 
     /// Get a reference to the inner boolean (for controlled access)
@@ -74,11 +97,20 @@ impl CustomValue for SecretBool {
     }
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-        let redacted_text = get_configurable_redacted_string_with_generic_value(
-            "bool",
-            RedactionContext::Serialization,
-            Some(&self.inner),
-        );
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::get_redacted_string_with_custom_template_and_value(
+                "bool",
+                template,
+                RedactionContext::Serialization,
+                Some(&self.inner),
+            )
+        } else {
+            get_configurable_redacted_string_with_generic_value(
+                "bool",
+                RedactionContext::Serialization,
+                Some(&self.inner),
+            )
+        };
         Ok(Value::string(redacted_text, span))
     }
 
@@ -97,22 +129,40 @@ impl CustomValue for SecretBool {
 
 impl fmt::Display for SecretBool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string_with_generic_value(
-            "bool",
-            RedactionContext::Display,
-            Some(&self.inner),
-        );
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::get_redacted_string_with_custom_template_and_value(
+                "bool",
+                template,
+                RedactionContext::Display,
+                Some(&self.inner),
+            )
+        } else {
+            get_configurable_redacted_string_with_generic_value(
+                "bool",
+                RedactionContext::Display,
+                Some(&self.inner),
+            )
+        };
         write!(f, "{}", redacted_text)
     }
 }
 
 impl fmt::Debug for SecretBool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let redacted_text = get_configurable_redacted_string_with_generic_value(
-            "bool",
-            RedactionContext::Debug,
-            Some(&self.inner),
-        );
+        let redacted_text = if let Some(template) = &self.redaction_template {
+            crate::redaction::get_redacted_string_with_custom_template_and_value(
+                "bool",
+                template,
+                RedactionContext::Debug,
+                Some(&self.inner),
+            )
+        } else {
+            get_configurable_redacted_string_with_generic_value(
+                "bool",
+                RedactionContext::Debug,
+                Some(&self.inner),
+            )
+        };
         write!(f, "SecretBool({})", redacted_text)
     }
 }
@@ -183,5 +233,31 @@ mod tests {
         let secret = SecretBool::new(true);
         let revealed = secret.into_inner();
         assert!(revealed);
+    }
+
+    #[test]
+    fn test_secret_bool_with_custom_template() {
+        let secret = SecretBool::new_with_template(false, "moo:{{secret_length}}".to_string());
+
+        // Test Display
+        let display = format!("{}", secret);
+        assert_eq!(display, "moo:5"); // "false" as string has 5 characters
+
+        // Test Debug
+        let debug = format!("{:?}", secret);
+        assert_eq!(debug, "SecretBool(moo:5)");
+
+        // Test to_base_value
+        let base_value = secret
+            .to_base_value(nu_protocol::Span::test_data())
+            .unwrap();
+        if let nu_protocol::Value::String { val, .. } = base_value {
+            assert_eq!(val, "moo:5");
+        } else {
+            panic!("Expected string value");
+        }
+
+        // Test reveal still works
+        assert!(!secret.reveal());
     }
 }

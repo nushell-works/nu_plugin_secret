@@ -36,6 +36,7 @@ impl Plugin for SecretPlugin {
         vec![
             // Unified wrap command
             Box::new(SecretWrapCommand),
+            Box::new(SecretWrapWithCommand),
             // Core secret wrap commands (kept for backward compatibility)
             Box::new(SecretWrapStringCommand),
             Box::new(SecretWrapIntCommand),
@@ -78,12 +79,13 @@ mod tests {
     fn test_plugin_commands() {
         let plugin = SecretPlugin;
         let commands = plugin.commands();
-        assert_eq!(commands.len(), 22);
+        assert_eq!(commands.len(), 23);
 
         // Test all commands to ensure they're registered correctly
         let command_names: Vec<&str> = commands.iter().map(|cmd| cmd.name()).collect();
         // Unified wrap command
         assert!(command_names.contains(&"secret wrap"));
+        assert!(command_names.contains(&"secret wrap-with"));
         // Core secret wrap commands (kept for backward compatibility)
         assert!(command_names.contains(&"secret wrap-string"));
         assert!(command_names.contains(&"secret wrap-int"));
