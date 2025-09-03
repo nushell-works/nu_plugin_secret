@@ -72,140 +72,15 @@ fn generate_redacted_string_with_length(
     // This is slightly less efficient but allows for dynamic template updates
     let mut tera = Tera::default();
 
-    // Register the replicate function
-    tera.register_function(
-        "replicate",
-        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-            let character = args
-                .get("character")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| {
-                    tera::Error::msg("replicate function requires 'character' parameter")
-                })?;
+    // Register all standard template functions
+    crate::tera_functions::register_all_standard_functions(&mut tera);
 
-            let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
-                tera::Error::msg("replicate function requires 'length' parameter")
-            })?;
-
-            if length < 0 {
-                return Ok(tera::Value::String("".to_string()));
-            }
-
-            let mask_char = character.chars().next().unwrap_or('*');
-            let result = mask_char.to_string().repeat(length as usize);
-            Ok(tera::Value::String(result))
-        },
-    );
-
-    // Register the secret_string function only if secret_string has a value
+    // Register the secret_string function
     if let Some(secret_str) = secret_string {
-        let captured_secret_string = secret_str.to_string();
-        tera.register_function(
-            "secret_string",
-            move |_args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-                Ok(tera::Value::String(captured_secret_string.clone()))
-            },
-        );
+        crate::tera_functions::register_secret_string_function(&mut tera, secret_str.to_string());
+    } else {
+        crate::tera_functions::register_secret_string_function_empty(&mut tera);
     }
-
-    // Register the reverse function
-    tera.register_function(
-        "reverse",
-        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-            // Support both positional and named arguments
-            let input = if let Some(value) = args.get("0") {
-                // First positional argument
-                value
-                    .as_str()
-                    .ok_or_else(|| tera::Error::msg("reverse function argument must be a string"))?
-            } else if let Some(value) = args.get("s") {
-                // Named argument
-                value.as_str().ok_or_else(|| {
-                    tera::Error::msg("reverse function 's' parameter must be a string")
-                })?
-            } else {
-                return Err(tera::Error::msg(
-                    "reverse function requires a string argument",
-                ));
-            };
-
-            let reversed: String = input.chars().rev().collect();
-            Ok(tera::Value::String(reversed))
-        },
-    );
-
-    // Register the take function
-    tera.register_function(
-        "take",
-        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-            // Support both positional and named arguments
-            let n = if let Some(value) = args.get("0") {
-                // First positional argument
-                value.as_i64().ok_or_else(|| {
-                    tera::Error::msg("take function first argument must be a number")
-                })?
-            } else if let Some(value) = args.get("n") {
-                // Named argument
-                value.as_i64().ok_or_else(|| {
-                    tera::Error::msg("take function 'n' parameter must be a number")
-                })?
-            } else {
-                return Err(tera::Error::msg(
-                    "take function requires first argument to be a number",
-                ));
-            };
-
-            let s = if let Some(value) = args.get("1") {
-                // Second positional argument
-                value.as_str().ok_or_else(|| {
-                    tera::Error::msg("take function second argument must be a string")
-                })?
-            } else if let Some(value) = args.get("s") {
-                // Named argument
-                value.as_str().ok_or_else(|| {
-                    tera::Error::msg("take function 's' parameter must be a string")
-                })?
-            } else {
-                return Err(tera::Error::msg(
-                    "take function requires second argument to be a string",
-                ));
-            };
-
-            if n < 0 {
-                return Ok(tera::Value::String("".to_string()));
-            }
-
-            let chars: Vec<char> = s.chars().collect();
-            let taken: String = chars.into_iter().take(n as usize).collect();
-            Ok(tera::Value::String(taken))
-        },
-    );
-
-    // Register the strlen function
-    tera.register_function(
-        "strlen",
-        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-            // Support both positional and named arguments
-            let input = if let Some(value) = args.get("0") {
-                // First positional argument
-                value
-                    .as_str()
-                    .ok_or_else(|| tera::Error::msg("strlen function argument must be a string"))?
-            } else if let Some(value) = args.get("s") {
-                // Named argument
-                value.as_str().ok_or_else(|| {
-                    tera::Error::msg("strlen function 's' parameter must be a string")
-                })?
-            } else {
-                return Err(tera::Error::msg(
-                    "strlen function requires a string argument",
-                ));
-            };
-
-            let length = input.chars().count();
-            Ok(tera::Value::from(length))
-        },
-    );
 
     if tera.add_raw_template(TEMPLATE_NAME, &template).is_err() {
         // If template adding fails, fall back to simple format
@@ -306,140 +181,15 @@ pub fn generate_redacted_string_with_custom_template_and_value(
     // Create a fresh Tera instance with the custom template
     let mut tera = tera::Tera::default();
 
-    // Register the replicate function
-    tera.register_function(
-        "replicate",
-        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-            let character = args
-                .get("character")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| {
-                    tera::Error::msg("replicate function requires 'character' parameter")
-                })?;
+    // Register all standard template functions
+    crate::tera_functions::register_all_standard_functions(&mut tera);
 
-            let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
-                tera::Error::msg("replicate function requires 'length' parameter")
-            })?;
-
-            if length < 0 {
-                return Ok(tera::Value::String("".to_string()));
-            }
-
-            let mask_char = character.chars().next().unwrap_or('*');
-            let result = mask_char.to_string().repeat(length as usize);
-            Ok(tera::Value::String(result))
-        },
-    );
-
-    // Capture the secret value for use in the secret_string function
-    let captured_secret_value = secret_value.clone();
-    tera.register_function(
-        "secret_string",
-        move |_args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-            Ok(tera::Value::String(
-                captured_secret_value.clone().unwrap_or_default(),
-            ))
-        },
-    );
-
-    // Register the reverse function
-    tera.register_function(
-        "reverse",
-        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-            // Support both positional and named arguments
-            let input = if let Some(value) = args.get("0") {
-                // First positional argument
-                value
-                    .as_str()
-                    .ok_or_else(|| tera::Error::msg("reverse function argument must be a string"))?
-            } else if let Some(value) = args.get("s") {
-                // Named argument
-                value.as_str().ok_or_else(|| {
-                    tera::Error::msg("reverse function 's' parameter must be a string")
-                })?
-            } else {
-                return Err(tera::Error::msg(
-                    "reverse function requires a string argument",
-                ));
-            };
-
-            let reversed: String = input.chars().rev().collect();
-            Ok(tera::Value::String(reversed))
-        },
-    );
-
-    // Register the take function
-    tera.register_function(
-        "take",
-        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-            // Support both positional and named arguments
-            let n = if let Some(value) = args.get("0") {
-                // First positional argument
-                value.as_i64().ok_or_else(|| {
-                    tera::Error::msg("take function first argument must be a number")
-                })?
-            } else if let Some(value) = args.get("n") {
-                // Named argument
-                value.as_i64().ok_or_else(|| {
-                    tera::Error::msg("take function 'n' parameter must be a number")
-                })?
-            } else {
-                return Err(tera::Error::msg(
-                    "take function requires first argument to be a number",
-                ));
-            };
-
-            let s = if let Some(value) = args.get("1") {
-                // Second positional argument
-                value.as_str().ok_or_else(|| {
-                    tera::Error::msg("take function second argument must be a string")
-                })?
-            } else if let Some(value) = args.get("s") {
-                // Named argument
-                value.as_str().ok_or_else(|| {
-                    tera::Error::msg("take function 's' parameter must be a string")
-                })?
-            } else {
-                return Err(tera::Error::msg(
-                    "take function requires second argument to be a string",
-                ));
-            };
-
-            if n < 0 {
-                return Ok(tera::Value::String("".to_string()));
-            }
-
-            let chars: Vec<char> = s.chars().collect();
-            let taken: String = chars.into_iter().take(n as usize).collect();
-            Ok(tera::Value::String(taken))
-        },
-    );
-
-    // Register the strlen function
-    tera.register_function(
-        "strlen",
-        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-            // Support both positional and named arguments
-            let input = if let Some(value) = args.get("0") {
-                // First positional argument
-                value
-                    .as_str()
-                    .ok_or_else(|| tera::Error::msg("strlen function argument must be a string"))?
-            } else if let Some(value) = args.get("s") {
-                // Named argument
-                value.as_str().ok_or_else(|| {
-                    tera::Error::msg("strlen function 's' parameter must be a string")
-                })?
-            } else {
-                return Err(tera::Error::msg(
-                    "strlen function requires a string argument",
-                ));
-            };
-
-            let length = input.chars().count();
-            Ok(tera::Value::from(length))
-        },
-    );
+    // Register the secret_string function
+    if let Some(secret_str) = &secret_value {
+        crate::tera_functions::register_secret_string_function(&mut tera, secret_str.clone());
+    } else {
+        crate::tera_functions::register_secret_string_function_empty(&mut tera);
+    }
 
     if tera
         .add_raw_template(TEMPLATE_NAME, custom_template)
