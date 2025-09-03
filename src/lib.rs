@@ -7,6 +7,7 @@ pub mod performance_monitoring;
 pub mod redaction;
 mod secret_types;
 pub mod startup_optimizations;
+pub mod tera_functions;
 
 use commands::*;
 pub use secret_types::{
