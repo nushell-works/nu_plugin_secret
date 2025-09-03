@@ -372,4 +372,21 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_secret_string_template_variable() {
+        // Test that the secret_string template variable works correctly
+        let secret = SecretString::new_with_template(
+            "test_value".to_string(),
+            "moo:{{secret_string}}".to_string(),
+        );
+
+        // Test Display
+        let display = format!("{}", secret);
+        assert_eq!(display, "moo:test_value");
+
+        // Test redacted_display
+        let redacted = secret.redacted_display();
+        assert_eq!(redacted, "moo:test_value");
+    }
 }
