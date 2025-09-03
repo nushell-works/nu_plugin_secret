@@ -117,7 +117,7 @@ impl CustomValue for SecretList {
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
         let redacted_text = if let Some(template) = &self.redaction_template {
             crate::redaction::generate_redacted_string_with_custom_template(
-                "list", template, None, // Length not meaningful for complex types
+                template, "list", None, // Length not meaningful for complex types
             )
         } else {
             get_configurable_redacted_string("list", RedactionContext::Serialization)
@@ -142,7 +142,7 @@ impl fmt::Display for SecretList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
             crate::redaction::generate_redacted_string_with_custom_template(
-                "list", template, None, // Length not meaningful for complex types
+                template, "list", None, // Length not meaningful for complex types
             )
         } else {
             get_configurable_redacted_string("list", RedactionContext::Display)
@@ -155,7 +155,7 @@ impl fmt::Debug for SecretList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
             crate::redaction::generate_redacted_string_with_custom_template(
-                "list", template, None, // Length not meaningful for complex types
+                template, "list", None, // Length not meaningful for complex types
             )
         } else {
             get_configurable_redacted_string("list", RedactionContext::Debug)

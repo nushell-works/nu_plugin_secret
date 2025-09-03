@@ -99,8 +99,8 @@ impl CustomValue for SecretBool {
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
         let redacted_text = if let Some(template) = &self.redaction_template {
             crate::redaction::get_redacted_string_with_custom_template_and_value(
-                "bool",
                 template,
+                "bool",
                 RedactionContext::Serialization,
                 Some(&self.inner),
             )
@@ -131,8 +131,8 @@ impl fmt::Display for SecretBool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
             crate::redaction::get_redacted_string_with_custom_template_and_value(
-                "bool",
                 template,
+                "bool",
                 RedactionContext::Display,
                 Some(&self.inner),
             )
@@ -151,8 +151,8 @@ impl fmt::Debug for SecretBool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
             crate::redaction::get_redacted_string_with_custom_template_and_value(
-                "bool",
                 template,
+                "bool",
                 RedactionContext::Debug,
                 Some(&self.inner),
             )

@@ -100,8 +100,8 @@ impl CustomValue for SecretInt {
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
         let redacted_text = if let Some(template) = &self.redaction_template {
             crate::redaction::get_redacted_string_with_custom_template_and_value(
-                "int",
                 template,
+                "int",
                 RedactionContext::Serialization,
                 Some(&self.inner),
             )
@@ -132,8 +132,8 @@ impl fmt::Display for SecretInt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
             crate::redaction::get_redacted_string_with_custom_template_and_value(
-                "int",
                 template,
+                "int",
                 RedactionContext::Display,
                 Some(&self.inner),
             )
@@ -152,8 +152,8 @@ impl fmt::Debug for SecretInt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
             crate::redaction::get_redacted_string_with_custom_template_and_value(
-                "int",
                 template,
+                "int",
                 RedactionContext::Debug,
                 Some(&self.inner),
             )

@@ -118,8 +118,8 @@ impl CustomValue for SecretBinary {
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
         let redacted_text = if let Some(template) = &self.redaction_template {
             crate::redaction::generate_redacted_string_with_custom_template(
-                "binary",
                 template,
+                "binary",
                 Some(self.inner.len()), // Binary length is meaningful (number of bytes)
             )
         } else {
@@ -145,8 +145,8 @@ impl fmt::Display for SecretBinary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
             crate::redaction::generate_redacted_string_with_custom_template(
-                "binary",
                 template,
+                "binary",
                 Some(self.inner.len()), // Binary length is meaningful (number of bytes)
             )
         } else {
@@ -160,8 +160,8 @@ impl fmt::Debug for SecretBinary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
             crate::redaction::generate_redacted_string_with_custom_template(
-                "binary",
                 template,
+                "binary",
                 Some(self.inner.len()), // Binary length is meaningful (number of bytes)
             )
         } else {
