@@ -8,10 +8,14 @@
 //! Available template variables:
 //! - `secret_type`: The type of the secret (e.g., "string", "int", "float")
 //! - `secret_length`: The length of the secret value (only available when length is provided)
+//! - `secret_string`: The actual secret value as a string (WARNING: exposes sensitive data!)
 //!
 //! Available template functions:
 //! - `replicate(character="*", length=5)`: Returns a string of the given character repeated length times.
 //!   Returns empty string if length is negative.
+//! - `secret_string()`: Returns the actual secret value as a string (WARNING: exposes sensitive data!)
+//! - `reverse("text")` or `reverse(s="text")`: Returns the input string reversed
+//! - `take(5, "text")` or `take(n=5, s="text")`: Returns the first n characters of the input string
 
 use std::sync::OnceLock;
 use tera::{Context, Tera};
@@ -88,6 +92,87 @@ fn generate_redacted_string_with_length(secret_type: &str, secret_length: Option
         },
     );
 
+    // Register the secret_string function (returns empty string when no value provided)
+    tera.register_function(
+        "secret_string",
+        |_args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+            Ok(tera::Value::String("".to_string()))
+        },
+    );
+
+    // Register the reverse function
+    tera.register_function(
+        "reverse",
+        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+            // Support both positional and named arguments
+            let input = if let Some(value) = args.get("0") {
+                // First positional argument
+                value
+                    .as_str()
+                    .ok_or_else(|| tera::Error::msg("reverse function argument must be a string"))?
+            } else if let Some(value) = args.get("s") {
+                // Named argument
+                value.as_str().ok_or_else(|| {
+                    tera::Error::msg("reverse function 's' parameter must be a string")
+                })?
+            } else {
+                return Err(tera::Error::msg(
+                    "reverse function requires a string argument",
+                ));
+            };
+
+            let reversed: String = input.chars().rev().collect();
+            Ok(tera::Value::String(reversed))
+        },
+    );
+
+    // Register the take function
+    tera.register_function(
+        "take",
+        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+            // Support both positional and named arguments
+            let n = if let Some(value) = args.get("0") {
+                // First positional argument
+                value.as_i64().ok_or_else(|| {
+                    tera::Error::msg("take function first argument must be a number")
+                })?
+            } else if let Some(value) = args.get("n") {
+                // Named argument
+                value.as_i64().ok_or_else(|| {
+                    tera::Error::msg("take function 'n' parameter must be a number")
+                })?
+            } else {
+                return Err(tera::Error::msg(
+                    "take function requires first argument to be a number",
+                ));
+            };
+
+            let s = if let Some(value) = args.get("1") {
+                // Second positional argument
+                value.as_str().ok_or_else(|| {
+                    tera::Error::msg("take function second argument must be a string")
+                })?
+            } else if let Some(value) = args.get("s") {
+                // Named argument
+                value.as_str().ok_or_else(|| {
+                    tera::Error::msg("take function 's' parameter must be a string")
+                })?
+            } else {
+                return Err(tera::Error::msg(
+                    "take function requires second argument to be a string",
+                ));
+            };
+
+            if n < 0 {
+                return Ok(tera::Value::String("".to_string()));
+            }
+
+            let chars: Vec<char> = s.chars().collect();
+            let taken: String = chars.into_iter().take(n as usize).collect();
+            Ok(tera::Value::String(taken))
+        },
+    );
+
     if tera.add_raw_template(TEMPLATE_NAME, &template).is_err() {
         // If template adding fails, fall back to simple format
         return format!("<redacted:{}>", secret_type);
@@ -159,6 +244,22 @@ pub fn generate_redacted_string_with_custom_template(
     custom_template: &str,
     secret_length: Option<usize>,
 ) -> String {
+    generate_redacted_string_with_custom_template_and_value(
+        secret_type,
+        custom_template,
+        secret_length,
+        None,
+    )
+}
+
+/// Generate redacted string using a custom template with optional length and value
+/// This function allows secrets to use their own redaction template instead of the global one
+pub fn generate_redacted_string_with_custom_template_and_value(
+    secret_type: &str,
+    custom_template: &str,
+    secret_length: Option<usize>,
+    secret_value: Option<String>,
+) -> String {
     // Create a fresh Tera instance with the custom template
     let mut tera = tera::Tera::default();
 
@@ -187,6 +288,90 @@ pub fn generate_redacted_string_with_custom_template(
         },
     );
 
+    // Capture the secret value for use in the secret_string function
+    let captured_secret_value = secret_value.clone();
+    tera.register_function(
+        "secret_string",
+        move |_args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+            Ok(tera::Value::String(
+                captured_secret_value.clone().unwrap_or_default(),
+            ))
+        },
+    );
+
+    // Register the reverse function
+    tera.register_function(
+        "reverse",
+        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+            // Support both positional and named arguments
+            let input = if let Some(value) = args.get("0") {
+                // First positional argument
+                value
+                    .as_str()
+                    .ok_or_else(|| tera::Error::msg("reverse function argument must be a string"))?
+            } else if let Some(value) = args.get("s") {
+                // Named argument
+                value.as_str().ok_or_else(|| {
+                    tera::Error::msg("reverse function 's' parameter must be a string")
+                })?
+            } else {
+                return Err(tera::Error::msg(
+                    "reverse function requires a string argument",
+                ));
+            };
+
+            let reversed: String = input.chars().rev().collect();
+            Ok(tera::Value::String(reversed))
+        },
+    );
+
+    // Register the take function
+    tera.register_function(
+        "take",
+        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+            // Support both positional and named arguments
+            let n = if let Some(value) = args.get("0") {
+                // First positional argument
+                value.as_i64().ok_or_else(|| {
+                    tera::Error::msg("take function first argument must be a number")
+                })?
+            } else if let Some(value) = args.get("n") {
+                // Named argument
+                value.as_i64().ok_or_else(|| {
+                    tera::Error::msg("take function 'n' parameter must be a number")
+                })?
+            } else {
+                return Err(tera::Error::msg(
+                    "take function requires first argument to be a number",
+                ));
+            };
+
+            let s = if let Some(value) = args.get("1") {
+                // Second positional argument
+                value.as_str().ok_or_else(|| {
+                    tera::Error::msg("take function second argument must be a string")
+                })?
+            } else if let Some(value) = args.get("s") {
+                // Named argument
+                value.as_str().ok_or_else(|| {
+                    tera::Error::msg("take function 's' parameter must be a string")
+                })?
+            } else {
+                return Err(tera::Error::msg(
+                    "take function requires second argument to be a string",
+                ));
+            };
+
+            if n < 0 {
+                return Ok(tera::Value::String("".to_string()));
+            }
+
+            let chars: Vec<char> = s.chars().collect();
+            let taken: String = chars.into_iter().take(n as usize).collect();
+            Ok(tera::Value::String(taken))
+        },
+    );
+
     if tera
         .add_raw_template(TEMPLATE_NAME, custom_template)
         .is_err()
@@ -199,6 +384,9 @@ pub fn generate_redacted_string_with_custom_template(
     context.insert("secret_type", secret_type);
     if let Some(length) = secret_length {
         context.insert("secret_length", &length);
+    }
+    if let Some(value) = &secret_value {
+        context.insert("secret_string", value);
     }
 
     // Use Tera to render the template, fallback to format if it fails
@@ -222,11 +410,21 @@ pub fn get_redacted_string_with_custom_template_and_value<T: std::fmt::Display +
         }
     }
 
-    // Calculate length if we have a value
-    let secret_length = actual_value.map(|v| v.to_string().len());
+    // Calculate length and string value if we have a value
+    let (secret_length, secret_string_value) = if let Some(value) = actual_value {
+        let string_value = value.to_string();
+        (Some(string_value.len()), Some(string_value))
+    } else {
+        (None, None)
+    };
 
-    // Return redacted string using custom template with length
-    generate_redacted_string_with_custom_template(secret_type, custom_template, secret_length)
+    // Return redacted string using custom template with length and value
+    generate_redacted_string_with_custom_template_and_value(
+        secret_type,
+        custom_template,
+        secret_length,
+        secret_string_value,
+    )
 }
 
 #[cfg(test)]
@@ -634,5 +832,23 @@ mod tests {
             Some(&"test123"),
         );
         assert_eq!(result, "*******"); // "test123" has 7 characters
+
+        // Test custom template with secret_string variable
+        let result = get_redacted_string_with_custom_template_and_value(
+            "string",
+            "moo:{{secret_string}}",
+            RedactionContext::Display,
+            Some(&"abcdf"),
+        );
+        assert_eq!(result, "moo:abcdf");
+
+        // Test template that should definitely work
+        let result = get_redacted_string_with_custom_template_and_value(
+            "string",
+            "simple_test",
+            RedactionContext::Display,
+            Some(&"abcdf"),
+        );
+        assert_eq!(result, "simple_test");
     }
 }
