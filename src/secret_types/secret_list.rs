@@ -115,8 +115,9 @@ impl CustomValue for SecretList {
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            // For secret_string template variable, format the list as debug string
-            let list_str = format!("{:?}", self.inner);
+            // Convert list to parsable string representation
+            let list_value = Value::list(self.inner.clone(), Span::unknown());
+            let list_str = list_value.to_parsable_string(", ", &nu_protocol::Config::default());
             crate::redaction::generate_redacted_string_with_custom_template_and_value(
                 template,
                 "list",
@@ -149,8 +150,9 @@ impl CustomValue for SecretList {
 impl fmt::Display for SecretList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            // For secret_string template variable, format the list as debug string
-            let list_str = format!("{:?}", self.inner);
+            // Convert list to parsable string representation
+            let list_value = Value::list(self.inner.clone(), Span::unknown());
+            let list_str = list_value.to_parsable_string(", ", &nu_protocol::Config::default());
             crate::redaction::generate_redacted_string_with_custom_template_and_value(
                 template,
                 "list",
@@ -171,8 +173,9 @@ impl fmt::Display for SecretList {
 impl fmt::Debug for SecretList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            // For secret_string template variable, format the list as debug string
-            let list_str = format!("{:?}", self.inner);
+            // Convert list to parsable string representation
+            let list_value = Value::list(self.inner.clone(), Span::unknown());
+            let list_str = list_value.to_parsable_string(", ", &nu_protocol::Config::default());
             crate::redaction::generate_redacted_string_with_custom_template_and_value(
                 template,
                 "list",

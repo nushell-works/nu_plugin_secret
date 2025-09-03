@@ -111,7 +111,7 @@ impl CustomValue for SecretRecord {
         let redacted_text = if let Some(template) = &self.redaction_template {
             // Convert record to parsable string representation
             let record_value = Value::record(self.inner.clone(), Span::unknown());
-            let record_str = record_value.to_parsable_string("", &nu_protocol::Config::default());
+            let record_str = record_value.to_parsable_string(", ", &nu_protocol::Config::default());
             crate::redaction::generate_redacted_string_with_custom_template_and_value(
                 template,
                 "record",
@@ -194,7 +194,7 @@ impl fmt::Display for SecretRecord {
         let redacted_text = if let Some(template) = &self.redaction_template {
             // Convert record to parsable string representation
             let record_value = Value::record(self.inner.clone(), Span::unknown());
-            let record_str = record_value.to_parsable_string("", &nu_protocol::Config::default());
+            let record_str = record_value.to_parsable_string(", ", &nu_protocol::Config::default());
             crate::redaction::generate_redacted_string_with_custom_template_and_value(
                 template,
                 "record",
