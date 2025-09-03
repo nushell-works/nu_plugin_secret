@@ -45,13 +45,17 @@ pub fn init_redaction_templating() -> Result<(), tera::Error> {
 
 /// Generate redacted string using Tera template
 /// This is the core function that uses Tera templating
-fn generate_redacted_string(secret_type: &str) -> String {
-    generate_redacted_string_with_length(secret_type, None)
+fn generate_redacted_string(secret_string: Option<&str>, secret_type: &str) -> String {
+    generate_redacted_string_with_length(secret_string, secret_type, None)
 }
 
 /// Generate redacted string using Tera template with optional length
 /// This is the core function that uses Tera templating
-fn generate_redacted_string_with_length(secret_type: &str, secret_length: Option<usize>) -> String {
+fn generate_redacted_string_with_length(
+    secret_string: Option<&str>,
+    secret_type: &str,
+    secret_length: Option<usize>,
+) -> String {
     // Get template from config, fallback to default if config unavailable
     let template = if let Ok(config) = crate::config::get_config() {
         config
@@ -92,13 +96,16 @@ fn generate_redacted_string_with_length(secret_type: &str, secret_length: Option
         },
     );
 
-    // Register the secret_string function (returns empty string when no value provided)
-    tera.register_function(
-        "secret_string",
-        |_args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-            Ok(tera::Value::String("".to_string()))
-        },
-    );
+    // Register the secret_string function only if secret_string has a value
+    if let Some(secret_str) = secret_string {
+        let captured_secret_string = secret_str.to_string();
+        tera.register_function(
+            "secret_string",
+            move |_args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+                Ok(tera::Value::String(captured_secret_string.clone()))
+            },
+        );
+    }
 
     // Register the reverse function
     tera.register_function(
@@ -180,6 +187,9 @@ fn generate_redacted_string_with_length(secret_type: &str, secret_length: Option
 
     let mut context = Context::new();
     context.insert("secret_type", secret_type);
+    if let Some(secret_str) = secret_string {
+        context.insert("secret_string", secret_str);
+    }
     if let Some(length) = secret_length {
         context.insert("secret_length", &length);
     }
@@ -192,20 +202,21 @@ fn generate_redacted_string_with_length(secret_type: &str, secret_length: Option
 /// Get a cached redacted string for performance
 /// Falls back to generating the string if not cached
 /// Note: Caching disabled to allow for dynamic template changes during development
-pub fn get_cached_redacted_string(secret_type: &str) -> String {
+pub fn get_cached_redacted_string(secret_string: Option<&str>, secret_type: &str) -> String {
     // Always generate fresh to pick up template changes
     // TODO: Re-enable caching in production for better performance
-    generate_redacted_string(secret_type)
+    generate_redacted_string(secret_string, secret_type)
 }
 
 /// Get a cached redacted string with length information for performance
 /// Falls back to generating the string if not cached
 pub fn get_cached_redacted_string_with_length(
+    secret_string: Option<&str>,
     secret_type: &str,
     secret_length: Option<usize>,
 ) -> String {
     // Always generate fresh to pick up template changes
-    generate_redacted_string_with_length(secret_type, secret_length)
+    generate_redacted_string_with_length(secret_string, secret_type, secret_length)
 }
 
 /// Get configurable redacted string with optional unredacted mode support
@@ -228,13 +239,18 @@ pub fn get_redacted_string_with_value<T: std::fmt::Display + ?Sized>(
     let secret_length = actual_value.map(|v| v.to_string().len());
 
     // Return redacted string using Tera templating with length
-    get_cached_redacted_string_with_length(secret_type, secret_length)
+    if let Some(value) = actual_value {
+        let value_str = value.to_string();
+        get_cached_redacted_string_with_length(Some(&value_str), secret_type, secret_length)
+    } else {
+        get_cached_redacted_string_with_length(None, secret_type, secret_length)
+    }
 }
 
 /// Get redacted string with explicit length for template usage
 /// This allows templates to access secret_length variable and mask function
 pub fn get_redacted_string_with_length(secret_type: &str, secret_length: Option<usize>) -> String {
-    get_cached_redacted_string_with_length(secret_type, secret_length)
+    get_cached_redacted_string_with_length(None, secret_type, secret_length)
 }
 
 /// Generate redacted string using a custom template with optional length
@@ -445,12 +461,15 @@ mod tests {
     fn test_tera_template_rendering() {
         // Test that Tera template rendering works correctly
         assert_eq!(
-            super::generate_redacted_string("string"),
+            super::generate_redacted_string(None, "string"),
             "<redacted:string>"
         );
-        assert_eq!(super::generate_redacted_string("float"), "<redacted:float>");
         assert_eq!(
-            super::generate_redacted_string("custom_type"),
+            super::generate_redacted_string(None, "float"),
+            "<redacted:float>"
+        );
+        assert_eq!(
+            super::generate_redacted_string(None, "custom_type"),
             "<redacted:custom_type>"
         );
     }
@@ -458,10 +477,16 @@ mod tests {
     #[test]
     fn test_redacted_string_format() {
         // Test that the format is correct by checking cached strings
-        assert_eq!(get_cached_redacted_string("string"), "<redacted:string>");
-        assert_eq!(get_cached_redacted_string("float"), "<redacted:float>");
         assert_eq!(
-            get_cached_redacted_string("custom_type"),
+            get_cached_redacted_string(None, "string"),
+            "<redacted:string>"
+        );
+        assert_eq!(
+            get_cached_redacted_string(None, "float"),
+            "<redacted:float>"
+        );
+        assert_eq!(
+            get_cached_redacted_string(None, "custom_type"),
             "<redacted:custom_type>"
         );
     }
@@ -469,12 +494,15 @@ mod tests {
     #[test]
     fn test_cached_redacted_strings() {
         // Test common types are cached
-        assert_eq!(get_cached_redacted_string("string"), "<redacted:string>");
-        assert_eq!(get_cached_redacted_string("int"), "<redacted:int>");
+        assert_eq!(
+            get_cached_redacted_string(None, "string"),
+            "<redacted:string>"
+        );
+        assert_eq!(get_cached_redacted_string(None, "int"), "<redacted:int>");
 
         // Test uncommon type is generated
         assert_eq!(
-            get_cached_redacted_string("unusual_type"),
+            get_cached_redacted_string(None, "unusual_type"),
             "<redacted:unusual_type>"
         );
     }
@@ -1097,5 +1125,154 @@ mod tests {
             Some("abcdef".to_string()),
         );
         assert_eq!(result, "abc");
+    }
+
+    #[test]
+    fn test_secret_string_integration_with_none() {
+        // Test that secret_string function is not available when no secret is provided
+        let result = generate_redacted_string_with_length(None, "test", None);
+        assert_eq!(result, "<redacted:test>");
+
+        // Test behavior when secret_string is None but we try to use it in custom templates
+        // The custom template function always registers secret_string() but returns empty when None
+        let result = generate_redacted_string_with_custom_template(
+            "test",
+            "value:{{secret_string()}}",
+            None,
+        );
+        // secret_string() function returns empty string when no value is provided
+        assert_eq!(result, "value:");
+
+        // Test that secret_string variable is not available in template context when None
+        let result =
+            generate_redacted_string_with_custom_template("test", "{{secret_string}}", None);
+        // Template fails and falls back to basic format since secret_string is not in context
+        assert_eq!(result, "<redacted:test>");
+    }
+
+    #[test]
+    fn test_secret_string_integration_with_some() {
+        // Test that secret_string function works when secret is provided
+        let result = generate_redacted_string_with_length(Some("mysecret"), "test", None);
+        assert_eq!(result, "<redacted:test>");
+
+        // Test with custom template that uses secret_string when Some is provided
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "test",
+            "value:{{secret_string()}}",
+            None,
+            Some("mysecret".to_string()),
+        );
+        assert_eq!(result, "value:mysecret");
+
+        // Test with template variable access
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "test",
+            "{{secret_string}}",
+            None,
+            Some("direct_access".to_string()),
+        );
+        assert_eq!(result, "direct_access");
+    }
+
+    #[test]
+    fn test_secret_string_cached_functions_integration() {
+        // Test get_cached_redacted_string with None
+        let result = get_cached_redacted_string(None, "string");
+        assert_eq!(result, "<redacted:string>");
+
+        // Test get_cached_redacted_string with Some
+        let result = get_cached_redacted_string(Some("secret"), "string");
+        assert_eq!(result, "<redacted:string>");
+
+        // Test get_cached_redacted_string_with_length with None
+        let result = get_cached_redacted_string_with_length(None, "string", Some(8));
+        assert_eq!(result, "<redacted:string>");
+
+        // Test get_cached_redacted_string_with_length with Some
+        let result = get_cached_redacted_string_with_length(Some("mysecret"), "string", Some(8));
+        assert_eq!(result, "<redacted:string>");
+    }
+
+    #[test]
+    fn test_secret_string_template_context_integration() {
+        // Test that secret_string variable is available in template context when provided
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "test",
+            "prefix_{{secret_string}}_suffix",
+            None,
+            Some("middle".to_string()),
+        );
+        assert_eq!(result, "prefix_middle_suffix");
+
+        // Test that secret_string variable is not available when not provided
+        let result = generate_redacted_string_with_custom_template(
+            "test",
+            "prefix_{{secret_string}}_suffix",
+            None,
+        );
+        // Template fails and falls back to basic format since secret_string is not in context
+        assert_eq!(result, "<redacted:test>");
+    }
+
+    #[test]
+    fn test_secret_string_with_other_template_variables() {
+        // Test combining secret_string with secret_type
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "password",
+            "{{secret_type}}:{{secret_string}}",
+            None,
+            Some("secret123".to_string()),
+        );
+        assert_eq!(result, "password:secret123");
+
+        // Test combining secret_string with secret_length
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "password",
+            "{{secret_string}}({{secret_length}})",
+            Some(9),
+            Some("secret123".to_string()),
+        );
+        assert_eq!(result, "secret123(9)");
+
+        // Test all three variables together
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "token",
+            "{{secret_type}}:{{secret_string}}:{{secret_length}}",
+            Some(10),
+            Some("abcdef1234".to_string()),
+        );
+        assert_eq!(result, "token:abcdef1234:10");
+    }
+
+    #[test]
+    fn test_secret_string_function_registration_conditional() {
+        // Test that templates using secret_string() function work when secret is provided
+        let mut tera = tera::Tera::default();
+
+        // Register secret_string function conditionally (simulating Some case)
+        let secret_value = "test_secret";
+        let captured_secret = secret_value.to_string();
+        tera.register_function(
+            "secret_string",
+            move |_args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+                Ok(tera::Value::String(captured_secret.clone()))
+            },
+        );
+
+        tera.add_raw_template("test", "func:{{secret_string()}}")
+            .unwrap();
+        let context = tera::Context::new();
+        let result = tera.render("test", &context).unwrap();
+        assert_eq!(result, "func:test_secret");
+
+        // Test that templates fail gracefully when secret_string function is not registered
+        let mut tera2 = tera::Tera::default();
+        tera2
+            .add_raw_template("test2", "func:{{secret_string()}}")
+            .unwrap();
+        let context2 = tera::Context::new();
+        let result2 = tera2.render("test2", &context2);
+        assert!(result2.is_err()); // Should fail since function is not registered
     }
 }

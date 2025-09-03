@@ -6,7 +6,7 @@
 /// Get an interned redacted string for a given type using Tera templating
 /// This avoids repeated allocations of the same strings and uses the new Tera system
 pub fn get_redacted_string(type_name: &str) -> String {
-    crate::redaction::get_cached_redacted_string(type_name)
+    crate::redaction::get_cached_redacted_string(None, type_name)
 }
 
 /// Get configurable redacted string for a given type and context
