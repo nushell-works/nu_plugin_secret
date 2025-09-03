@@ -1,7 +1,5 @@
 use crate::config::RedactionContext;
-use crate::memory_optimizations::{
-    binary_optimization::OptimizedBinary, get_configurable_redacted_string,
-};
+use crate::memory_optimizations::binary_optimization::OptimizedBinary;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -117,13 +115,21 @@ impl CustomValue for SecretBinary {
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
+            // Convert binary to parsable string representation
+            let binary_value = Value::binary(self.inner.as_bytes().to_vec(), Span::unknown());
+            let binary_str = binary_value.to_parsable_string("", &nu_protocol::Config::default());
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
                 template,
                 "binary",
                 Some(self.inner.len()), // Binary length is meaningful (number of bytes)
+                Some(binary_str),
             )
         } else {
-            get_configurable_redacted_string("binary", RedactionContext::Serialization)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "binary",
+                RedactionContext::Serialization,
+                None,
+            )
         };
         Ok(Value::string(redacted_text, span))
     }
@@ -144,13 +150,21 @@ impl CustomValue for SecretBinary {
 impl fmt::Display for SecretBinary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
+            // Convert binary to parsable string representation
+            let binary_value = Value::binary(self.inner.as_bytes().to_vec(), Span::unknown());
+            let binary_str = binary_value.to_parsable_string("", &nu_protocol::Config::default());
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
                 template,
                 "binary",
                 Some(self.inner.len()), // Binary length is meaningful (number of bytes)
+                Some(binary_str),
             )
         } else {
-            get_configurable_redacted_string("binary", RedactionContext::Display)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "binary",
+                RedactionContext::Display,
+                None,
+            )
         };
         write!(f, "{}", redacted_text)
     }
@@ -159,13 +173,21 @@ impl fmt::Display for SecretBinary {
 impl fmt::Debug for SecretBinary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
+            // Convert binary to parsable string representation
+            let binary_value = Value::binary(self.inner.as_bytes().to_vec(), Span::unknown());
+            let binary_str = binary_value.to_parsable_string("", &nu_protocol::Config::default());
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
                 template,
                 "binary",
                 Some(self.inner.len()), // Binary length is meaningful (number of bytes)
+                Some(binary_str),
             )
         } else {
-            get_configurable_redacted_string("binary", RedactionContext::Debug)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "binary",
+                RedactionContext::Debug,
+                None,
+            )
         };
         write!(f, "SecretBinary({})", redacted_text)
     }

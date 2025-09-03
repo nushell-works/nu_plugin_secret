@@ -1,5 +1,4 @@
 use crate::config::RedactionContext;
-use crate::memory_optimizations::get_configurable_redacted_string;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -116,11 +115,21 @@ impl CustomValue for SecretList {
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
-                template, "list", None, // Length not meaningful for complex types
+            // Convert list to parsable string representation
+            let list_value = Value::list(self.inner.clone(), Span::unknown());
+            let list_str = list_value.to_parsable_string(", ", &nu_protocol::Config::default());
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
+                template,
+                "list",
+                None,
+                Some(list_str), // Length not meaningful for complex types
             )
         } else {
-            get_configurable_redacted_string("list", RedactionContext::Serialization)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "list",
+                RedactionContext::Serialization,
+                None,
+            )
         };
         Ok(Value::string(redacted_text, span))
     }
@@ -141,11 +150,21 @@ impl CustomValue for SecretList {
 impl fmt::Display for SecretList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
-                template, "list", None, // Length not meaningful for complex types
+            // Convert list to parsable string representation
+            let list_value = Value::list(self.inner.clone(), Span::unknown());
+            let list_str = list_value.to_parsable_string(", ", &nu_protocol::Config::default());
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
+                template,
+                "list",
+                None,
+                Some(list_str), // Length not meaningful for complex types
             )
         } else {
-            get_configurable_redacted_string("list", RedactionContext::Display)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "list",
+                RedactionContext::Display,
+                None,
+            )
         };
         write!(f, "{}", redacted_text)
     }
@@ -154,11 +173,21 @@ impl fmt::Display for SecretList {
 impl fmt::Debug for SecretList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
-                template, "list", None, // Length not meaningful for complex types
+            // Convert list to parsable string representation
+            let list_value = Value::list(self.inner.clone(), Span::unknown());
+            let list_str = list_value.to_parsable_string(", ", &nu_protocol::Config::default());
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
+                template,
+                "list",
+                None,
+                Some(list_str), // Length not meaningful for complex types
             )
         } else {
-            get_configurable_redacted_string("list", RedactionContext::Debug)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "list",
+                RedactionContext::Debug,
+                None,
+            )
         };
         write!(f, "SecretList({})", redacted_text)
     }

@@ -1,5 +1,4 @@
 use crate::config::RedactionContext;
-use crate::memory_optimizations::get_configurable_redacted_string_with_value;
 use nu_protocol::ast::{Comparison, Operator};
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
@@ -107,7 +106,7 @@ impl SecretString {
                 Some(&self.inner),
             )
         } else {
-            get_configurable_redacted_string_with_value(
+            crate::redaction::get_redacted_string_with_value(
                 "string",
                 RedactionContext::Display,
                 Some(&self.inner),
@@ -135,7 +134,7 @@ impl CustomValue for SecretString {
                 Some(&self.inner),
             )
         } else {
-            get_configurable_redacted_string_with_value(
+            crate::redaction::get_redacted_string_with_value(
                 "string",
                 RedactionContext::Display,
                 Some(&self.inner),
@@ -215,7 +214,7 @@ impl fmt::Display for SecretString {
                 Some(&self.inner),
             )
         } else {
-            get_configurable_redacted_string_with_value(
+            crate::redaction::get_redacted_string_with_value(
                 "string",
                 RedactionContext::Display,
                 Some(&self.inner),
@@ -235,7 +234,7 @@ impl fmt::Debug for SecretString {
                 Some(&self.inner),
             )
         } else {
-            get_configurable_redacted_string_with_value(
+            crate::redaction::get_redacted_string_with_value(
                 "string",
                 RedactionContext::Debug,
                 Some(&self.inner),

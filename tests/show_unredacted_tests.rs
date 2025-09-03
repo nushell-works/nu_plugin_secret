@@ -2,10 +2,7 @@
 
 use nu_plugin_secret::config::RedactionContext;
 use nu_plugin_secret::config::{ConfigManager, PluginConfig};
-use nu_plugin_secret::memory_optimizations::{
-    get_configurable_redacted_string_with_generic_value,
-    get_configurable_redacted_string_with_value,
-};
+// Functions moved to redaction module
 use nu_plugin_secret::{SecretBool, SecretInt, SecretString};
 use std::env;
 
@@ -25,7 +22,7 @@ fn test_show_unredacted_with_secret_string() {
 
     // Test the functionality directly without global config
     let secret_text = "my_secret_password";
-    let result = get_configurable_redacted_string_with_value(
+    let result = nu_plugin_secret::redaction::get_redacted_string_with_value(
         "string",
         RedactionContext::Display,
         Some(secret_text),
@@ -67,15 +64,15 @@ fn test_show_unredacted_memory_optimization_functions() {
     // Test the core functions directly
 
     // Test with None value - should always return redacted text
-    let result = get_configurable_redacted_string_with_value(
+    let result = nu_plugin_secret::redaction::get_redacted_string_with_value::<String>(
         "string",
         RedactionContext::Display,
-        None::<&str>,
+        None,
     );
     assert!(result.contains("redacted"));
 
     // Test with actual value - without config it should still be redacted
-    let result = get_configurable_redacted_string_with_value(
+    let result = nu_plugin_secret::redaction::get_redacted_string_with_value(
         "string",
         RedactionContext::Display,
         Some("secret_value"),
@@ -83,7 +80,7 @@ fn test_show_unredacted_memory_optimization_functions() {
     assert!(result.contains("redacted"));
 
     // Test generic version
-    let result = get_configurable_redacted_string_with_generic_value(
+    let result = nu_plugin_secret::redaction::get_redacted_string_with_value(
         "int",
         RedactionContext::Display,
         Some(&42),

@@ -350,6 +350,122 @@ export def test_wrap_with_performance [] {
     }
 }
 
+# Test wrap-with for SecretRecord with template functions (testing to_parsable_string)
+export def test_wrap_with_record_parsable_string [] {
+    let test_record = {name: "Alice", age: 30, active: true}
+    
+    # Test with secret_string function to access the parsable record content
+    let template = "Record[{{secret_type}}]: {{secret_string()}}"
+    let secret = $test_record | secret wrap-with $template
+    
+    assert_eq ($secret | describe) "custom" "Should be custom type"
+    assert ($secret | secret validate) "Should validate as secret"
+    assert_eq ($secret | secret type-of) "record" "Should identify as record type"
+    
+    let display = $secret | to text
+    assert_contains $display "Record[record]:" "Should show record type"
+    # The content should now be parsable Nu syntax (not debug format)
+    assert_contains $display "name:" "Should contain record field in Nu syntax"
+    assert_contains $display "Alice" "Should contain field value"
+    assert_contains $display "age:" "Should contain age field"
+    assert_contains $display "30" "Should contain age value"
+    
+    # Verify unwrap works
+    let revealed = $secret | secret unwrap
+    assert_eq $revealed.name $test_record.name "Should round-trip record correctly"
+    assert_eq $revealed.age $test_record.age "Should round-trip age correctly"
+}
+
+# Test wrap-with for SecretList with template functions (testing to_parsable_string)
+export def test_wrap_with_list_parsable_string [] {
+    let test_list = ["apple", "banana", 42, true]
+    
+    # Test with secret_string function to access the parsable list content  
+    let template = "List[{{secret_type}}]: {{secret_string()}}"
+    let secret = $test_list | secret wrap-with $template
+    
+    assert_eq ($secret | describe) "custom" "Should be custom type"
+    assert ($secret | secret validate) "Should validate as secret"
+    assert_eq ($secret | secret type-of) "list" "Should identify as list type"
+    
+    let display = $secret | to text
+    assert_contains $display "List[list]:" "Should show list type"
+    # The content should now be parsable Nu syntax (not debug format)
+    assert_contains $display "apple" "Should contain list item in Nu syntax"
+    assert_contains $display "banana" "Should contain second item"
+    assert_contains $display "42" "Should contain integer item"
+    assert_contains $display "true" "Should contain boolean item"
+    
+    # Verify unwrap works
+    let revealed = $secret | secret unwrap
+    assert_eq ($revealed | length) ($test_list | length) "Should have same length"
+    assert_eq ($revealed | get 0) ($test_list | get 0) "Should round-trip first item"
+    assert_eq ($revealed | get 2) ($test_list | get 2) "Should round-trip integer"
+}
+
+# Test wrap-with for SecretBinary with template functions (testing to_parsable_string)
+export def test_wrap_with_binary_parsable_string [] {
+    let test_binary = 0x[deadbeef42]
+    
+    # Test with secret_string function to access the parsable binary content
+    let template = "Binary[{{secret_type}}, {{secret_length}}]: {{secret_string()}}"
+    let secret = $test_binary | secret wrap-with $template
+    
+    assert_eq ($secret | describe) "custom" "Should be custom type"
+    assert ($secret | secret validate) "Should validate as secret"
+    assert_eq ($secret | secret type-of) "binary" "Should identify as binary type"
+    
+    let display = $secret | to text
+    assert_contains $display "Binary[binary, 5]:" "Should show binary type and length"
+    # The content should now be parsable Nu binary syntax (not hex string)
+    assert_contains $display "0x[" "Should contain Nu binary prefix"
+    assert_contains $display "deadbeef42" "Should contain hex content"
+    assert_contains $display "]" "Should contain Nu binary suffix"
+    
+    # Verify unwrap works
+    let revealed = $secret | secret unwrap
+    assert_eq $revealed $test_binary "Should round-trip binary correctly"
+}
+
+# Test complex template expressions with parsable complex types
+export def test_wrap_with_complex_parsable_templates [] {
+    let test_cases = [
+        {
+            value: {config: "production", port: 8080},
+            template: "{{secret_type | upper}}: {{take(n=20, s=secret_string())}}...",
+            type: "record",
+            description: "Record with take function on parsable content"
+        },
+        {
+            value: ["item1", "item2", "item3"],
+            template: "{{reverse(s=secret_type)}}: {{secret_string()}}",
+            type: "list", 
+            description: "List with reverse function and full parsable content"
+        },
+        {
+            value: 0x[cafe],
+            template: "Binary{{secret_length}}: {{take(n=10, s=secret_string())}}",
+            type: "binary",
+            description: "Binary with length and take function on parsable content"
+        }
+    ]
+    
+    for case in $test_cases {
+        let secret = $case.value | secret wrap-with $case.template
+        
+        assert_eq ($secret | describe) "custom" "Should be custom type"
+        assert ($secret | secret validate) "Should validate as secret"
+        assert_eq ($secret | secret type-of) $case.type $"Should identify as ($case.type) type"
+        
+        let display = $secret | to text
+        assert (($display | str length) > 0) $"Display should not be empty for: ($case.description)"
+        
+        # Verify unwrap works
+        let revealed = $secret | secret unwrap
+        assert_eq $revealed $case.value $"Should round-trip correctly for: ($case.description)"
+    }
+}
+
 # Test concurrent operations with templates
 export def test_wrap_with_concurrent [] {
     # Create secrets concurrently with different templates

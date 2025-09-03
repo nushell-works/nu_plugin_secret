@@ -1,5 +1,4 @@
 use crate::config::RedactionContext;
-use crate::memory_optimizations::get_configurable_redacted_string;
 use nu_protocol::ast::{Comparison, Operator};
 use nu_protocol::{CustomValue, Record};
 use nu_protocol::{ShellError, Span, Value};
@@ -110,11 +109,21 @@ impl CustomValue for SecretRecord {
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
-                template, "record", None, // Length not meaningful for complex types
+            // Convert record to parsable string representation
+            let record_value = Value::record(self.inner.clone(), Span::unknown());
+            let record_str = record_value.to_parsable_string(", ", &nu_protocol::Config::default());
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
+                template,
+                "record",
+                None,
+                Some(record_str), // Length not meaningful for complex types
             )
         } else {
-            get_configurable_redacted_string("record", RedactionContext::Serialization)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "record",
+                RedactionContext::Serialization,
+                None,
+            )
         };
         Ok(Value::string(redacted_text, span))
     }
@@ -183,11 +192,21 @@ impl CustomValue for SecretRecord {
 impl fmt::Display for SecretRecord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
-                template, "record", None, // Length not meaningful for complex types
+            // Convert record to parsable string representation
+            let record_value = Value::record(self.inner.clone(), Span::unknown());
+            let record_str = record_value.to_parsable_string(", ", &nu_protocol::Config::default());
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
+                template,
+                "record",
+                None,
+                Some(record_str), // Length not meaningful for complex types
             )
         } else {
-            get_configurable_redacted_string("record", RedactionContext::Display)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "record",
+                RedactionContext::Display,
+                None,
+            )
         };
         write!(f, "{}", redacted_text)
     }
@@ -196,11 +215,18 @@ impl fmt::Display for SecretRecord {
 impl fmt::Debug for SecretRecord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
-                template, "record", None, // Length not meaningful for complex types
+            crate::redaction::get_redacted_string_with_custom_template_and_value(
+                template,
+                "record",
+                RedactionContext::Display,
+                Some(self),
             )
         } else {
-            get_configurable_redacted_string("record", RedactionContext::Debug)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "record",
+                RedactionContext::Debug,
+                None,
+            )
         };
         write!(f, "SecretRecord({})", redacted_text)
     }
