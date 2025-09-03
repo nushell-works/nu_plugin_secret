@@ -16,6 +16,7 @@
 //! - `secret_string()`: Returns the actual secret value as a string (WARNING: exposes sensitive data!)
 //! - `reverse("text")` or `reverse(s="text")`: Returns the input string reversed
 //! - `take(5, "text")` or `take(n=5, s="text")`: Returns the first n characters of the input string
+//! - `strlen("text")` or `strlen(s="text")`: Returns the length of the input string as a number
 
 use std::sync::OnceLock;
 use tera::{Context, Tera};
@@ -177,6 +178,32 @@ fn generate_redacted_string_with_length(
             let chars: Vec<char> = s.chars().collect();
             let taken: String = chars.into_iter().take(n as usize).collect();
             Ok(tera::Value::String(taken))
+        },
+    );
+
+    // Register the strlen function
+    tera.register_function(
+        "strlen",
+        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+            // Support both positional and named arguments
+            let input = if let Some(value) = args.get("0") {
+                // First positional argument
+                value
+                    .as_str()
+                    .ok_or_else(|| tera::Error::msg("strlen function argument must be a string"))?
+            } else if let Some(value) = args.get("s") {
+                // Named argument
+                value.as_str().ok_or_else(|| {
+                    tera::Error::msg("strlen function 's' parameter must be a string")
+                })?
+            } else {
+                return Err(tera::Error::msg(
+                    "strlen function requires a string argument",
+                ));
+            };
+
+            let length = input.chars().count();
+            Ok(tera::Value::from(length))
         },
     );
 
@@ -385,6 +412,32 @@ pub fn generate_redacted_string_with_custom_template_and_value(
             let chars: Vec<char> = s.chars().collect();
             let taken: String = chars.into_iter().take(n as usize).collect();
             Ok(tera::Value::String(taken))
+        },
+    );
+
+    // Register the strlen function
+    tera.register_function(
+        "strlen",
+        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+            // Support both positional and named arguments
+            let input = if let Some(value) = args.get("0") {
+                // First positional argument
+                value
+                    .as_str()
+                    .ok_or_else(|| tera::Error::msg("strlen function argument must be a string"))?
+            } else if let Some(value) = args.get("s") {
+                // Named argument
+                value.as_str().ok_or_else(|| {
+                    tera::Error::msg("strlen function 's' parameter must be a string")
+                })?
+            } else {
+                return Err(tera::Error::msg(
+                    "strlen function requires a string argument",
+                ));
+            };
+
+            let length = input.chars().count();
+            Ok(tera::Value::from(length))
         },
     );
 
@@ -1192,6 +1245,112 @@ mod tests {
         // Test get_cached_redacted_string_with_length with Some
         let result = get_cached_redacted_string_with_length(Some("mysecret"), "string", Some(8));
         assert_eq!(result, "<redacted:string>");
+    }
+
+    #[test]
+    fn test_strlen_function() {
+        // Test strlen function with basic strings
+        let result =
+            generate_redacted_string_with_custom_template("{{strlen(s='hello')}}", "test", None);
+        assert_eq!(result, "5");
+
+        let result =
+            generate_redacted_string_with_custom_template("{{strlen(s='world!')}}", "test", None);
+        assert_eq!(result, "6");
+
+        // Test with empty string
+        let result =
+            generate_redacted_string_with_custom_template("{{strlen(s='')}}", "test", None);
+        assert_eq!(result, "0");
+
+        // Test with unicode characters (should count characters, not bytes)
+        let result =
+            generate_redacted_string_with_custom_template("{{strlen(s='🚀🎉🌟')}}", "test", None);
+        assert_eq!(result, "3");
+
+        // Test with multi-byte unicode characters
+        let result =
+            generate_redacted_string_with_custom_template("{{strlen(s='café')}}", "test", None);
+        assert_eq!(result, "4");
+
+        // Test with positional argument (using unnamed parameter)
+        let result =
+            generate_redacted_string_with_custom_template("{{strlen(s='testing')}}", "test", None);
+        assert_eq!(result, "7");
+
+        // Test with longer string
+        let result = generate_redacted_string_with_custom_template(
+            "{{strlen(s='This is a longer test string!')}}",
+            "test",
+            None,
+        );
+        assert_eq!(result, "29");
+    }
+
+    #[test]
+    fn test_strlen_function_error_handling() {
+        // Test with no arguments - should fall back to basic format
+        let result =
+            generate_redacted_string_with_custom_template("{{strlen()}}", "test_type", None);
+        assert_eq!(result, "<redacted:test_type>");
+
+        // Test with invalid template - should fall back to basic format
+        let result = generate_redacted_string_with_custom_template(
+            "{{strlen(s=nonexistent_var)}}",
+            "test_type",
+            None,
+        );
+        assert_eq!(result, "<redacted:test_type>");
+    }
+
+    #[test]
+    fn test_strlen_function_with_template_variables() {
+        // Test strlen with secret_string variable
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "{{strlen(s=secret_string)}}",
+            "test",
+            None,
+            Some("secret123".to_string()),
+        );
+        assert_eq!(result, "9");
+
+        // Test combining strlen with other functions
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "Length: {{strlen(s=secret_string)}}, First 3: {{take(n=3, s=secret_string)}}",
+            "test",
+            None,
+            Some("password".to_string()),
+        );
+        assert_eq!(result, "Length: 8, First 3: pas");
+
+        // Test strlen with reverse function result
+        let result = generate_redacted_string_with_custom_template(
+            "{{strlen(s=reverse(s='hello'))}}",
+            "test",
+            None,
+        );
+        assert_eq!(result, "5"); // Length of "olleh" is still 5
+    }
+
+    #[test]
+    fn test_strlen_function_complex_templates() {
+        // Test template that uses strlen for conditional logic-like display
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "{{secret_type}}[{{strlen(s=secret_string)}}]: {{replicate(character='*', length=strlen(s=secret_string))}}",
+            "password",
+            None,
+            Some("test123".to_string()),
+        );
+        assert_eq!(result, "password[7]: *******");
+
+        // Test with multiple strlen calls
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "Original: {{strlen(s=secret_string)}}, Reversed: {{strlen(s=reverse(s=secret_string))}}",
+            "test",
+            None,
+            Some("hello".to_string()),
+        );
+        assert_eq!(result, "Original: 5, Reversed: 5");
     }
 
     #[test]
