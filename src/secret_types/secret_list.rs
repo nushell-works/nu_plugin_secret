@@ -115,8 +115,13 @@ impl CustomValue for SecretList {
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
-                template, "list", None, // Length not meaningful for complex types
+            // For secret_string template variable, format the list as debug string
+            let list_str = format!("{:?}", self.inner);
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
+                template,
+                "list",
+                None,
+                Some(list_str), // Length not meaningful for complex types
             )
         } else {
             crate::redaction::get_redacted_string_with_value::<String>(
@@ -144,8 +149,13 @@ impl CustomValue for SecretList {
 impl fmt::Display for SecretList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
-                template, "list", None, // Length not meaningful for complex types
+            // For secret_string template variable, format the list as debug string
+            let list_str = format!("{:?}", self.inner);
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
+                template,
+                "list",
+                None,
+                Some(list_str), // Length not meaningful for complex types
             )
         } else {
             crate::redaction::get_redacted_string_with_value::<String>(
@@ -161,8 +171,13 @@ impl fmt::Display for SecretList {
 impl fmt::Debug for SecretList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
-                template, "list", None, // Length not meaningful for complex types
+            // For secret_string template variable, format the list as debug string
+            let list_str = format!("{:?}", self.inner);
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
+                template,
+                "list",
+                None,
+                Some(list_str), // Length not meaningful for complex types
             )
         } else {
             crate::redaction::get_redacted_string_with_value::<String>(

@@ -109,8 +109,14 @@ impl CustomValue for SecretRecord {
 
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
-                template, "record", None, // Length not meaningful for complex types
+            // Convert record to parsable string representation
+            let record_value = Value::record(self.inner.clone(), Span::unknown());
+            let record_str = record_value.to_parsable_string("", &nu_protocol::Config::default());
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
+                template,
+                "record",
+                None,
+                Some(record_str), // Length not meaningful for complex types
             )
         } else {
             crate::redaction::get_redacted_string_with_value::<String>(
@@ -186,8 +192,14 @@ impl CustomValue for SecretRecord {
 impl fmt::Display for SecretRecord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
-                template, "record", None, // Length not meaningful for complex types
+            // Convert record to parsable string representation
+            let record_value = Value::record(self.inner.clone(), Span::unknown());
+            let record_str = record_value.to_parsable_string("", &nu_protocol::Config::default());
+            crate::redaction::generate_redacted_string_with_custom_template_and_value(
+                template,
+                "record",
+                None,
+                Some(record_str), // Length not meaningful for complex types
             )
         } else {
             crate::redaction::get_redacted_string_with_value::<String>(
@@ -203,8 +215,11 @@ impl fmt::Display for SecretRecord {
 impl fmt::Debug for SecretRecord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let redacted_text = if let Some(template) = &self.redaction_template {
-            crate::redaction::generate_redacted_string_with_custom_template(
-                template, "record", None, // Length not meaningful for complex types
+            crate::redaction::get_redacted_string_with_custom_template_and_value(
+                template,
+                "record",
+                RedactionContext::Display,
+                Some(self),
             )
         } else {
             crate::redaction::get_redacted_string_with_value::<String>(
