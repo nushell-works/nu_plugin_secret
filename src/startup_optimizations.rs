@@ -52,9 +52,9 @@ fn pre_allocate_common_structures() {
     ];
 
     // Pre-warm the string cache
-    let _ = crate::memory_optimizations::get_redacted_string("string");
-    let _ = crate::memory_optimizations::get_redacted_string("int");
-    let _ = crate::memory_optimizations::get_redacted_string("binary");
+    let _ = crate::redaction::get_cached_redacted_string(None, "string");
+    let _ = crate::redaction::get_cached_redacted_string(None, "int");
+    let _ = crate::redaction::get_cached_redacted_string(None, "binary");
 }
 
 /// Startup profiling utilities

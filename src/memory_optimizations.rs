@@ -3,46 +3,8 @@
 //! This module contains optimizations to reduce memory usage and improve
 //! performance while maintaining security guarantees.
 
-/// Get an interned redacted string for a given type using Tera templating
-/// This avoids repeated allocations of the same strings and uses the new Tera system
-pub fn get_redacted_string(type_name: &str) -> String {
-    crate::redaction::get_cached_redacted_string(None, type_name)
-}
-
-/// Get configurable redacted string for a given type and context
-/// This uses the new Tera templating system
-pub fn get_configurable_redacted_string(
-    type_name: &str,
-    context: crate::config::RedactionContext,
-) -> String {
-    crate::redaction::get_redacted_string_with_value::<String>(type_name, context, None)
-}
-
-/// Get configurable redacted string with optional actual value for unredacted mode
-/// This function checks if SHOW_UNREDACTED is enabled and returns actual value if so
-pub fn get_configurable_redacted_string_with_value(
-    type_name: &str,
-    context: crate::config::RedactionContext,
-    actual_value: Option<&str>,
-) -> String {
-    crate::redaction::get_redacted_string_with_value(type_name, context, actual_value)
-}
-
-/// Get configurable redacted string with optional actual value (generic) for unredacted mode
-/// This function checks if SHOW_UNREDACTED is enabled and returns actual value if so
-pub fn get_configurable_redacted_string_with_generic_value<T: std::fmt::Display>(
-    type_name: &str,
-    context: crate::config::RedactionContext,
-    actual_value: Option<&T>,
-) -> String {
-    crate::redaction::get_redacted_string_with_value(type_name, context, actual_value)
-}
-
-/// Get redacted string with explicit length for template usage
-/// This allows templates to access secret_length variable and mask function
-pub fn get_redacted_string_with_length(type_name: &str, secret_length: Option<usize>) -> String {
-    crate::redaction::get_redacted_string_with_length(type_name, secret_length)
-}
+// Removed unnecessary wrapper functions that only added indirection
+// Use crate::redaction functions directly instead
 
 /// Memory pool for small allocations
 /// This reduces allocation overhead for small secret values
@@ -262,17 +224,26 @@ mod tests {
 
     #[test]
     fn test_redacted_string_templating() {
-        let s1 = get_redacted_string("string");
-        let s2 = get_redacted_string("string");
+        let s1 = crate::redaction::get_cached_redacted_string(None, "string");
+        let s2 = crate::redaction::get_cached_redacted_string(None, "string");
 
         // Should return correct Tera-templated format
         assert_eq!(s1, "<redacted:string>");
         assert_eq!(s2, "<redacted:string>");
 
         // Test other types
-        assert_eq!(get_redacted_string("int"), "<redacted:int>");
-        assert_eq!(get_redacted_string("float"), "<redacted:float>");
-        assert_eq!(get_redacted_string("bool"), "<redacted:bool>");
+        assert_eq!(
+            crate::redaction::get_cached_redacted_string(None, "int"),
+            "<redacted:int>"
+        );
+        assert_eq!(
+            crate::redaction::get_cached_redacted_string(None, "float"),
+            "<redacted:float>"
+        );
+        assert_eq!(
+            crate::redaction::get_cached_redacted_string(None, "bool"),
+            "<redacted:bool>"
+        );
     }
 
     #[test]
@@ -343,7 +314,7 @@ mod tests {
         use crate::config::RedactionContext;
 
         // Test without configuration - should fallback to static strings
-        let result = get_configurable_redacted_string_with_value(
+        let result = crate::redaction::get_redacted_string_with_value(
             "string",
             RedactionContext::Display,
             Some("secret_value"),
@@ -351,8 +322,11 @@ mod tests {
         assert!(result.contains("redacted"));
 
         // Test with None value - should still return redacted text
-        let result =
-            get_configurable_redacted_string_with_value("string", RedactionContext::Display, None);
+        let result = crate::redaction::get_redacted_string_with_value::<String>(
+            "string",
+            RedactionContext::Display,
+            None,
+        );
         assert!(result.contains("redacted"));
     }
 
@@ -361,7 +335,7 @@ mod tests {
         use crate::config::RedactionContext;
 
         // Test with integer
-        let result = get_configurable_redacted_string_with_generic_value(
+        let result = crate::redaction::get_redacted_string_with_value(
             "int",
             RedactionContext::Display,
             Some(&42),
@@ -369,7 +343,7 @@ mod tests {
         assert!(result.contains("redacted"));
 
         // Test with boolean
-        let result = get_configurable_redacted_string_with_generic_value(
+        let result = crate::redaction::get_redacted_string_with_value(
             "bool",
             RedactionContext::Display,
             Some(&true),
@@ -377,7 +351,7 @@ mod tests {
         assert!(result.contains("redacted"));
 
         // Test with float
-        let result = get_configurable_redacted_string_with_generic_value(
+        let result = crate::redaction::get_redacted_string_with_value(
             "float",
             RedactionContext::Display,
             Some(&2.5),
@@ -388,11 +362,11 @@ mod tests {
     #[test]
     fn test_redacted_string_with_length() {
         // Test the new length-aware function
-        let result = get_redacted_string_with_length("password", Some(12));
+        let result = crate::redaction::get_redacted_string_with_length("password", Some(12));
         assert_eq!(result, "<redacted:password>");
 
         // Test without length
-        let result = get_redacted_string_with_length("token", None);
+        let result = crate::redaction::get_redacted_string_with_length("token", None);
         assert_eq!(result, "<redacted:token>");
     }
 }

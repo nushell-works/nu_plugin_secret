@@ -1,5 +1,4 @@
 use crate::config::RedactionContext;
-use crate::memory_optimizations::get_configurable_redacted_string;
 use nu_protocol::ast::{Comparison, Operator};
 use nu_protocol::{CustomValue, Record};
 use nu_protocol::{ShellError, Span, Value};
@@ -114,7 +113,11 @@ impl CustomValue for SecretRecord {
                 template, "record", None, // Length not meaningful for complex types
             )
         } else {
-            get_configurable_redacted_string("record", RedactionContext::Serialization)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "record",
+                RedactionContext::Serialization,
+                None,
+            )
         };
         Ok(Value::string(redacted_text, span))
     }
@@ -187,7 +190,11 @@ impl fmt::Display for SecretRecord {
                 template, "record", None, // Length not meaningful for complex types
             )
         } else {
-            get_configurable_redacted_string("record", RedactionContext::Display)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "record",
+                RedactionContext::Display,
+                None,
+            )
         };
         write!(f, "{}", redacted_text)
     }
@@ -200,7 +207,11 @@ impl fmt::Debug for SecretRecord {
                 template, "record", None, // Length not meaningful for complex types
             )
         } else {
-            get_configurable_redacted_string("record", RedactionContext::Debug)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "record",
+                RedactionContext::Debug,
+                None,
+            )
         };
         write!(f, "SecretRecord({})", redacted_text)
     }

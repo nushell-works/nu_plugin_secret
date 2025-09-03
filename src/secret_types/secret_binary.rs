@@ -1,7 +1,5 @@
 use crate::config::RedactionContext;
-use crate::memory_optimizations::{
-    binary_optimization::OptimizedBinary, get_configurable_redacted_string,
-};
+use crate::memory_optimizations::binary_optimization::OptimizedBinary;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -123,7 +121,11 @@ impl CustomValue for SecretBinary {
                 Some(self.inner.len()), // Binary length is meaningful (number of bytes)
             )
         } else {
-            get_configurable_redacted_string("binary", RedactionContext::Serialization)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "binary",
+                RedactionContext::Serialization,
+                None,
+            )
         };
         Ok(Value::string(redacted_text, span))
     }
@@ -150,7 +152,11 @@ impl fmt::Display for SecretBinary {
                 Some(self.inner.len()), // Binary length is meaningful (number of bytes)
             )
         } else {
-            get_configurable_redacted_string("binary", RedactionContext::Display)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "binary",
+                RedactionContext::Display,
+                None,
+            )
         };
         write!(f, "{}", redacted_text)
     }
@@ -165,7 +171,11 @@ impl fmt::Debug for SecretBinary {
                 Some(self.inner.len()), // Binary length is meaningful (number of bytes)
             )
         } else {
-            get_configurable_redacted_string("binary", RedactionContext::Debug)
+            crate::redaction::get_redacted_string_with_value::<String>(
+                "binary",
+                RedactionContext::Debug,
+                None,
+            )
         };
         write!(f, "SecretBinary({})", redacted_text)
     }

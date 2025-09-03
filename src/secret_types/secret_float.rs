@@ -1,5 +1,4 @@
 use crate::config::RedactionContext;
-use crate::memory_optimizations::get_configurable_redacted_string_with_generic_value;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -120,7 +119,7 @@ impl CustomValue for SecretFloat {
                 Some(&self.inner),
             )
         } else {
-            get_configurable_redacted_string_with_generic_value(
+            crate::redaction::get_redacted_string_with_value(
                 "float",
                 RedactionContext::Serialization,
                 Some(&self.inner),
@@ -152,7 +151,7 @@ impl fmt::Display for SecretFloat {
                 Some(&self.inner),
             )
         } else {
-            get_configurable_redacted_string_with_generic_value(
+            crate::redaction::get_redacted_string_with_value(
                 "float",
                 RedactionContext::Display,
                 Some(&self.inner),
@@ -172,7 +171,7 @@ impl fmt::Debug for SecretFloat {
                 Some(&self.inner),
             )
         } else {
-            get_configurable_redacted_string_with_generic_value(
+            crate::redaction::get_redacted_string_with_value(
                 "float",
                 RedactionContext::Debug,
                 Some(&self.inner),

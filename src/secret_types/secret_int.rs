@@ -1,5 +1,4 @@
 use crate::config::RedactionContext;
-use crate::memory_optimizations::get_configurable_redacted_string_with_generic_value;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -106,7 +105,7 @@ impl CustomValue for SecretInt {
                 Some(&self.inner),
             )
         } else {
-            get_configurable_redacted_string_with_generic_value(
+            crate::redaction::get_redacted_string_with_value(
                 "int",
                 RedactionContext::Serialization,
                 Some(&self.inner),
@@ -138,7 +137,7 @@ impl fmt::Display for SecretInt {
                 Some(&self.inner),
             )
         } else {
-            get_configurable_redacted_string_with_generic_value(
+            crate::redaction::get_redacted_string_with_value(
                 "int",
                 RedactionContext::Display,
                 Some(&self.inner),
@@ -158,7 +157,7 @@ impl fmt::Debug for SecretInt {
                 Some(&self.inner),
             )
         } else {
-            get_configurable_redacted_string_with_generic_value(
+            crate::redaction::get_redacted_string_with_value(
                 "int",
                 RedactionContext::Debug,
                 Some(&self.inner),
