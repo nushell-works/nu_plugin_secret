@@ -851,4 +851,251 @@ mod tests {
         );
         assert_eq!(result, "simple_test");
     }
+
+    #[test]
+    fn test_reverse_function() {
+        // Test reverse function using existing redaction template system
+        let result =
+            generate_redacted_string_with_custom_template("test", "{{reverse(s='hello')}}", None);
+        assert_eq!(result, "olleh");
+
+        let result =
+            generate_redacted_string_with_custom_template("test", "{{reverse(s='world')}}", None);
+        assert_eq!(result, "dlrow");
+
+        // Test with empty string
+        let result =
+            generate_redacted_string_with_custom_template("test", "{{reverse(s='')}}", None);
+        assert_eq!(result, "");
+
+        // Test with unicode characters
+        let result =
+            generate_redacted_string_with_custom_template("test", "{{reverse(s='🚀🎉')}}", None);
+        assert_eq!(result, "🎉🚀");
+    }
+
+    #[test]
+    fn test_reverse_function_error_handling() {
+        // Test with no arguments - should fall back to basic format
+        let result =
+            generate_redacted_string_with_custom_template("test_type", "{{reverse()}}", None);
+        assert_eq!(result, "<redacted:test_type>");
+
+        // Test with invalid template - should fall back to basic format
+        let result = generate_redacted_string_with_custom_template(
+            "test_type",
+            "{{reverse(s=nonexistent_var)}}",
+            None,
+        );
+        assert_eq!(result, "<redacted:test_type>");
+    }
+
+    #[test]
+    fn test_take_function() {
+        // Test take function using existing redaction template system
+        let result = generate_redacted_string_with_custom_template(
+            "test",
+            "{{take(n=3, s='hello world')}}",
+            None,
+        );
+        assert_eq!(result, "hel");
+
+        let result = generate_redacted_string_with_custom_template(
+            "test",
+            "{{take(n=5, s='testing')}}",
+            None,
+        );
+        assert_eq!(result, "testi");
+
+        // Test taking more characters than available
+        let result = generate_redacted_string_with_custom_template(
+            "test",
+            "{{take(n=10, s='short')}}",
+            None,
+        );
+        assert_eq!(result, "short");
+
+        // Test with zero characters
+        let result = generate_redacted_string_with_custom_template(
+            "test",
+            "{{take(n=0, s='anything')}}",
+            None,
+        );
+        assert_eq!(result, "");
+
+        // Test with negative number
+        let result =
+            generate_redacted_string_with_custom_template("test", "{{take(n=-1, s='test')}}", None);
+        assert_eq!(result, "");
+
+        // Test with unicode characters
+        let result = generate_redacted_string_with_custom_template(
+            "test",
+            "{{take(n=2, s='🚀🎉🌟⭐')}}",
+            None,
+        );
+        assert_eq!(result, "🚀🎉");
+
+        // Test with empty string
+        let result =
+            generate_redacted_string_with_custom_template("test", "{{take(n=5, s='')}}", None);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_take_function_error_handling() {
+        // Test with missing arguments - should fall back to basic format
+        let result =
+            generate_redacted_string_with_custom_template("test_type", "{{take(s='test')}}", None);
+        assert_eq!(result, "<redacted:test_type>");
+
+        let result =
+            generate_redacted_string_with_custom_template("test_type", "{{take(n=5)}}", None);
+        assert_eq!(result, "<redacted:test_type>");
+
+        // Test with invalid arguments - should fall back to basic format
+        let result = generate_redacted_string_with_custom_template("test_type", "{{take()}}", None);
+        assert_eq!(result, "<redacted:test_type>");
+    }
+
+    #[test]
+    fn test_secret_string_function() {
+        // Test secret_string function in regular templating (should return empty)
+        let result =
+            generate_redacted_string_with_custom_template("test", "{{secret_string()}}", None);
+        assert_eq!(result, "");
+
+        // Test secret_string function with custom template and value (should return the value)
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "test",
+            "{{secret_string()}}",
+            None,
+            Some("secret_value".to_string()),
+        );
+        assert_eq!(result, "secret_value");
+
+        // Test secret_string function with template containing other content
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "test",
+            "prefix:{{secret_string()}}:suffix",
+            None,
+            Some("middle".to_string()),
+        );
+        assert_eq!(result, "prefix:middle:suffix");
+
+        // Test secret_string function with no secret value provided
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "test",
+            "value:{{secret_string()}}",
+            None,
+            None,
+        );
+        assert_eq!(result, "value:");
+    }
+
+    #[test]
+    fn test_template_error_fallback_handling() {
+        // Test invalid template syntax - should fall back to basic format
+        let result = generate_redacted_string_with_custom_template(
+            "test_type",
+            "{{invalid syntax without closing",
+            None,
+        );
+        assert_eq!(result, "<redacted:test_type>");
+
+        // Test template with undefined variable - should fall back to basic format
+        let result = generate_redacted_string_with_custom_template(
+            "test_type",
+            "{{undefined_variable}}",
+            None,
+        );
+        assert_eq!(result, "<redacted:test_type>");
+
+        // Test template with invalid function call - should fall back to basic format
+        let result = generate_redacted_string_with_custom_template(
+            "test_type",
+            "{{nonexistent_function()}}",
+            None,
+        );
+        assert_eq!(result, "<redacted:test_type>");
+    }
+
+    #[test]
+    fn test_replicate_function_error_handling() {
+        // Test with missing parameters - should fall back to basic format
+        let result = generate_redacted_string_with_custom_template(
+            "test_type",
+            "{{replicate(length=5)}}",
+            None,
+        );
+        assert_eq!(result, "<redacted:test_type>");
+
+        let result = generate_redacted_string_with_custom_template(
+            "test_type",
+            "{{replicate(character='*')}}",
+            None,
+        );
+        assert_eq!(result, "<redacted:test_type>");
+
+        // Test with no parameters - should fall back to basic format
+        let result =
+            generate_redacted_string_with_custom_template("test_type", "{{replicate()}}", None);
+        assert_eq!(result, "<redacted:test_type>");
+
+        // Test with empty character string (should fall back to '*')
+        let result = generate_redacted_string_with_custom_template(
+            "test",
+            "{{replicate(character='', length=3)}}",
+            None,
+        );
+        assert_eq!(result, "***");
+    }
+
+    #[test]
+    fn test_complex_template_combinations() {
+        // Test combining replicate with secret length
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "secret",
+            "[{{replicate(character='-', length=secret_length)}}]",
+            Some(4), // Explicitly set the length
+            Some("test".to_string()),
+        );
+        assert_eq!(result, "[----]"); // "test" has 4 characters
+
+        // Test template with secret_type and secret_length variables
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "complex",
+            "{{secret_type}}:{{secret_length}}",
+            Some(6), // Explicitly set the length
+            Some("abcdef".to_string()),
+        );
+        assert_eq!(result, "complex:6");
+
+        // Test template with secret_string function
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "test",
+            "value={{secret_string()}}",
+            None,
+            Some("secret123".to_string()),
+        );
+        assert_eq!(result, "value=secret123");
+
+        // Test combining reverse with secret_string
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "test",
+            "{{reverse(s=secret_string)}}",
+            None,
+            Some("hello".to_string()),
+        );
+        assert_eq!(result, "olleh");
+
+        // Test combining take with secret_string
+        let result = generate_redacted_string_with_custom_template_and_value(
+            "test",
+            "{{take(n=3, s=secret_string)}}",
+            None,
+            Some("abcdef".to_string()),
+        );
+        assert_eq!(result, "abc");
+    }
 }
