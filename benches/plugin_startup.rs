@@ -41,18 +41,15 @@ fn bench_command_lookup(c: &mut Criterion) {
 
     // Test lookup for each command
     let command_names = vec![
-        "secret wrap-string",
-        "secret wrap-int",
-        "secret wrap-bool",
-        "secret wrap-record",
-        "secret wrap-list",
-        "secret wrap-float",
-        "secret wrap-binary",
-        "secret wrap-date",
+        "secret wrap",
         "secret unwrap",
         "secret info",
         "secret validate",
         "secret type-of",
+        "secret contains",
+        "secret configure",
+        "secret config",
+        "secret wrap-with",
     ];
 
     for name in command_names {
@@ -122,7 +119,7 @@ fn bench_process_startup(c: &mut Criterion) {
 fn bench_first_command_latency(c: &mut Criterion) {
     let mut group = c.benchmark_group("first_command");
 
-    group.bench_function("first_wrap_string", |b| {
+    group.bench_function("first_wrap_command", |b| {
         b.iter_batched(
             || {
                 // Setup: Create fresh plugin instance (simulating startup)
@@ -133,8 +130,8 @@ fn bench_first_command_latency(c: &mut Criterion) {
                 let commands = plugin.commands();
                 let wrap_cmd = commands
                     .iter()
-                    .find(|cmd| cmd.name() == "secret wrap-string")
-                    .expect("wrap-string command should exist");
+                    .find(|cmd| cmd.name() == "secret wrap")
+                    .expect("wrap command should exist");
 
                 // Just verify the command exists and is callable
                 wrap_cmd.name().to_string()

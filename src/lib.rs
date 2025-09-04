@@ -38,15 +38,6 @@ impl Plugin for SecretPlugin {
             // Unified wrap command
             Box::new(SecretWrapCommand),
             Box::new(SecretWrapWithCommand),
-            // Core secret wrap commands (kept for backward compatibility)
-            Box::new(SecretWrapStringCommand),
-            Box::new(SecretWrapIntCommand),
-            Box::new(SecretWrapBoolCommand),
-            Box::new(SecretWrapRecordCommand),
-            Box::new(SecretWrapListCommand),
-            Box::new(SecretWrapFloatCommand),
-            Box::new(SecretWrapBinaryCommand),
-            Box::new(SecretWrapDateCommand),
             // Utility commands
             Box::new(SecretUnwrapCommand),
             Box::new(SecretContainsCommand),
@@ -80,22 +71,13 @@ mod tests {
     fn test_plugin_commands() {
         let plugin = SecretPlugin;
         let commands = plugin.commands();
-        assert_eq!(commands.len(), 23);
+        assert_eq!(commands.len(), 15);
 
         // Test all commands to ensure they're registered correctly
         let command_names: Vec<&str> = commands.iter().map(|cmd| cmd.name()).collect();
         // Unified wrap command
         assert!(command_names.contains(&"secret wrap"));
         assert!(command_names.contains(&"secret wrap-with"));
-        // Core secret wrap commands (kept for backward compatibility)
-        assert!(command_names.contains(&"secret wrap-string"));
-        assert!(command_names.contains(&"secret wrap-int"));
-        assert!(command_names.contains(&"secret wrap-bool"));
-        assert!(command_names.contains(&"secret wrap-record"));
-        assert!(command_names.contains(&"secret wrap-list"));
-        assert!(command_names.contains(&"secret wrap-float"));
-        assert!(command_names.contains(&"secret wrap-binary"));
-        assert!(command_names.contains(&"secret wrap-date"));
         // Utility commands
         assert!(command_names.contains(&"secret unwrap"));
         assert!(command_names.contains(&"secret contains"));

@@ -182,13 +182,13 @@ mod command_functionality_tests {
     use super::*;
 
     #[test]
-    fn test_plugin_has_wrap_string_command() {
-        // Test that the plugin includes the wrap-string command
+    fn test_plugin_has_unified_wrap_command() {
+        // Test that the plugin includes the unified wrap command
         let plugin = nu_plugin_secret::SecretPlugin;
         let commands = plugin.commands();
 
         let command_names: Vec<&str> = commands.iter().map(|cmd| cmd.name()).collect();
-        assert!(command_names.contains(&"secret wrap-string"));
+        assert!(command_names.contains(&"secret wrap"));
     }
 
     #[test]
@@ -202,22 +202,23 @@ mod command_functionality_tests {
     }
 
     #[test]
-    fn test_wrap_string_command_signature() {
-        // Test the wrap-string command signature
+    fn test_unified_wrap_command_signature() {
+        // Test the unified wrap command signature
         let plugin = nu_plugin_secret::SecretPlugin;
         let commands = plugin.commands();
 
         let wrap_command = commands
             .iter()
-            .find(|cmd| cmd.name() == "secret wrap-string")
-            .expect("wrap-string command should exist");
+            .find(|cmd| cmd.name() == "secret wrap")
+            .expect("unified wrap command should exist");
 
         let signature = wrap_command.signature();
-        assert_eq!(signature.name, "secret wrap-string");
+        assert_eq!(signature.name, "secret wrap");
         assert_eq!(signature.category, nu_protocol::Category::Conversions);
 
-        // Should have input-output type mapping
+        // Should have input-output type mapping for all supported types
         assert!(!signature.input_output_types.is_empty());
+        assert!(signature.input_output_types.len() >= 8); // Should support at least 8 types
     }
 
     #[test]
@@ -240,20 +241,20 @@ mod command_functionality_tests {
     }
 
     #[test]
-    fn test_wrap_string_command_description() {
-        // Test the wrap-string command description
+    fn test_unified_wrap_command_description() {
+        // Test the unified wrap command description
         let plugin = nu_plugin_secret::SecretPlugin;
         let commands = plugin.commands();
 
         let wrap_command = commands
             .iter()
-            .find(|cmd| cmd.name() == "secret wrap-string")
-            .expect("wrap-string command should exist");
+            .find(|cmd| cmd.name() == "secret wrap")
+            .expect("unified wrap command should exist");
 
         let description = wrap_command.description();
         assert!(!description.is_empty());
-        assert!(description.contains("string") || description.contains("String"));
         assert!(description.contains("secret") || description.contains("Secret"));
+        assert!(description.contains("value") || description.contains("type"));
     }
 
     #[test]
@@ -281,8 +282,8 @@ mod command_functionality_tests {
 
         let wrap_command = commands
             .iter()
-            .find(|cmd| cmd.name() == "secret wrap-string")
-            .expect("wrap-string command should exist");
+            .find(|cmd| cmd.name() == "secret wrap")
+            .expect("unified wrap command should exist");
 
         let unwrap_command = commands
             .iter()

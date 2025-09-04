@@ -237,12 +237,12 @@ jobs:
 
       - name: Test basic functionality
         run: |
-          nu -c 'echo "test" | secret wrap-string'
-          nu -c '42 | secret wrap-int'
-          nu -c 'true | secret wrap-bool'
-          nu -c '3.14 | secret wrap-float'
-          nu -c '0x[deadbeef] | secret wrap-binary'
-          nu -c 'date now | secret wrap-date'
+          nu -c 'echo "test" | secret wrap'
+          nu -c '42 | secret wrap'
+          nu -c 'true | secret wrap'
+          nu -c '3.14 | secret wrap'
+          nu -c '0x[deadbeef] | secret wrap'
+          nu -c 'date now | secret wrap'
 
   # Memory safety testing
   memory-safety:
