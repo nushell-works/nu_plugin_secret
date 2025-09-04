@@ -39,6 +39,28 @@ plugin add target/release/nu_plugin_secret
 plugin use secret
 ```
 
+## ⚙️ Configuration
+
+The plugin supports extensive configuration including:
+- **Security levels**: minimal, standard, paranoid  
+- **Custom redaction templates**: Using Tera templating engine
+- **Template functions**: replicate, mask_partial, take, reverse, strlen
+- **Audit logging**: Track secret operations
+- **Environment overrides**: For development workflows
+
+See [Configuration Guide](docs/CONFIGURATION.md) for complete documentation.
+
+```nushell
+# View current configuration
+secret config show
+
+# Interactive configuration
+secret configure
+
+# Validate configuration and templates
+secret config validate
+```
+
 ## 🚀 Commands
 
 ### Wrap Commands

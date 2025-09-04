@@ -452,6 +452,83 @@ def safe_process_secret [secret] {
 }
 ```
 
+## Configuration and Templates
+
+### Safe Template Patterns
+
+Use configuration templates that don't expose secret content:
+
+```nushell
+# Configure safe redaction templates
+secret configure
+# Or edit config directly at ~/.local/share/nushell/plugins/secret/config.toml
+```
+
+**Recommended templates**:
+```toml
+# Default - safest option
+redaction_template = "<redacted:{{secret_type}}>"
+
+# Show type and length info
+redaction_template = "{{secret_type}}({{secret_length}})"
+
+# Visual masking that matches secret length
+redaction_template = "{{replicate(s='*', n=secret_length)}}"
+
+# Custom safe format
+redaction_template = "[PROTECTED:{{secret_type}}]"
+```
+
+### Template Security Guidelines
+
+**✅ Do**:
+```toml
+# Safe templates that don't expose content
+redaction_template = "{{secret_type}}: {{replicate(s='█', n=secret_length)}}"
+redaction_template = "<{{secret_type}}-{{secret_length}}>"
+redaction_template = "{{replicate(s='*', n=8)}}"  # Fixed safe length
+```
+
+**❌ Don't**:
+```toml
+# Dangerous templates that expose secret data
+redaction_template = "{{secret_string()}}"  # Exposes full secret!
+redaction_template = "{{take(n=4, s=secret_string())}}"  # Exposes prefix
+redaction_template = "{{mask_partial(s=secret_string(), l=3, r=3)}}"  # Partial exposure
+```
+
+### Development vs Production Templates
+
+**Development** (with `SHOW_UNREDACTED=1`):
+```nushell
+# Temporarily show actual values for debugging
+export SHOW_UNREDACTED=1
+echo "my-secret" | secret wrap-string  # Shows: my-secret
+```
+
+**Production** (secure configuration):
+```toml
+[redaction]
+show_unredacted = false  # Never true in production
+redaction_template = "<redacted:{{secret_type}}>"
+
+[security]
+level = "paranoid"  # Maximum security
+audit_enabled = true
+```
+
+### Template Validation
+
+Always validate custom templates:
+```nushell
+# Check template syntax and security
+secret config validate
+
+# Test templates before deployment
+secret configure --security-level standard
+secret config validate --verbose
+```
+
 ## Summary
 
 1. **Choose the right type** for your data's actual type and sensitivity
@@ -461,3 +538,6 @@ def safe_process_secret [secret] {
 5. **Test thoroughly** including display and serialization protection
 6. **Consider performance** implications of different secret types
 7. **Follow security principles** consistently across your codebase
+8. **Use safe templates** that don't expose secret content
+9. **Validate configuration** before deploying to production
+10. **Regular security review** of templates and configuration
