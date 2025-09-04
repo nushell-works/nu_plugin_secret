@@ -56,7 +56,7 @@ impl PluginCommand for SecretWrapWithCommand {
                 result: None, // We can't show the actual result since it's redacted
             },
             Example {
-                example: r#"42 | secret wrap-with "{{replicate(character='*', length=secret_length)}}""#,
+                example: r#"42 | secret wrap-with "{{replicate(s='*', n=secret_length)}}""#,
                 description: "Convert an integer to a secret integer using replicate function",
                 result: None,
             },
@@ -199,8 +199,8 @@ mod tests {
         let valid_templates = vec![
             "{{secret_type}}",
             "[HIDDEN:{{secret_type}}]",
-            "{{replicate(character='*', length=secret_length)}}",
-            "{{secret_type}}: {{replicate(character='#', length=5)}}",
+            "{{replicate(s='*', n=secret_length)}}",
+            "{{secret_type}}: {{replicate(s='#', n=5)}}",
             "🔐 {{secret_type}} 🔒",
             "",
             "simple_text_without_variables",

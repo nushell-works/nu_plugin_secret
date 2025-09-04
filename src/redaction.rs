@@ -11,8 +11,8 @@
 //! - `secret_string`: The actual secret value as a string (WARNING: exposes sensitive data!)
 //!
 //! Available template functions:
-//! - `replicate(character="*", length=5)`: Returns a string of the given character repeated length times.
-//!   Returns empty string if length is negative.
+//! - `replicate(s="*", n=5)`: Returns a string of the given character repeated n times.
+//!   Returns empty string if n is negative.
 //! - `secret_string()`: Returns the actual secret value as a string (WARNING: exposes sensitive data!)
 //! - `reverse("text")` or `reverse(s="text")`: Returns the input string reversed
 //! - `take(5, "text")` or `take(n=5, s="text")`: Returns the first n characters of the input string
@@ -436,31 +436,9 @@ mod tests {
     fn test_replicate_function() {
         // Test replicate function with positive length
         let mut tera = tera::Tera::default();
-        tera.register_function(
-            "replicate",
-            |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-                let character =
-                    args.get("character")
-                        .and_then(|v| v.as_str())
-                        .ok_or_else(|| {
-                            tera::Error::msg("replicate function requires 'character' parameter")
-                        })?;
+        crate::tera_functions::register_all_standard_functions(&mut tera);
 
-                let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
-                    tera::Error::msg("replicate function requires 'length' parameter")
-                })?;
-
-                if length < 0 {
-                    return Ok(tera::Value::String("".to_string()));
-                }
-
-                let mask_char = character.chars().next().unwrap_or('*');
-                let result = mask_char.to_string().repeat(length as usize);
-                Ok(tera::Value::String(result))
-            },
-        );
-
-        tera.add_raw_template("replicate_test", "{{replicate(character='*', length=5)}}")
+        tera.add_raw_template("replicate_test", "{{replicate(s='*', n=5)}}")
             .unwrap();
 
         let context = tera::Context::new();
@@ -471,36 +449,14 @@ mod tests {
     #[test]
     fn test_replicate_function_different_characters() {
         let mut tera = tera::Tera::default();
-        tera.register_function(
-            "replicate",
-            |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-                let character =
-                    args.get("character")
-                        .and_then(|v| v.as_str())
-                        .ok_or_else(|| {
-                            tera::Error::msg("replicate function requires 'character' parameter")
-                        })?;
-
-                let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
-                    tera::Error::msg("replicate function requires 'length' parameter")
-                })?;
-
-                if length < 0 {
-                    return Ok(tera::Value::String("".to_string()));
-                }
-
-                let mask_char = character.chars().next().unwrap_or('*');
-                let result = mask_char.to_string().repeat(length as usize);
-                Ok(tera::Value::String(result))
-            },
-        );
+        crate::tera_functions::register_all_standard_functions(&mut tera);
 
         // Test with different characters
-        tera.add_raw_template("replicate_x", "{{replicate(character='X', length=3)}}")
+        tera.add_raw_template("replicate_x", "{{replicate(s='X', n=3)}}")
             .unwrap();
-        tera.add_raw_template("replicate_dash", "{{replicate(character='-', length=7)}}")
+        tera.add_raw_template("replicate_dash", "{{replicate(s='-', n=7)}}")
             .unwrap();
-        tera.add_raw_template("replicate_dot", "{{replicate(character='.', length=4)}}")
+        tera.add_raw_template("replicate_dot", "{{replicate(s='.', n=4)}}")
             .unwrap();
 
         let context = tera::Context::new();
@@ -513,35 +469,10 @@ mod tests {
     #[test]
     fn test_replicate_function_negative_length() {
         let mut tera = tera::Tera::default();
-        tera.register_function(
-            "replicate",
-            |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-                let character =
-                    args.get("character")
-                        .and_then(|v| v.as_str())
-                        .ok_or_else(|| {
-                            tera::Error::msg("replicate function requires 'character' parameter")
-                        })?;
+        crate::tera_functions::register_all_standard_functions(&mut tera);
 
-                let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
-                    tera::Error::msg("replicate function requires 'length' parameter")
-                })?;
-
-                if length < 0 {
-                    return Ok(tera::Value::String("".to_string()));
-                }
-
-                let mask_char = character.chars().next().unwrap_or('*');
-                let result = mask_char.to_string().repeat(length as usize);
-                Ok(tera::Value::String(result))
-            },
-        );
-
-        tera.add_raw_template(
-            "replicate_negative",
-            "{{replicate(character='*', length=-1)}}",
-        )
-        .unwrap();
+        tera.add_raw_template("replicate_negative", "{{replicate(s='*', n=-1)}}")
+            .unwrap();
 
         let context = tera::Context::new();
         let result = tera.render("replicate_negative", &context).unwrap();
@@ -551,31 +482,9 @@ mod tests {
     #[test]
     fn test_replicate_function_zero_length() {
         let mut tera = tera::Tera::default();
-        tera.register_function(
-            "replicate",
-            |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-                let character =
-                    args.get("character")
-                        .and_then(|v| v.as_str())
-                        .ok_or_else(|| {
-                            tera::Error::msg("replicate function requires 'character' parameter")
-                        })?;
+        crate::tera_functions::register_all_standard_functions(&mut tera);
 
-                let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
-                    tera::Error::msg("replicate function requires 'length' parameter")
-                })?;
-
-                if length < 0 {
-                    return Ok(tera::Value::String("".to_string()));
-                }
-
-                let mask_char = character.chars().next().unwrap_or('*');
-                let result = mask_char.to_string().repeat(length as usize);
-                Ok(tera::Value::String(result))
-            },
-        );
-
-        tera.add_raw_template("replicate_zero", "{{replicate(character='*', length=0)}}")
+        tera.add_raw_template("replicate_zero", "{{replicate(s='*', n=0)}}")
             .unwrap();
 
         let context = tera::Context::new();
@@ -586,34 +495,12 @@ mod tests {
     #[test]
     fn test_template_with_length_and_replicate() {
         let mut tera = tera::Tera::default();
-        tera.register_function(
-            "replicate",
-            |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
-                let character =
-                    args.get("character")
-                        .and_then(|v| v.as_str())
-                        .ok_or_else(|| {
-                            tera::Error::msg("replicate function requires 'character' parameter")
-                        })?;
-
-                let length = args.get("length").and_then(|v| v.as_i64()).ok_or_else(|| {
-                    tera::Error::msg("replicate function requires 'length' parameter")
-                })?;
-
-                if length < 0 {
-                    return Ok(tera::Value::String("".to_string()));
-                }
-
-                let mask_char = character.chars().next().unwrap_or('*');
-                let result = mask_char.to_string().repeat(length as usize);
-                Ok(tera::Value::String(result))
-            },
-        );
+        crate::tera_functions::register_all_standard_functions(&mut tera);
 
         // Template that uses both secret_length and replicate function
         tera.add_raw_template(
             "complex",
-            "<{{secret_type}}:{{replicate(character='*', length=secret_length)}}>",
+            "<{{secret_type}}:{{replicate(s='*', n=secret_length)}}>",
         )
         .unwrap();
 
@@ -659,7 +546,7 @@ mod tests {
 
         // Test template with replicate function
         let result = generate_redacted_string_with_custom_template(
-            "{{replicate(character='*', length=5)}}",
+            "{{replicate(s='*', n=5)}}",
             "secret",
             None,
         );
@@ -681,7 +568,7 @@ mod tests {
 
         // Test custom template with length calculated from value
         let result = get_redacted_string_with_custom_template_and_value(
-            "{{replicate(character='*', length=secret_length)}}",
+            "{{replicate(s='*', n=secret_length)}}",
             "password",
             RedactionContext::Display,
             Some(&"test123"),
@@ -877,16 +764,14 @@ mod tests {
 
     #[test]
     fn test_replicate_function_error_handling() {
-        // Test with missing parameters - should fall back to basic format
-        let result = generate_redacted_string_with_custom_template(
-            "{{replicate(length=5)}}",
-            "test_type",
-            None,
-        );
+        // Test with missing 's' parameter - should fall back to basic format
+        let result =
+            generate_redacted_string_with_custom_template("{{replicate(n=5)}}", "test_type", None);
         assert_eq!(result, "<redacted:test_type>");
 
+        // Test with missing 'n' parameter - should fall back to basic format
         let result = generate_redacted_string_with_custom_template(
-            "{{replicate(character='*')}}",
+            "{{replicate(s='*')}}",
             "test_type",
             None,
         );
@@ -897,20 +782,17 @@ mod tests {
             generate_redacted_string_with_custom_template("{{replicate()}}", "test_type", None);
         assert_eq!(result, "<redacted:test_type>");
 
-        // Test with empty character string (should fall back to '*')
-        let result = generate_redacted_string_with_custom_template(
-            "{{replicate(character='', length=3)}}",
-            "test",
-            None,
-        );
-        assert_eq!(result, "***");
+        // Test with empty character string - should still work
+        let result =
+            generate_redacted_string_with_custom_template("{{replicate(s='', n=3)}}", "test", None);
+        assert_eq!(result, "");
     }
 
     #[test]
     fn test_complex_template_combinations() {
         // Test combining replicate with secret length
         let result = generate_redacted_string_with_custom_template_and_value(
-            "[{{replicate(character='-', length=secret_length)}}]",
+            "[{{replicate(s='-', n=secret_length)}}]",
             "secret",
             Some(4), // Explicitly set the length
             Some("test".to_string()),
@@ -1110,7 +992,7 @@ mod tests {
     fn test_strlen_function_complex_templates() {
         // Test template that uses strlen for conditional logic-like display
         let result = generate_redacted_string_with_custom_template_and_value(
-            "{{secret_type}}[{{strlen(s=secret_string)}}]: {{replicate(character='*', length=strlen(s=secret_string))}}",
+            "{{secret_type}}[{{strlen(s=secret_string)}}]: {{replicate(s='*', n=strlen(s=secret_string))}}",
             "password",
             None,
             Some("test123".to_string()),

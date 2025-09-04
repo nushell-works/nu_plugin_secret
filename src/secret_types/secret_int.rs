@@ -264,7 +264,7 @@ mod tests {
     fn test_secret_int_with_replicate_template() {
         let secret = SecretInt::new_with_template(
             12345,
-            "{{replicate(character='*', length=secret_length)}}".to_string(),
+            "{{replicate(s='*', n=secret_length)}}".to_string(),
         );
 
         let display = format!("{}", secret);

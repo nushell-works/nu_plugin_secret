@@ -4,7 +4,7 @@
 //! redaction templates for flexible secret formatting.
 //!
 //! Available functions:
-//! - `replicate(character="*", length=5)`: Returns a string of repeated characters
+//! - `replicate(s="*", n=5)`: Returns a string of repeated characters
 //! - `reverse(s="text")`: Returns the input string reversed
 //! - `take(n=5, s="text")`: Returns the first n characters of input string
 //! - `strlen(s="text")`: Returns the length of the input string as a number
@@ -69,22 +69,21 @@ pub fn register_all_standard_functions(tera: &mut tera::Tera) {
 
 /// Replicate function implementation
 fn replicate_function(args: &HashMap<String, TeraValue>) -> TeraResult<TeraValue> {
-    let character = args
-        .get("character")
+    let s = args
+        .get("s")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| TeraError::msg("replicate function requires 'character' parameter"))?;
+        .ok_or_else(|| TeraError::msg("replicate function requires 's' parameter"))?;
 
-    let length = args
-        .get("length")
+    let n = args
+        .get("n")
         .and_then(|v| v.as_i64())
-        .ok_or_else(|| TeraError::msg("replicate function requires 'length' parameter"))?;
+        .ok_or_else(|| TeraError::msg("replicate function requires 'n' parameter"))?;
 
-    if length < 0 {
+    if n < 0 {
         return Ok(TeraValue::String("".to_string()));
     }
 
-    let mask_char = character.chars().next().unwrap_or('*');
-    let result = mask_char.to_string().repeat(length as usize);
+    let result = s.repeat(n as usize);
     Ok(TeraValue::String(result))
 }
 
@@ -184,11 +183,19 @@ mod tests {
     #[test]
     fn test_replicate_function_direct() {
         let mut args = HashMap::new();
-        args.insert("character".to_string(), TeraValue::String("*".to_string()));
-        args.insert("length".to_string(), TeraValue::Number(5.into()));
+        args.insert("s".to_string(), TeraValue::String("*".to_string()));
+        args.insert("n".to_string(), TeraValue::Number(5.into()));
 
         let result = replicate_function(&args).unwrap();
         assert_eq!(result.as_str().unwrap(), "*****");
+
+        // Test with multi-character string
+        let mut args = HashMap::new();
+        args.insert("s".to_string(), TeraValue::String("**".to_string()));
+        args.insert("n".to_string(), TeraValue::Number(4.into()));
+
+        let result = replicate_function(&args).unwrap();
+        assert_eq!(result.as_str().unwrap(), "********");
     }
 
     #[test]
