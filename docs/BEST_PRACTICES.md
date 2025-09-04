@@ -8,7 +8,7 @@ This guide provides detailed best practices for each secret type in the `nu_plug
 **Do:**
 ```nushell
 # Keep secrets wrapped as long as possible
-let api_key = "secret123" | secret wrap-string
+let api_key = "secret123" | secret wrap
 let headers = {Authorization: $"Bearer ($api_key)"}  # Still wrapped
 http get https://api.example.com --headers $headers
 ```
@@ -16,7 +16,7 @@ http get https://api.example.com --headers $headers
 **Don't:**
 ```nushell
 # Unnecessary early unwrapping
-let api_key = "secret123" | secret wrap-string | secret unwrap
+let api_key = "secret123" | secret wrap | secret unwrap
 let headers = {Authorization: $"Bearer ($api_key)"}  # Now exposed
 ```
 
@@ -25,7 +25,7 @@ let headers = {Authorization: $"Bearer ($api_key)"}  # Now exposed
 ```nushell
 # Only wrap sensitive fields
 let config = {
-    api_key: ("secret123" | secret wrap-string),
+    api_key: ("secret123" | secret wrap),
     timeout: 30,              # Not sensitive
     retry_count: 3            # Not sensitive
 }
@@ -38,21 +38,21 @@ let config = {
     api_key: "secret123",
     timeout: 30,
     retry_count: 3
-} | secret wrap-record  # Unnecessary protection for timeout/retry_count
+} | secret wrap  # Unnecessary protection for timeout/retry_count
 ```
 
 ### 3. Clear Naming Conventions
 **Do:**
 ```nushell
-let secret_api_key = "key123" | secret wrap-string
-let secret_db_password = "pass456" | secret wrap-string
-let secret_user_id = 12345 | secret wrap-int
+let secret_api_key = "key123" | secret wrap
+let secret_db_password = "pass456" | secret wrap
+let secret_user_id = 12345 | secret wrap
 ```
 
 **Don't:**
 ```nushell
-let key = "key123" | secret wrap-string      # Unclear that it's secret
-let data = "pass456" | secret wrap-string    # Too generic
+let key = "key123" | secret wrap      # Unclear that it's secret
+let data = "pass456" | secret wrap    # Too generic
 ```
 
 ## SecretString Best Practices
@@ -60,21 +60,21 @@ let data = "pass456" | secret wrap-string    # Too generic
 ### Use Cases and Patterns
 ```nushell
 # API Keys - Most common use case
-let github_token = $env.GITHUB_TOKEN | secret wrap-string
+let github_token = $env.GITHUB_TOKEN | secret wrap
 let api_response = http get https://api.github.com/user --headers {
     Authorization: $"token ($github_token)"
 }
 
 # Connection Strings
-let db_url = "postgresql://user:pass@host:5432/db" | secret wrap-string
+let db_url = "postgresql://user:pass@host:5432/db" | secret wrap
 let connection = connect $db_url
 
 # Personal Identifiers
-let ssn = "123-45-6789" | secret wrap-string
-let credit_card = "4111-1111-1111-1111" | secret wrap-string
+let ssn = "123-45-6789" | secret wrap
+let credit_card = "4111-1111-1111-1111" | secret wrap
 
 # File Paths with Sensitive Content
-let keyfile_path = "/home/user/.ssh/id_rsa" | secret wrap-string
+let keyfile_path = "/home/user/.ssh/id_rsa" | secret wrap
 ```
 
 ### String-Specific Security
@@ -86,8 +86,8 @@ let keyfile_path = "/home/user/.ssh/id_rsa" | secret wrap-string
 ### Common Mistakes
 ```nushell
 # Don't use SecretString for non-text data
-let port = "8080" | secret wrap-string  # Should be: 8080 | secret wrap-int
-let is_enabled = "true" | secret wrap-string  # Should be: true | secret wrap-bool
+let port = "8080" | secret wrap  # Should be: 8080 | secret wrap
+let is_enabled = "true" | secret wrap  # Should be: true | secret wrap
 ```
 
 ## SecretInt Best Practices
@@ -95,19 +95,19 @@ let is_enabled = "true" | secret wrap-string  # Should be: true | secret wrap-bo
 ### Use Cases and Patterns
 ```nushell
 # Database IDs that shouldn't be exposed
-let user_id = 12345 | secret wrap-int
-let account_id = 67890 | secret wrap-int
+let user_id = 12345 | secret wrap
+let account_id = 67890 | secret wrap
 
 # Port Numbers in Security Contexts
-let internal_port = 8080 | secret wrap-int
-let db_port = 5432 | secret wrap-int
+let internal_port = 8080 | secret wrap
+let db_port = 5432 | secret wrap
 
 # Sensitive Counters
-let failed_login_count = 3 | secret wrap-int
-let security_level = 5 | secret wrap-int
+let failed_login_count = 3 | secret wrap
+let security_level = 5 | secret wrap
 
 # Version Numbers for Internal APIs
-let api_version = 2 | secret wrap-int
+let api_version = 2 | secret wrap
 ```
 
 ### Integer-Specific Considerations
@@ -119,10 +119,10 @@ let api_version = 2 | secret wrap-int
 ### When to Use SecretInt vs SecretString
 ```nushell
 # Use SecretInt for actual numbers
-let user_id = 12345 | secret wrap-int          # ✓ Correct
+let user_id = 12345 | secret wrap          # ✓ Correct
 
 # Don't stringify numbers unnecessarily
-let user_id = "12345" | secret wrap-string     # ✗ Wrong type choice
+let user_id = "12345" | secret wrap     # ✗ Wrong type choice
 ```
 
 ## SecretBool Best Practices
@@ -130,19 +130,19 @@ let user_id = "12345" | secret wrap-string     # ✗ Wrong type choice
 ### Use Cases and Patterns
 ```nushell
 # Permission Flags
-let is_admin = true | secret wrap-bool
-let has_elevated_access = false | secret wrap-bool
+let is_admin = true | secret wrap
+let has_elevated_access = false | secret wrap
 
 # Security Feature Toggles
-let mfa_enabled = true | secret wrap-bool
-let audit_logging = true | secret wrap-bool
+let mfa_enabled = true | secret wrap
+let audit_logging = true | secret wrap
 
 # Access Control States
-let is_authenticated = true | secret wrap-bool
-let can_delete_users = false | secret wrap-bool
+let is_authenticated = true | secret wrap
+let can_delete_users = false | secret wrap
 
 # Privacy Settings
-let profile_is_public = false | secret wrap-bool
+let profile_is_public = false | secret wrap
 ```
 
 ### Boolean-Specific Security
@@ -154,13 +154,13 @@ let profile_is_public = false | secret wrap-bool
 ### Usage in Conditionals
 ```nushell
 # Safe conditional usage
-let is_admin = true | secret wrap-bool
+let is_admin = true | secret wrap
 if ($is_admin | secret unwrap) {
     echo "Admin operations available"
 }
 
 # Alternative: utility functions that work with secrets
-let is_admin = true | secret wrap-bool
+let is_admin = true | secret wrap
 if (secret-is-true $is_admin) {  # Hypothetical utility
     echo "Admin operations available" 
 }
@@ -177,7 +177,7 @@ let database_creds = {
     password: "complex_password_123", 
     port: 5432,
     database: "production_db"
-} | secret wrap-record
+} | secret wrap
 
 # API Configuration
 let api_config = {
@@ -185,7 +185,7 @@ let api_config = {
     api_key: "sk-1234567890abcdef",
     secret_key: "secret_abcdef1234567890",
     version: "v2"
-} | secret wrap-record
+} | secret wrap
 
 # OAuth Credentials  
 let oauth_creds = {
@@ -193,7 +193,7 @@ let oauth_creds = {
     client_secret: "secret_abcdef", 
     redirect_uri: "https://myapp.com/callback",
     scopes: ["read", "write"]
-} | secret wrap-record
+} | secret wrap
 ```
 
 ### Record-Specific Considerations
@@ -208,7 +208,7 @@ let oauth_creds = {
 let api_config = {
     base_url: "https://api.example.com",        # Public
     timeout: 30,                                # Public
-    api_key: ("secret123" | secret wrap-string), # Secret
+    api_key: ("secret123" | secret wrap), # Secret
     retry_count: 3                              # Public
 }
 
@@ -218,7 +218,7 @@ let api_config = {
     timeout: 30,
     api_key: "secret123",
     retry_count: 3
-} | secret wrap-record  # All fields become secret unnecessarily
+} | secret wrap  # All fields become secret unnecessarily
 ```
 
 ## SecretList Best Practices
@@ -230,28 +230,28 @@ let backup_codes = [
     "ABC123DEF", 
     "GHI456JKL", 
     "MNO789PQR"
-] | secret wrap-list
+] | secret wrap
 
 # API Key Collections
 let api_keys = [
     "sk-prod-1234567890",
     "sk-staging-abcdef123", 
     "sk-dev-xyz789"
-] | secret wrap-list
+] | secret wrap
 
 # User Token Arrays
 let user_tokens = [
     "token_user1_abc123",
     "token_user2_def456", 
     "token_user3_ghi789"
-] | secret wrap-list
+] | secret wrap
 
 # Sensitive Configuration Arrays
 let allowed_ips = [
     "192.168.1.100",
     "10.0.0.5", 
     "172.16.0.10"
-] | secret wrap-list
+] | secret wrap
 ```
 
 ### List-Specific Considerations
@@ -263,9 +263,9 @@ let allowed_ips = [
 ### Working with SecretLists
 ```nushell
 # Safe list operations
-let secrets = ["a", "b", "c"] | secret wrap-list
+let secrets = ["a", "b", "c"] | secret wrap
 let length = ($secrets | secret unwrap | length)    # Length is safe to expose
-let first_secret = ($secrets | secret unwrap | get 0) | secret wrap-string  # Re-wrap individual elements
+let first_secret = ($secrets | secret unwrap | get 0) | secret wrap  # Re-wrap individual elements
 ```
 
 ## SecretFloat Best Practices
@@ -273,19 +273,19 @@ let first_secret = ($secrets | secret unwrap | get 0) | secret wrap-string  # Re
 ### Use Cases and Patterns
 ```nushell
 # Financial Data
-let salary = 75000.50 | secret wrap-float
-let bonus_percentage = 0.15 | secret wrap-float
+let salary = 75000.50 | secret wrap
+let bonus_percentage = 0.15 | secret wrap
 
 # Sensitive Measurements
-let server_load = 0.85 | secret wrap-float
-let error_rate = 0.02 | secret wrap-float
+let server_load = 0.85 | secret wrap
+let error_rate = 0.02 | secret wrap
 
 # Performance Metrics
-let response_time = 245.7 | secret wrap-float
-let cpu_usage = 67.3 | secret wrap-float
+let response_time = 245.7 | secret wrap
+let cpu_usage = 67.3 | secret wrap
 
 # Scientific Data with Privacy Implications
-let patient_measurement = 98.6 | secret wrap-float
+let patient_measurement = 98.6 | secret wrap
 ```
 
 ### Float-Specific Considerations
@@ -297,7 +297,7 @@ let patient_measurement = 98.6 | secret wrap-float
 ### Float Precision and Comparison
 ```nushell
 # Be careful with float comparisons
-let secret_val = 1.1 | secret wrap-float
+let secret_val = 1.1 | secret wrap
 let unwrapped = $secret_val | secret unwrap
 # Use appropriate epsilon for comparisons
 let is_equal = (($unwrapped - 1.1) | math abs) < 0.0001
@@ -308,20 +308,20 @@ let is_equal = (($unwrapped - 1.1) | math abs) < 0.0001
 ### Use Cases and Patterns
 ```nushell
 # Cryptographic Keys
-let private_key = (open private.key | into binary) | secret wrap-binary
-let public_key = (open public.key | into binary) | secret wrap-binary
+let private_key = (open private.key | into binary) | secret wrap
+let public_key = (open public.key | into binary) | secret wrap
 
 # Certificate Data
-let ssl_cert = (open certificate.pem | into binary) | secret wrap-binary
+let ssl_cert = (open certificate.pem | into binary) | secret wrap
 
 # Hash Values
-let password_hash = (echo "password123" | hash sha256 | into binary) | secret wrap-binary
+let password_hash = (echo "password123" | hash sha256 | into binary) | secret wrap
 
 # Encrypted Data Blobs
-let encrypted_data = (encrypt_data $plaintext | into binary) | secret wrap-binary
+let encrypted_data = (encrypt_data $plaintext | into binary) | secret wrap
 
 # Raw Binary Secrets
-let random_seed = (generate_random_bytes 32) | secret wrap-binary
+let random_seed = (generate_random_bytes 32) | secret wrap
 ```
 
 ### Binary-Specific Considerations
@@ -333,7 +333,7 @@ let random_seed = (generate_random_bytes 32) | secret wrap-binary
 ### Binary Data Handling
 ```nushell
 # Safe binary operations
-let key_data = (open key.bin | into binary) | secret wrap-binary
+let key_data = (open key.bin | into binary) | secret wrap
 let key_length = ($key_data | secret unwrap | bytes length)  # Length is safe
 let is_empty = ($key_data | secret unwrap | is-empty)        # Emptiness check is safe
 ```
@@ -343,21 +343,21 @@ let is_empty = ($key_data | secret unwrap | is-empty)        # Emptiness check i
 ### Use Cases and Patterns
 ```nushell
 # Account Creation Dates (Privacy)
-let account_created = (date now) | secret wrap-date
+let account_created = (date now) | secret wrap
 
 # Certificate Expiration
-let cert_expires = ("2024-12-31T23:59:59Z" | into datetime) | secret wrap-date
+let cert_expires = ("2024-12-31T23:59:59Z" | into datetime) | secret wrap
 
 # Sensitive Event Timestamps
-let last_login = (date now) | secret wrap-date
-let password_changed = (date now) | secret wrap-date
+let last_login = (date now) | secret wrap
+let password_changed = (date now) | secret wrap
 
 # Audit Timestamps
-let security_event_time = (date now) | secret wrap-date
-let access_granted_time = (date now) | secret wrap-date
+let security_event_time = (date now) | secret wrap
+let access_granted_time = (date now) | secret wrap
 
 # Privacy-Sensitive Dates
-let birth_date = ("1990-01-01T00:00:00Z" | into datetime) | secret wrap-date
+let birth_date = ("1990-01-01T00:00:00Z" | into datetime) | secret wrap
 ```
 
 ### Date-Specific Considerations
@@ -369,7 +369,7 @@ let birth_date = ("1990-01-01T00:00:00Z" | into datetime) | secret wrap-date
 ### Safe Date Operations
 ```nushell
 # Safe date operations that don't expose sensitive info
-let secret_date = (date now) | secret wrap-date
+let secret_date = (date now) | secret wrap
 let year = ($secret_date | secret unwrap | date to-record | get year)  # Year might be safe
 let is_future = ($secret_date | secret unwrap) > (date now)           # Comparison result is safe
 ```
@@ -386,14 +386,14 @@ let is_future = ($secret_date | secret unwrap) > (date now)           # Comparis
 ### Operation Performance
 ```nushell
 # Efficient: Minimize unwrapping operations
-let secrets = generate_secrets | each { |s| $s | secret wrap-string }
+let secrets = generate_secrets | each { |s| $s | secret wrap }
 
 # Less efficient: Frequent unwrapping
 let secrets = generate_secrets | each { |s| 
-    let wrapped = $s | secret wrap-string
+    let wrapped = $s | secret wrap
     let unwrapped = $wrapped | secret unwrap
     validate_secret $unwrapped
-    $s | secret wrap-string
+    $s | secret wrap
 }
 ```
 
@@ -404,14 +404,14 @@ let secrets = generate_secrets | each { |s|
 # Test secret creation and unwrapping
 def test_secret_string [] {
     let original = "test_value"
-    let secret = $original | secret wrap-string
+    let secret = $original | secret wrap
     let unwrapped = $secret | secret unwrap
     assert ($unwrapped == $original)
 }
 
 # Test display protection  
 def test_secret_display [] {
-    let secret = "sensitive" | secret wrap-string
+    let secret = "sensitive" | secret wrap
     let display = $secret | to text
     assert ($display == "<redacted:string>")
 }
@@ -421,7 +421,7 @@ def test_secret_display [] {
 ```nushell
 # Test secret types in pipelines
 def test_secret_pipeline [] {
-    let api_key = "key123" | secret wrap-string
+    let api_key = "key123" | secret wrap
     # Test that secret survives pipeline operations
     let result = [$api_key] | get 0 | secret unwrap
     assert ($result == "key123")
@@ -503,7 +503,7 @@ redaction_template = "{{mask_partial(s=secret_string(), l=3, r=3)}}"  # Partial 
 ```nushell
 # Temporarily show actual values for debugging
 export SHOW_UNREDACTED=1
-echo "my-secret" | secret wrap-string  # Shows: my-secret
+echo "my-secret" | secret wrap  # Shows: my-secret
 ```
 
 **Production** (secure configuration):
