@@ -269,6 +269,7 @@ mod tests {
         let test_config = PluginConfig {
             redaction: RedactionConfig {
                 show_unredacted: false,
+                mask_secret: false,
                 redaction_template: Some("[HIDDEN:{{secret_type}}]".to_string()),
             },
             security: SecurityConfig {

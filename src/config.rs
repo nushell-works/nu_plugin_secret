@@ -70,6 +70,9 @@ pub struct RedactionConfig {
     /// Whether to disable redaction entirely (SHOW_UNREDACTED)
     #[serde(default)]
     pub show_unredacted: bool,
+    /// Whether to mask secret strings with '*' character when displaying
+    #[serde(default)]
+    pub mask_secret: bool,
     /// Custom Tera template for redaction
     /// Example: "<redacted:{{secret_type}}>" or "[HIDDEN:{{secret_type}}]" or "moo"
     /// Available variables: secret_type, secret_length
@@ -503,6 +506,10 @@ mod tests {
             config.redaction.show_unredacted,
             deserialized.redaction.show_unredacted
         );
+        assert_eq!(
+            config.redaction.mask_secret,
+            deserialized.redaction.mask_secret
+        );
         assert_eq!(config.security.level, deserialized.security.level);
     }
 
@@ -567,6 +574,57 @@ mod tests {
     fn test_show_unredacted_default_value() {
         let config = PluginConfig::default();
         assert!(!config.redaction.show_unredacted);
+    }
+
+    #[test]
+    fn test_mask_secret_default_value() {
+        let config = PluginConfig::default();
+        assert!(!config.redaction.mask_secret);
+    }
+
+    #[test]
+    fn test_mask_secret_serialization() {
+        // Test with mask_secret enabled
+        let mut config = PluginConfig::default();
+        config.redaction.mask_secret = true;
+
+        let toml_str = toml::to_string(&config).unwrap();
+        let deserialized: PluginConfig = toml::from_str(&toml_str).unwrap();
+
+        assert!(deserialized.redaction.mask_secret);
+
+        // Test TOML contains the field
+        assert!(toml_str.contains("mask_secret"));
+    }
+
+    #[test]
+    fn test_mask_secret_toml_parsing() {
+        // Test parsing TOML with mask_secret field
+        let toml_config = r#"
+version = "1.0"
+[redaction]
+mask_secret = true
+show_unredacted = false
+[security]
+level = "standard"
+"#;
+
+        let config: PluginConfig = toml::from_str(toml_config).unwrap();
+        assert!(config.redaction.mask_secret);
+        assert!(!config.redaction.show_unredacted);
+
+        // Test parsing TOML without mask_secret field (should default to false)
+        let toml_config_minimal = r#"
+version = "1.0"
+[redaction]
+show_unredacted = true
+[security]
+level = "standard"
+"#;
+
+        let config_minimal: PluginConfig = toml::from_str(toml_config_minimal).unwrap();
+        assert!(!config_minimal.redaction.mask_secret); // Should default to false
+        assert!(config_minimal.redaction.show_unredacted);
     }
 
     // Phase 1 Schema Compatibility Tests for Issue #10
