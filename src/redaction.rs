@@ -75,12 +75,7 @@ fn generate_redacted_string_with_length(
     // Register all standard template functions
     crate::tera_functions::register_all_standard_functions(&mut tera);
 
-    // Register the secret_string function
-    if let Some(secret_str) = secret_string {
-        crate::tera_functions::register_secret_string_function(&mut tera, secret_str.to_string());
-    } else {
-        crate::tera_functions::register_secret_string_function_empty(&mut tera);
-    }
+    // Note: secret_string is available as a template variable, not a function
 
     if tera.add_raw_template(TEMPLATE_NAME, &template).is_err() {
         // If template adding fails, fall back to simple format
@@ -208,12 +203,7 @@ pub fn generate_redacted_string_with_custom_template_and_value(
         None
     };
 
-    // Register the secret_string function with effective value
-    if let Some(secret_str) = &effective_secret_value {
-        crate::tera_functions::register_secret_string_function(&mut tera, secret_str.clone());
-    } else {
-        crate::tera_functions::register_secret_string_function_empty(&mut tera);
-    }
+    // Note: secret_string is available as a template variable, not a function
 
     if tera
         .add_raw_template(TEMPLATE_NAME, custom_template)
@@ -701,38 +691,38 @@ mod tests {
     }
 
     #[test]
-    fn test_secret_string_function() {
-        // Test secret_string function in regular templating (should return empty)
-        let result =
-            generate_redacted_string_with_custom_template("{{secret_string()}}", "test", None);
-        assert_eq!(result, "");
-
-        // Test secret_string function with custom template and value (should return the value)
+    fn test_secret_string_variable() {
+        // Test secret_string variable in template (should use variable access)
         let result = generate_redacted_string_with_custom_template_and_value(
-            "{{secret_string()}}",
+            "{{secret_string}}",
             "test",
             None,
             Some("secret_value".to_string()),
         );
         assert_eq!(result, "secret_value");
 
-        // Test secret_string function with template containing other content
+        // Test secret_string variable with template containing other content
         let result = generate_redacted_string_with_custom_template_and_value(
-            "prefix:{{secret_string()}}:suffix",
+            "prefix:{{secret_string}}:suffix",
             "test",
             None,
             Some("middle".to_string()),
         );
         assert_eq!(result, "prefix:middle:suffix");
 
-        // Test secret_string function with no secret value provided
+        // Test secret_string variable when not available (template should fail)
+        let result =
+            generate_redacted_string_with_custom_template("{{secret_string}}", "test", None);
+        assert_eq!(result, "<redacted:test>");
+
+        // Test secret_string variable with no secret value provided (template should fail)
         let result = generate_redacted_string_with_custom_template_and_value(
-            "value:{{secret_string()}}",
+            "value:{{secret_string}}",
             "test",
             None,
             None,
         );
-        assert_eq!(result, "value:");
+        assert_eq!(result, "<redacted:test>");
     }
 
     #[test]
@@ -808,9 +798,9 @@ mod tests {
         );
         assert_eq!(result, "complex:6");
 
-        // Test template with secret_string function
+        // Test template with secret_string variable
         let result = generate_redacted_string_with_custom_template_and_value(
-            "value={{secret_string()}}",
+            "value={{secret_string}}",
             "test",
             None,
             Some("secret123".to_string()),
@@ -838,19 +828,16 @@ mod tests {
 
     #[test]
     fn test_secret_string_integration_with_none() {
-        // Test that secret_string function is not available when no secret is provided
+        // Test that secret_string variable is not available when no secret is provided
         let result = generate_redacted_string_with_length(None, "test", None);
         assert_eq!(result, "<redacted:test>");
 
         // Test behavior when secret_string is None but we try to use it in custom templates
-        // The custom template function always registers secret_string() but returns empty when None
-        let result = generate_redacted_string_with_custom_template(
-            "value:{{secret_string()}}",
-            "test",
-            None,
-        );
-        // secret_string() function returns empty string when no value is provided
-        assert_eq!(result, "value:");
+        // Template should fail and fall back to basic format
+        let result =
+            generate_redacted_string_with_custom_template("value:{{secret_string}}", "test", None);
+        // Template fails and falls back to basic format since secret_string is not in context
+        assert_eq!(result, "<redacted:test>");
 
         // Test that secret_string variable is not available in template context when None
         let result =
@@ -861,13 +848,13 @@ mod tests {
 
     #[test]
     fn test_secret_string_integration_with_some() {
-        // Test that secret_string function works when secret is provided
+        // Test that secret_string variable works when secret is provided
         let result = generate_redacted_string_with_length(Some("mysecret"), "test", None);
         assert_eq!(result, "<redacted:test>");
 
-        // Test with custom template that uses secret_string when Some is provided
+        // Test with custom template that uses secret_string variable when Some is provided
         let result = generate_redacted_string_with_custom_template_and_value(
-            "value:{{secret_string()}}",
+            "value:{{secret_string}}",
             "test",
             None,
             Some("mysecret".to_string()),

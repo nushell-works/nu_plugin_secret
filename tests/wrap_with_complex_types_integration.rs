@@ -12,9 +12,9 @@ fn test_secret_record_with_custom_template_uses_parsable_string() {
     record.push("age", Value::test_int(30));
     record.push("active", Value::test_bool(true));
 
-    // Create SecretRecord with custom template that uses secret_string()
+    // Create SecretRecord with custom template that uses secret_string
     let secret =
-        SecretRecord::new_with_template(record.clone(), "Record: {{secret_string()}}".to_string());
+        SecretRecord::new_with_template(record.clone(), "Record: {{secret_string}}".to_string());
 
     // Test Display implementation
     let display = format!("{}", secret);
@@ -54,8 +54,7 @@ fn test_secret_list_with_custom_template_uses_parsable_string() {
     ];
 
     // Create SecretList with custom template
-    let secret =
-        SecretList::new_with_template(list.clone(), "List: {{secret_string()}}".to_string());
+    let secret = SecretList::new_with_template(list.clone(), "List: {{secret_string}}".to_string());
 
     // Test Display implementation
     let display = format!("{}", secret);
@@ -89,7 +88,7 @@ fn test_secret_binary_with_custom_template_uses_parsable_string() {
     // Create SecretBinary with custom template
     let secret = SecretBinary::new_with_template(
         binary_data.clone(),
-        "Binary: {{secret_string()}}".to_string(),
+        "Binary: {{secret_string}}".to_string(),
     );
 
     // Test Display implementation
@@ -123,7 +122,7 @@ fn test_complex_types_template_with_functions() {
 
     let secret = SecretRecord::new_with_template(
         record,
-        "{{secret_type | upper}}: {{take(n=20, s=secret_string())}}...".to_string(),
+        "{{secret_type | upper}}: {{take(n=20, s=secret_string)}}...".to_string(),
     );
 
     let display = format!("{}", secret);
@@ -136,7 +135,7 @@ fn test_complex_types_template_with_functions() {
     let list = vec![Value::test_string("item1"), Value::test_string("item2")];
     let list_secret = SecretList::new_with_template(
         list,
-        "{{reverse(s=secret_type)}}: {{secret_string()}}".to_string(),
+        "{{reverse(s=secret_type)}}: {{secret_string}}".to_string(),
     );
 
     let list_display = format!("{}", list_secret);
@@ -151,7 +150,7 @@ fn test_empty_complex_types_with_templates() {
     let empty_record = Record::new();
     let secret = SecretRecord::new_with_template(
         empty_record,
-        "Empty {{secret_type}}: {{secret_string()}}".to_string(),
+        "Empty {{secret_type}}: {{secret_string}}".to_string(),
     );
 
     let display = format!("{}", secret);
@@ -164,7 +163,7 @@ fn test_empty_complex_types_with_templates() {
     let empty_list = Vec::new();
     let list_secret = SecretList::new_with_template(
         empty_list,
-        "Empty {{secret_type}}: {{secret_string()}}".to_string(),
+        "Empty {{secret_type}}: {{secret_string}}".to_string(),
     );
 
     let list_display = format!("{}", list_secret);
@@ -176,7 +175,7 @@ fn test_empty_complex_types_with_templates() {
     let empty_binary = Vec::new();
     let binary_secret = SecretBinary::new_with_template(
         empty_binary,
-        "Empty {{secret_type}}: {{secret_string()}}".to_string(),
+        "Empty {{secret_type}}: {{secret_string}}".to_string(),
     );
 
     let binary_display = format!("{}", binary_secret);
@@ -195,7 +194,7 @@ fn test_nested_complex_types_with_templates() {
 
     let secret = SecretRecord::new_with_template(
         record,
-        "Nested[{{secret_type}}]: {{secret_string()}}".to_string(),
+        "Nested[{{secret_type}}]: {{secret_string}}".to_string(),
     );
 
     let display = format!("{}", secret);
@@ -219,7 +218,7 @@ fn test_complex_types_serialization_with_templates() {
 
     let secret = SecretRecord::new_with_template(
         record,
-        "Serialized[{{secret_type}}]: {{secret_string()}}".to_string(),
+        "Serialized[{{secret_type}}]: {{secret_string}}".to_string(),
     );
 
     // Serialize to JSON
@@ -252,7 +251,7 @@ fn test_performance_with_complex_type_templates() {
         );
     }
 
-    let template = "Large[{{secret_type}}]: {{take(n=50, s=secret_string())}}...";
+    let template = "Large[{{secret_type}}]: {{take(n=50, s=secret_string)}}...";
 
     let start = Instant::now();
 

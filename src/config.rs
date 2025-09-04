@@ -300,11 +300,7 @@ impl ConfigManager {
         // Register all standard template functions for validation
         crate::tera_functions::register_all_standard_functions(&mut tera);
 
-        // Also register the secret_string function with a test value
-        crate::tera_functions::register_secret_string_function(
-            &mut tera,
-            "test_secret".to_string(),
-        );
+        // Note: secret_string is available as a template variable during validation
 
         if let Err(e) = tera.add_raw_template("validation", template) {
             return Err(ConfigError::Invalid(format!(
