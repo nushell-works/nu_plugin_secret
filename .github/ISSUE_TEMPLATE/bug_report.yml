@@ -29,7 +29,7 @@ body:
       placeholder: |
         1. Install the plugin with `cargo install nu_plugin_secret`
         2. Register with `plugin add ~/.cargo/bin/nu_plugin_secret`
-        3. Run the command `secret wrap-string "test"`
+        3. Run the command `secret wrap "test"`
         4. Observe the error...
     validations:
       required: true

@@ -1,5 +1,5 @@
 # Basic wrap commands tests for nu_plugin_secret
-# Tests all 8 wrap commands with edge cases and validation
+# Tests unified wrap command with edge cases and validation
 
 use ../setup.nu *
 use ../runner.nu [assert, assert_eq, assert_contains, assert_not_contains]
@@ -8,7 +8,7 @@ use ../fixtures/secrets.nu *
 # Test basic string wrapping
 export def test_wrap_string_basic [] {
     let test_string = "my-api-key-12345"
-    let secret = $test_string | secret wrap-string
+    let secret = $test_string | secret wrap
     
     # Verify it's a custom type
     assert_eq ($secret | describe) "custom" "Should be custom type"
@@ -27,7 +27,7 @@ export def test_wrap_string_basic [] {
 
 # Test empty string handling
 export def test_wrap_string_empty [] {
-    let secret = "" | secret wrap-string
+    let secret = "" | secret wrap
     let revealed = $secret | secret unwrap
     
     assert_eq $revealed "" "Empty string should round-trip correctly"
@@ -37,7 +37,7 @@ export def test_wrap_string_empty [] {
 # Test unicode content
 export def test_wrap_string_unicode [] {
     let unicode_string = get_unicode_test_string
-    let secret = $unicode_string | secret wrap-string
+    let secret = $unicode_string | secret wrap
     let revealed = $secret | secret unwrap
     
     assert_eq $revealed $unicode_string "Unicode should round-trip correctly"
@@ -50,7 +50,7 @@ export def test_wrap_string_unicode [] {
 # Test special characters
 export def test_wrap_string_special_chars [] {
     let special_string = get_special_chars_string
-    let secret = $special_string | secret wrap-string
+    let secret = $special_string | secret wrap
     let revealed = $secret | secret unwrap
     
     assert_eq $revealed $special_string "Special characters should round-trip correctly"
@@ -59,7 +59,7 @@ export def test_wrap_string_special_chars [] {
 # Test long strings
 export def test_wrap_string_long [] {
     let long_string = get_long_test_string 5000
-    let secret = $long_string | secret wrap-string
+    let secret = $long_string | secret wrap
     let revealed = $secret | secret unwrap
     
     assert_eq ($revealed | str length) 5000 "Long string length should be preserved"
@@ -71,7 +71,7 @@ export def test_wrap_int_basic [] {
     let test_values = [0, 42, -42, 2147483647, -2147483648]
     
     for value in $test_values {
-        let secret = $value | secret wrap-int
+        let secret = $value | secret wrap
         
         assert_eq ($secret | describe) "custom" "Should be custom type"
         assert ($secret | secret validate) "Should validate as secret"
@@ -91,7 +91,7 @@ export def test_wrap_bool_basic [] {
     let test_values = [true, false]
     
     for value in $test_values {
-        let secret = $value | secret wrap-bool
+        let secret = $value | secret wrap
         
         assert_eq ($secret | describe) "custom" "Should be custom type"
         assert ($secret | secret validate) "Should validate as secret"
@@ -110,7 +110,7 @@ export def test_wrap_float_basic [] {
     let test_values = [0.0, 3.14159, -3.14159, 1e10, -1e10]
     
     for value in $test_values {
-        let secret = $value | secret wrap-float
+        let secret = $value | secret wrap
         
         assert_eq ($secret | describe) "custom" "Should be custom type"
         assert ($secret | secret validate) "Should validate as secret"
@@ -130,7 +130,7 @@ export def test_wrap_record_basic [] {
         ssl_enabled: true
     }
     
-    let secret = $test_record | secret wrap-record
+    let secret = $test_record | secret wrap
     
     assert_eq ($secret | describe) "custom" "Should be custom type"
     assert ($secret | secret validate) "Should validate as secret"
@@ -148,7 +148,7 @@ export def test_wrap_record_basic [] {
 # Test list wrapping
 export def test_wrap_list_basic [] {
     let api_keys = get_test_api_keys
-    let secret = $api_keys | secret wrap-list
+    let secret = $api_keys | secret wrap
     
     assert_eq ($secret | describe) "custom" "Should be custom type"
     assert ($secret | secret validate) "Should validate as secret"
@@ -167,7 +167,7 @@ export def test_wrap_list_basic [] {
 # Test binary wrapping
 export def test_wrap_binary_basic [] {
     let test_binary = 0x[deadbeef]
-    let secret = $test_binary | secret wrap-binary
+    let secret = $test_binary | secret wrap
     
     assert_eq ($secret | describe) "custom" "Should be custom type"
     assert ($secret | secret validate) "Should validate as secret"
@@ -180,7 +180,7 @@ export def test_wrap_binary_basic [] {
 # Test date wrapping
 export def test_wrap_date_basic [] {
     let test_date = date now
-    let secret = $test_date | secret wrap-date
+    let secret = $test_date | secret wrap
     
     assert_eq ($secret | describe) "custom" "Should be custom type"
     assert ($secret | secret validate) "Should validate as secret"
@@ -192,50 +192,50 @@ export def test_wrap_date_basic [] {
     assert ($diff < 1sec) "Date should round-trip with minimal difference"
 }
 
-# Test error handling for wrong types
-export def test_wrap_type_errors [] {
-    # Try to wrap integer as string
-    try {
-        42 | secret wrap-string
-        assert false "Should have failed to wrap int as string"
-    } catch { |e|
-        assert_contains $e.msg "Expected string" "Should have appropriate error message"
-    }
+# Test unified wrap command handles all types automatically
+export def test_wrap_type_detection [] {
+    # Test that unified wrap command automatically detects types
+    let string_secret = "test" | secret wrap
+    assert_eq ($string_secret | secret type-of) "string" "Should detect string type"
     
-    # Try to wrap string as int
-    try {
-        "not-a-number" | secret wrap-int
-        assert false "Should have failed to wrap string as int"
-    } catch { |e|
-        assert_contains $e.msg "Expected int" "Should have appropriate error message"
-    }
+    let int_secret = 42 | secret wrap  
+    assert_eq ($int_secret | secret type-of) "int" "Should detect int type"
+    
+    let bool_secret = true | secret wrap
+    assert_eq ($bool_secret | secret type-of) "bool" "Should detect bool type"
+    
+    let float_secret = 3.14 | secret wrap
+    assert_eq ($float_secret | secret type-of) "float" "Should detect float type"
 }
 
 # Test wrapping with empty pipeline
 export def test_wrap_empty_pipeline [] {
     try {
-        null | secret wrap-string
+        null | secret wrap
         assert false "Should have failed on empty input"
     } catch { |e|
         assert_contains $e.msg "Empty" "Should indicate empty input"
     }
 }
 
-# Test all wrap commands exist and have proper signatures
-export def test_all_wrap_commands_exist [] {
-    let expected_commands = [
-        "secret wrap-string",
-        "secret wrap-int", 
-        "secret wrap-bool",
-        "secret wrap-record",
-        "secret wrap-list",
-        "secret wrap-float",
-        "secret wrap-binary",
-        "secret wrap-date"
+# Test unified wrap command exists and has proper signature
+export def test_unified_wrap_command_exists [] {
+    # Test that unified command exists by running help
+    try {
+        help "secret wrap" | ignore
+    } catch { |e|
+        assert false "Unified wrap command should exist"
+    }
+    
+    # Test other utility commands still exist
+    let utility_commands = [
+        "secret unwrap",
+        "secret validate", 
+        "secret type-of",
+        "secret info"
     ]
     
-    for cmd in $expected_commands {
-        # Test that command exists by running help
+    for cmd in $utility_commands {
         try {
             help $cmd | ignore
         } catch { |e|
@@ -249,7 +249,7 @@ export def test_wrap_performance [] {
     let test_strings = 0..100 | each { |i| $"secret-($i)" }
     
     let start_time = date now
-    let secrets = $test_strings | each { |s| $s | secret wrap-string }
+    let secrets = $test_strings | each { |s| $s | secret wrap }
     let duration = (date now) - $start_time
     
     assert ($duration < 5sec) $"Should wrap 100 strings in under 5 seconds, took ($duration)"
@@ -265,9 +265,9 @@ export def test_wrap_concurrent [] {
     # Simulate concurrent access by rapidly creating secrets
     let secrets = 0..50 | each { |i| 
         [
-            ($"string-($i)" | secret wrap-string),
-            ($i | secret wrap-int),
-            (($i % 2 == 0) | secret wrap-bool)
+            ($"string-($i)" | secret wrap),
+            ($i | secret wrap),
+            (($i % 2 == 0) | secret wrap)
         ]
     } | flatten
     

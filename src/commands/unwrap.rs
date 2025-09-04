@@ -42,7 +42,7 @@ impl PluginCommand for SecretUnwrapCommand {
 
     fn examples(&self) -> Vec<Example<'_>> {
         vec![Example {
-            example: r#""my-secret" | secret wrap-string | secret unwrap"#,
+            example: r#""my-secret" | secret wrap | secret unwrap"#,
             description: "Unwrap a secret string to get the original value",
             result: Some(Value::test_string("my-secret")),
         }]

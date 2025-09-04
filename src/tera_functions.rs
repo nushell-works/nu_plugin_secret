@@ -44,28 +44,6 @@ pub fn register_mask_partial_function(tera: &mut tera::Tera) {
     tera.register_function("mask_partial", mask_partial_function);
 }
 
-/// Register the secret_string function with a Tera instance
-/// Returns the actual secret value as a string (WARNING: exposes sensitive data!)
-pub fn register_secret_string_function(tera: &mut tera::Tera, secret_value: String) {
-    tera.register_function(
-        "secret_string",
-        move |_args: &HashMap<String, TeraValue>| -> TeraResult<TeraValue> {
-            Ok(TeraValue::String(secret_value.clone()))
-        },
-    );
-}
-
-/// Register the secret_string function with empty value (for None cases)
-/// Returns empty string when called
-pub fn register_secret_string_function_empty(tera: &mut tera::Tera) {
-    tera.register_function(
-        "secret_string",
-        |_args: &HashMap<String, TeraValue>| -> TeraResult<TeraValue> {
-            Ok(TeraValue::String("".to_string()))
-        },
-    );
-}
-
 /// Register all standard template functions (excluding secret_string)
 pub fn register_all_standard_functions(tera: &mut tera::Tera) {
     register_replicate_function(tera);
@@ -300,19 +278,6 @@ mod tests {
         let context = tera::Context::new();
         let result = tera.render("test", &context).unwrap();
         assert_eq!(result, "4");
-    }
-
-    #[test]
-    fn test_secret_string_function_registration() {
-        let mut tera = Tera::default();
-
-        register_secret_string_function(&mut tera, "secret_value".to_string());
-
-        tera.add_raw_template("test", "{{secret_string()}}")
-            .unwrap();
-        let context = tera::Context::new();
-        let result = tera.render("test", &context).unwrap();
-        assert_eq!(result, "secret_value");
     }
 
     #[test]

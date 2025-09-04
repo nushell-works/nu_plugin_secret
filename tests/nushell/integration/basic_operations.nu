@@ -8,20 +8,20 @@ use ../fixtures/secrets.nu *
 # Test complete workflow: wrap -> validate -> unwrap
 export def test_complete_workflow [] {
     let test_cases = [
-        {type: "string", value: "api-key-12345", wrap_cmd: "secret wrap-string"},
-        {type: "int", value: 8080, wrap_cmd: "secret wrap-int"}, 
-        {type: "bool", value: true, wrap_cmd: "secret wrap-bool"},
-        {type: "float", value: 3.14159, wrap_cmd: "secret wrap-float"}
+        {type: "string", value: "api-key-12345", wrap_cmd: "secret wrap"},
+        {type: "int", value: 8080, wrap_cmd: "secret wrap"}, 
+        {type: "bool", value: true, wrap_cmd: "secret wrap"},
+        {type: "float", value: 3.14159, wrap_cmd: "secret wrap"}
     ]
     
     for case in $test_cases {
         # Step 1: Wrap the value
         let secret = $case.value | do { |val| 
             match $case.type {
-                "string" => { $val | secret wrap-string },
-                "int" => { $val | secret wrap-int },
-                "bool" => { $val | secret wrap-bool },
-                "float" => { $val | secret wrap-float },
+                "string" => { $val | secret wrap },
+                "int" => { $val | secret wrap },
+                "bool" => { $val | secret wrap },
+                "float" => { $val | secret wrap },
                 _ => { error make {msg: $"Unknown type: ($case.type)"} }
             }
         }
@@ -55,8 +55,8 @@ export def test_plugin_info [] {
     
     # Test help for various commands
     let help_commands = [
-        "secret wrap-string",
-        "secret wrap-int", 
+        "secret wrap",
+        "secret wrap", 
         "secret unwrap",
         "secret validate",
         "secret info"
@@ -77,11 +77,11 @@ export def test_secrets_in_data_structures [] {
     # Test secrets in records
     let config = {
         app_name: "MyApp",
-        api_key: ("sk-1234567890" | secret wrap-string),
+        api_key: ("sk-1234567890" | secret wrap),
         database: {
             host: "localhost",
             port: 5432,
-            password: ("secret123" | secret wrap-string)
+            password: ("secret123" | secret wrap)
         },
         debug: true,
         timeout: 30
@@ -98,9 +98,9 @@ export def test_secrets_in_data_structures [] {
     
     # Test secrets in lists
     let api_keys = [
-        ("key1" | secret wrap-string),
-        ("key2" | secret wrap-string),
-        ("key3" | secret wrap-string)
+        ("key1" | secret wrap),
+        ("key2" | secret wrap),
+        ("key3" | secret wrap)
     ]
     
     for i in 0..2 {
@@ -110,9 +110,9 @@ export def test_secrets_in_data_structures [] {
     # Test mixed list with secrets and regular values
     let mixed_list = [
         "public-info",
-        ("secret-data" | secret wrap-string),
+        ("secret-data" | secret wrap),
         42,
-        ("another-secret" | secret wrap-string)
+        ("another-secret" | secret wrap)
     ]
     
     assert_eq $mixed_list.0 "public-info" "Public info should remain unchanged"
@@ -133,7 +133,7 @@ export def test_pipeline_operations [] {
     
     # Wrap all as secrets in pipeline
     let secrets = $sensitive_data 
-        | each { |item| $item | secret wrap-string }
+        | each { |item| $item | secret wrap }
     
     # Verify all are secrets
     let all_secrets = $secrets 
@@ -154,7 +154,7 @@ export def test_pipeline_operations [] {
     let transformed_secrets = $secrets 
         | each { |secret| 
             let value = $secret | secret unwrap
-            $"transformed-($value)" | secret wrap-string
+            $"transformed-($value)" | secret wrap
         }
     
     let first_transformed = $transformed_secrets.0 | secret unwrap
@@ -167,7 +167,7 @@ export def test_error_handling [] {
     let test_cases = [
         {
             desc: "Wrap wrong type",
-            test: { 42 | secret wrap-string },
+            test: { 42 | secret wrap },
             should_fail: true,
             error_contains: "Expected string"
         },
@@ -220,12 +220,12 @@ export def test_performance_characteristics [] {
     let bulk_data = 0..50 | each { |i| $"bulk-secret-($i)" }
     
     let bulk_wrap_test = time_operation {
-        $bulk_data | each { |item| $item | secret wrap-string } | ignore
+        $bulk_data | each { |item| $item | secret wrap } | ignore
     }
     assert ($bulk_wrap_test.duration < 5sec) $"Bulk wrap (51 items) should be under 5 seconds, was ($bulk_wrap_test.duration)"
     
     # Test validation performance
-    let secrets = $bulk_data | each { |item| $item | secret wrap-string }
+    let secrets = $bulk_data | each { |item| $item | secret wrap }
     let bulk_validate_test = time_operation {
         $secrets | each { |s| $s | secret validate } | ignore
     }
@@ -239,7 +239,7 @@ export def test_memory_behavior [] {
     
     for size in $sizes {
         let large_string = "x" | fill --character "x" --length $size
-        let secret = $large_string | secret wrap-string
+        let secret = $large_string | secret wrap
         let revealed = $secret | secret unwrap
         
         assert_eq ($revealed | str length) $size $"Large string ($size) should preserve length"
@@ -257,9 +257,9 @@ export def test_concurrent_operations [] {
     # Simulate rapid creation and usage of secrets
     let concurrent_secrets = 0..20 | each { |i|
         let secrets = [
-            ($"string-($i)" | secret wrap-string),
-            ($i | secret wrap-int),
-            (($i % 2 == 0) | secret wrap-bool)
+            ($"string-($i)" | secret wrap),
+            ($i | secret wrap),
+            (($i % 2 == 0) | secret wrap)
         ]
         
         # Immediately use each secret
@@ -285,9 +285,9 @@ export def test_plugin_state_consistency [] {
     let initial_info = secret info
     
     # Perform various operations
-    let _ = "test1" | secret wrap-string | secret unwrap
-    let _ = 42 | secret wrap-int | secret validate
-    let _ = true | secret wrap-bool | secret type-of
+    let _ = "test1" | secret wrap | secret unwrap
+    let _ = 42 | secret wrap | secret validate
+    let _ = true | secret wrap | secret type-of
     
     let final_info = secret info
     
@@ -300,12 +300,12 @@ export def test_plugin_state_consistency [] {
 export def test_real_world_patterns [] {
     # Pattern 1: Configuration file with secrets
     let app_config = {
-        database_url: ("postgresql://user:pass@localhost/db" | secret wrap-string),
+        database_url: ("postgresql://user:pass@localhost/db" | secret wrap),
         api_keys: {
-            stripe: ("sk_test_1234567890" | secret wrap-string),
-            openai: ("sk-1234567890abcdef" | secret wrap-string)
+            stripe: ("sk_test_1234567890" | secret wrap),
+            openai: ("sk-1234567890abcdef" | secret wrap)
         },
-        jwt_secret: ("super-secret-jwt-key" | secret wrap-string),
+        jwt_secret: ("super-secret-jwt-key" | secret wrap),
         debug_mode: false,
         port: 3000
     }
@@ -322,9 +322,9 @@ export def test_real_world_patterns [] {
     
     # Pattern 2: Processing list of credentials
     let user_credentials = [
-        {username: "admin", password: ("admin123" | secret wrap-string)},
-        {username: "user1", password: ("password1" | secret wrap-string)},
-        {username: "user2", password: ("password2" | secret wrap-string)}
+        {username: "admin", password: ("admin123" | secret wrap)},
+        {username: "user1", password: ("password1" | secret wrap)},
+        {username: "user2", password: ("password2" | secret wrap)}
     ]
     
     # Verify we can work with the structure while keeping secrets protected

@@ -11,12 +11,12 @@ def assert [condition: bool, message?: string] {
     }
 }
 
-# Test basic wrap-string functionality
+# Test basic wrap functionality
 def test_wrap_string [] {
-    print "🧪 Testing wrap-string..."
+    print "🧪 Testing wrap..."
     
     let test_string = "my-api-key-12345"
-    let secret = $test_string | secret wrap-string
+    let secret = $test_string | secret wrap
     
     # Verify it's a custom type
     assert (($secret | describe) == "secret_string") "Should be secret_string type"
@@ -32,7 +32,7 @@ def test_wrap_string [] {
     # Verify type detection
     assert (($secret | secret type-of) == "string") "Should identify as string type"
     
-    print "✅ wrap-string test passed"
+    print "✅ wrap test passed"
 }
 
 # Test comprehensive unwrap functionality for all secret types
@@ -42,7 +42,7 @@ def test_unwrap_all_types [] {
     # Test String
     print "  Testing String unwrap..."
     let original_string = "my-secret-value"
-    let secret_string = $original_string | secret wrap-string
+    let secret_string = $original_string | secret wrap
     let revealed_string = $secret_string | secret unwrap
     assert ($revealed_string == $original_string) $"String unwrap failed. Expected: ($original_string), Got: ($revealed_string)"
     assert (($revealed_string | describe) == "string") "String unwrap should preserve type"
@@ -50,7 +50,7 @@ def test_unwrap_all_types [] {
     # Test Integer
     print "  Testing Integer unwrap..."
     let original_int = 42
-    let secret_int = $original_int | secret wrap-int
+    let secret_int = $original_int | secret wrap
     let revealed_int = $secret_int | secret unwrap
     assert ($revealed_int == $original_int) $"Integer unwrap failed. Expected: ($original_int), Got: ($revealed_int)"
     assert (($revealed_int | describe) == "int") "Integer unwrap should preserve type"
@@ -58,7 +58,7 @@ def test_unwrap_all_types [] {
     # Test Boolean
     print "  Testing Boolean unwrap..."
     let original_bool = true
-    let secret_bool = $original_bool | secret wrap-bool
+    let secret_bool = $original_bool | secret wrap
     let revealed_bool = $secret_bool | secret unwrap
     assert ($revealed_bool == $original_bool) $"Boolean unwrap failed. Expected: ($original_bool), Got: ($revealed_bool)"
     assert (($revealed_bool | describe) == "bool") "Boolean unwrap should preserve type"
@@ -66,7 +66,7 @@ def test_unwrap_all_types [] {
     # Test Float
     print "  Testing Float unwrap..."
     let original_float = 3.14159
-    let secret_float = $original_float | secret wrap-float
+    let secret_float = $original_float | secret wrap
     let revealed_float = $secret_float | secret unwrap
     assert ($revealed_float == $original_float) $"Float unwrap failed. Expected: ($original_float), Got: ($revealed_float)"
     assert (($revealed_float | describe) == "float") "Float unwrap should preserve type"
@@ -74,7 +74,7 @@ def test_unwrap_all_types [] {
     # Test Record
     print "  Testing Record unwrap..."
     let original_record = {name: "test", value: 123, active: true}
-    let secret_record = $original_record | secret wrap-record
+    let secret_record = $original_record | secret wrap
     let revealed_record = $secret_record | secret unwrap
     assert ($revealed_record == $original_record) $"Record unwrap failed. Expected: ($original_record), Got: ($revealed_record)"
     let record_type = $revealed_record | describe
@@ -87,7 +87,7 @@ def test_unwrap_all_types [] {
     # Test List
     print "  Testing List unwrap..."
     let original_list = ["item1", "item2", "item3"]
-    let secret_list = $original_list | secret wrap-list
+    let secret_list = $original_list | secret wrap
     let revealed_list = $secret_list | secret unwrap
     assert ($revealed_list == $original_list) $"List unwrap failed. Expected: ($original_list), Got: ($revealed_list)"
     let list_type = $revealed_list | describe
@@ -99,7 +99,7 @@ def test_unwrap_all_types [] {
     # Test Binary
     print "  Testing Binary unwrap..."
     let original_binary = 0x[deadbeef]
-    let secret_binary = $original_binary | secret wrap-binary
+    let secret_binary = $original_binary | secret wrap
     let revealed_binary = $secret_binary | secret unwrap
     assert ($revealed_binary == $original_binary) $"Binary unwrap failed. Expected: ($original_binary), Got: ($revealed_binary)"
     assert (($revealed_binary | describe) == "binary") "Binary unwrap should preserve type"
@@ -107,7 +107,7 @@ def test_unwrap_all_types [] {
     # Test Date
     print "  Testing Date unwrap..."
     let original_date = "2023-12-25T10:00:00Z" | into datetime
-    let secret_date = $original_date | secret wrap-date
+    let secret_date = $original_date | secret wrap
     let revealed_date = $secret_date | secret unwrap
     assert ($revealed_date == $original_date) $"Date unwrap failed. Expected: ($original_date), Got: ($revealed_date)"
     assert (($revealed_date | describe) == "datetime") "Date unwrap should preserve datetime type"
@@ -121,7 +121,7 @@ def test_multiple_secrets [] {
     
     # Test creating multiple string secrets
     let secrets = ["secret1", "secret2", "secret3"] 
-        | each { |s| $s | secret wrap-string }
+        | each { |s| $s | secret wrap }
     
     # Verify all are secrets
     let all_secrets = $secrets 
@@ -150,7 +150,7 @@ def test_validation [] {
     print "🧪 Testing validation..."
     
     # Test secret validates as true
-    let secret = "test" | secret wrap-string
+    let secret = "test" | secret wrap
     let is_secret = $secret | secret validate
     assert $is_secret "Secret should validate as true"
     

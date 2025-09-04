@@ -39,21 +39,44 @@ plugin add target/release/nu_plugin_secret
 plugin use secret
 ```
 
-## 🚀 Commands
+## ⚙️ Configuration
 
-### Wrap Commands
+The plugin supports extensive configuration including:
 
-Convert values to secret types:
+- **Security levels**: minimal, standard, paranoid  
+- **Custom redaction templates**: Using Tera templating engine
+- **Template functions**: replicate, mask_partial, take, reverse, strlen
+- **Audit logging**: Track secret operations
+- **Environment overrides**: For development workflows
+
+See [Configuration Guide](docs/CONFIGURATION.md) for complete documentation.
 
 ```nushell
-"my-api-key" | secret wrap-string     # <redacted:string>
-42 | secret wrap-int                  # <redacted:int>
-true | secret wrap-bool               # <redacted:bool>
-{key: "value"} | secret wrap-record   # <redacted:record>
-["item1", "item2"] | secret wrap-list # <redacted:list>
-3.14159 | secret wrap-float           # <redacted:float>
-0x[deadbeef] | secret wrap-binary     # <redacted:binary>
-date now | secret wrap-date           # <redacted:date>
+# View current configuration
+secret config show
+
+# Interactive configuration
+secret configure
+
+# Validate configuration and templates
+secret config validate
+```
+
+## 🚀 Commands
+
+### Wrap Command
+
+Convert values to secret types using the unified `secret wrap` command:
+
+```nushell
+"my-api-key" | secret wrap            # <redacted:string>
+42 | secret wrap                      # <redacted:int>
+true | secret wrap                    # <redacted:bool>
+{key: "value"} | secret wrap          # <redacted:record>
+["item1", "item2"] | secret wrap      # <redacted:list>
+3.14159 | secret wrap                 # <redacted:float>
+0x[deadbeef] | secret wrap            # <redacted:binary>
+date now | secret wrap                # <redacted:date>
 ```
 
 ### Utility Commands
@@ -128,27 +151,27 @@ This plugin uses a **dual-layer security approach**:
 
 ```nushell
 # Secure API key handling
-let $api_key = ($env.API_KEY | secret wrap-string)
+let $api_key = ($env.API_KEY | secret wrap)
 http get "https://example.com/api" \
   -H [Authorization $"Bearer ($api_key | secret unwrap)"]
 
 # Database configuration with mixed types
 let $db_config = {
   host: "localhost",
-  port: (5432 | secret wrap-int),
-  password: ($env.DB_PASSWORD | secret wrap-string),
-  ssl: (true | secret wrap-bool)
+  port: (5432 | secret wrap),
+  password: ($env.DB_PASSWORD | secret wrap),
+  ssl: (true | secret wrap)
 }
 
 # Financial data protection
-let $balance = (1234.56 | secret wrap-float)
-let $account_id = (9876543210 | secret wrap-int)
+let $balance = (1234.56 | secret wrap)
+let $account_id = (9876543210 | secret wrap)
 
 # Binary data (certificates, keys)
-open cert.pem | secret wrap-binary
+open cert.pem | secret wrap
 
 # Sensitive timestamps
-date now | secret wrap-date
+date now | secret wrap
 
 # Validate and process secrets
 if ($value | secret validate) {

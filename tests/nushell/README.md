@@ -53,7 +53,7 @@ tests/nushell/
 ### Test Coverage Achieved
 
 #### Command Coverage
-- ✅ All 8 wrap commands (`wrap-string`, `wrap-int`, `wrap-bool`, etc.)
+- ✅ Unified wrap command (`secret wrap` with automatic type detection)
 - ✅ Unwrap command with all secret types
 - ✅ Utility commands (`validate`, `type-of`, `info`)
 - ✅ Error handling for invalid inputs

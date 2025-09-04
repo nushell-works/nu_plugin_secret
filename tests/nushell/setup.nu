@@ -109,8 +109,8 @@ export def verify_plugin [] {
     
     let tests = [
         { name: "info_command", test: { secret info | get name } },
-        { name: "wrap_string", test: { "test" | secret wrap-string | describe } },
-        { name: "validate_command", test: { "test" | secret wrap-string | secret validate } },
+        { name: "wrap_string", test: { "test" | secret wrap | describe } },
+        { name: "validate_command", test: { "test" | secret wrap | secret validate } },
     ]
     
     for test in $tests {
@@ -172,7 +172,7 @@ export def setup_plugin [] {
         print "🎉 Plugin setup completed successfully!"
         print ""
         print "Available commands:"
-        print "  secret wrap-string, secret wrap-int, secret wrap-bool, etc."
+        print "  secret wrap, secret wrap, secret wrap, etc."
         print "  secret unwrap, secret validate, secret type-of, secret info"
         print "  secret configure, secret config show, secret config reset"
         print ""
@@ -216,7 +216,7 @@ export def health_check [] {
         print $"✅ Plugin: ($plugin_name) v($version)"
         
         # Test basic functionality
-        let test_secret = "health-check-test" | secret wrap-string
+        let test_secret = "health-check-test" | secret wrap
         let is_valid = $test_secret | secret validate
         let revealed = $test_secret | secret unwrap
         

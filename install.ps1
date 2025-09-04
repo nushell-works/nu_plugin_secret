@@ -178,7 +178,7 @@ function Register-Plugin {
             
             # Test basic functionality
             Write-Status "Testing basic functionality..."
-            $testResult = & nu -c 'echo "test" | secret wrap-string' 2>&1
+            $testResult = & nu -c 'echo "test" | secret wrap' 2>&1
             if ($LASTEXITCODE -eq 0) {
                 Write-Success "Plugin is working correctly!"
             }
@@ -269,7 +269,7 @@ function Main {
     Write-Host "Next steps:" -ForegroundColor Cyan
     Write-Host "1. Restart your terminal or reload your environment"
     Write-Host "2. Run 'nu' to start Nushell"
-    Write-Host "3. Try: echo `"secret`" | secret wrap-string"
+    Write-Host "3. Try: echo `"secret`" | secret wrap"
     Write-Host ""
     Write-Host "For more information, visit: https://github.com/$REPO" -ForegroundColor Blue
 }

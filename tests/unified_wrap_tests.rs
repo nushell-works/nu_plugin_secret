@@ -282,48 +282,53 @@ fn test_unified_wrap_type_detection_capabilities() {
 }
 
 #[test]
-fn test_unified_wrap_vs_individual_commands() {
-    // Test that the unified approach covers all the individual wrap command types
+fn test_unified_wrap_replaces_individual_commands() {
+    // Test that we only have the unified wrap command, no individual type commands
     let plugin = SecretPlugin;
     let commands = plugin.commands();
 
-    // Count individual wrap commands
-    let individual_wrap_commands: Vec<_> = commands
+    // Should have no individual type-specific wrap commands (but wrap-with is different)
+    let individual_type_wrap_commands: Vec<_> = commands
         .iter()
-        .filter(|cmd| cmd.name().starts_with("secret wrap-"))
+        .filter(|cmd| {
+            let name = cmd.name();
+            name.starts_with("secret wrap-") && name != "secret wrap-with"
+        })
         .collect();
 
-    // There should be multiple individual wrap commands for backward compatibility
+    // All individual type commands have been removed in favor of unified approach
     assert!(
-        !individual_wrap_commands.is_empty(),
-        "Should have individual wrap commands for backward compatibility"
+        individual_type_wrap_commands.is_empty(),
+        "Individual type wrap commands have been removed - found: {:?}",
+        individual_type_wrap_commands
+            .iter()
+            .map(|cmd| cmd.name())
+            .collect::<Vec<_>>()
     );
 
-    // Verify the unified command exists alongside the individual ones
+    // Verify the unified command exists
     let unified_command = commands.iter().find(|cmd| cmd.name() == "secret wrap");
     assert!(
         unified_command.is_some(),
         "Unified wrap command should exist"
     );
 
-    // The individual commands should cover these types
-    let expected_individual_types = vec![
-        "secret wrap-string",
-        "secret wrap-int",
-        "secret wrap-bool",
-        "secret wrap-float",
-        "secret wrap-binary",
-        "secret wrap-date",
-        "secret wrap-list",
-        "secret wrap-record",
-    ];
+    // The unified command should handle all the types that were previously individual commands
+    let unified_cmd = unified_command.unwrap();
+    let signature = unified_cmd.signature();
 
-    for expected in expected_individual_types {
-        let found = individual_wrap_commands
-            .iter()
-            .any(|cmd| cmd.name() == expected);
-        assert!(found, "Should have individual command: {}", expected);
-    }
+    // Check that the unified command supports all the expected input/output type mappings
+    let input_output_types = &signature.input_output_types;
+    assert!(
+        !input_output_types.is_empty(),
+        "Unified command should have input/output type mappings"
+    );
+
+    // The signature should indicate it can handle multiple types
+    assert!(
+        input_output_types.len() >= 8,
+        "Unified command should handle at least 8 types (string, int, bool, float, date, binary, list, record)"
+    );
 }
 
 #[test]
@@ -331,9 +336,9 @@ fn test_unified_wrap_command_benefits() {
     // This test demonstrates the benefits of the unified approach
 
     // Before: Users had to know the exact type and use specific commands
-    // "my-secret" | secret wrap-string
-    // 42 | secret wrap-int
-    // true | secret wrap-bool
+    // "my-secret" | secret wrap
+    // 42 | secret wrap
+    // true | secret wrap
 
     // After: Users can use a single command for any type
     // "my-secret" | secret wrap
