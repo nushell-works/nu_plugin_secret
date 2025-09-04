@@ -14,14 +14,21 @@ readme = "README.md"
 rust-version = "1.85.0"
 publish = true
 include = [
-    "src/**/*",
-    "tests/**/*",
-    "benches/**/*",
-    "docs/**/*",
+    "src/**/*.rs",
+    "tests/**/*.rs", 
+    "tests/**/*.nu",
+    "benches/**/*.rs",
+    "docs/**/*.md",
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
     "Cargo.toml"
+]
+exclude = [
+    "**/*.bak",
+    "tests/nushell/target/**",
+    "target/**",
+    "**/.DS_Store"
 ]
 
 [package.metadata.docs.rs]
