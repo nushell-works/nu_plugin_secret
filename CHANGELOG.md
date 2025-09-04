@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-09-04
+
+### 💥 Breaking Changes
+
+#### Command Unification
+- **`secret wrap-*` commands removed**: All individual type-specific wrap commands (`secret wrap-string`, `secret wrap-int`, etc.) have been removed
+- **Unified `secret wrap` command**: Single command now handles all secret types with automatic type detection
+- **Migration**: Update scripts using `secret wrap-string "value"` to `secret wrap "value"` (automatic type detection) or `secret wrap "value" --type string` (explicit type)
+
+### ✨ Added
+
+#### Enhanced Template System
+- **`mask_partial` function**: New Tera template function with optional parameters for partial masking
+- **Complete function registry**: Enhanced template validation with comprehensive function registry
+- **Template validation improvements**: Better error handling and validation for redaction templates
+
+#### Documentation Enhancements
+- **Configuration guide**: Comprehensive configuration and templating documentation
+- **Command reference updates**: Updated all documentation to reflect unified wrap syntax
+- **Template function documentation**: Complete guide for new template functions
+
+### 🔧 Enhanced
+
+#### Developer Experience
+- **Simplified command interface**: Single `secret wrap` command reduces cognitive load
+- **Automatic type detection**: Intelligent type inference eliminates need for explicit type specification in most cases
+- **Unified syntax**: Consistent command interface across all secret types
+
+#### Template System
+- **Enhanced validation**: More robust template validation with better error messages
+- **Function improvements**: Template functions now support optional parameters and better error handling
+- **Registry system**: Complete template function registry for validation and documentation
+
+### 🧹 Removed
+
+#### Deprecated Commands
+- **Type-specific wrap commands**: Removed `secret wrap-string`, `secret wrap-int`, `secret wrap-bool`, `secret wrap-record`, `secret wrap-list`, `secret wrap-float`, `secret wrap-binary`, `secret wrap-date`
+- **Legacy template functions**: Removed obsolete `secret_string` template function (replaced with variable access)
+
 ## [0.3.0] - 2025-08-29
 
 ### ✨ Added
@@ -249,6 +288,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: Complete user and developer documentation
 - **Community**: Contributing guidelines and security vulnerability disclosure
 
+[0.4.0]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.1.0...v0.1.1
