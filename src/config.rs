@@ -296,6 +296,16 @@ impl ConfigManager {
     fn validate_redaction_template(template: &str) -> Result<(), ConfigError> {
         // Validate Tera template syntax by attempting to compile it
         let mut tera = tera::Tera::default();
+
+        // Register all standard template functions for validation
+        crate::tera_functions::register_all_standard_functions(&mut tera);
+
+        // Also register the secret_string function with a test value
+        crate::tera_functions::register_secret_string_function(
+            &mut tera,
+            "test_secret".to_string(),
+        );
+
         if let Err(e) = tera.add_raw_template("validation", template) {
             return Err(ConfigError::Invalid(format!(
                 "Invalid Tera template syntax: {}",
@@ -306,6 +316,8 @@ impl ConfigManager {
         // Test template rendering with a sample value
         let mut context = tera::Context::new();
         context.insert("secret_type", "string");
+        context.insert("secret_length", &10usize);
+        context.insert("secret_string", "test_secret");
         if let Err(e) = tera.render("validation", &context) {
             return Err(ConfigError::Invalid(format!(
                 "Template failed to render with test data: {}",
