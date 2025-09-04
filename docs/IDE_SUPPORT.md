@@ -39,17 +39,17 @@ The `nu_plugin_secret` plugin provides 8 secret types and 12 commands for handli
    {
      "Secret String Wrap": {
        "prefix": "secret-string",
-       "body": ["$${1:value} | secret wrap-string"],
+       "body": ["$${1:value} | secret wrap"],
        "description": "Wrap string value as SecretString"
      },
      "Secret Int Wrap": {
        "prefix": "secret-int", 
-       "body": ["$${1:value} | secret wrap-int"],
+       "body": ["$${1:value} | secret wrap"],
        "description": "Wrap integer value as SecretInt"
      },
      "Secret Record Wrap": {
        "prefix": "secret-record",
-       "body": ["$${1:record} | secret wrap-record"],
+       "body": ["$${1:record} | secret wrap"],
        "description": "Wrap record as SecretRecord"
      },
      "Secret Unwrap": {
@@ -108,7 +108,7 @@ Use structured comments to provide type information:
 
 ```nushell
 # Type: SecretString - API key for external service
-let api_key = ($env.API_KEY | secret wrap-string)
+let api_key = ($env.API_KEY | secret wrap)
 
 # Type: SecretRecord - Database credentials with multiple fields
 let db_config = {
@@ -116,10 +116,10 @@ let db_config = {
     username: "user",
     password: "pass",
     port: 5432
-} | secret wrap-record
+} | secret wrap
 
 # Type: SecretList - Array of backup codes
-let backup_codes = ["code1", "code2", "code3"] | secret wrap-list
+let backup_codes = ["code1", "code2", "code3"] | secret wrap
 
 # Function that accepts SecretString and returns processed data
 # @param api_key: SecretString - Must be wrapped secret type
@@ -154,14 +154,14 @@ def call_api [api_key: any] {
    local i = ls.insert_node
    
    ls.add_snippets("nu", {
-     s("swrap-string", {
-       i(1, "value"), t(" | secret wrap-string")
+     s("swrap", {
+       i(1, "value"), t(" | secret wrap")
      }),
-     s("swrap-int", {
-       i(1, "value"), t(" | secret wrap-int") 
+     s("swrap-any", {
+       i(1, "value"), t(" | secret wrap") 
      }),
-     s("swrap-record", {
-       i(1, "record"), t(" | secret wrap-record")
+     s("swrap-unified", {
+       i(1, "data"), t(" | secret wrap")
      }),
      s("sunwrap", {
        i(1, "secret"), t(" | secret unwrap")
@@ -203,10 +203,10 @@ def call_api [api_key: any] {
 ;; Add to nushell-mode snippets
 ;; ~/.emacs.d/snippets/nushell-mode/secret-string
 ;; # -*- mode: snippet -*-
-;; # name: secret wrap-string
+;; # name: secret wrap
 ;; # key: sws
 ;; # --
-;; ${1:value} | secret wrap-string
+;; ${1:value} | secret wrap
 
 ;; Custom functions for secret type management
 (defun nushell-wrap-region-as-secret (type)
@@ -253,7 +253,7 @@ Add to `after/syntax/nu.vim`:
 ```vim
 " Highlight secret commands
 syn keyword nuSecretCommand secret contained
-syn keyword nuSecretOperation wrap-string wrap-int wrap-bool wrap-float wrap-record wrap-list wrap-binary wrap-date unwrap validate type-of info contained
+syn keyword nuSecretOperation wrap unwrap validate type-of info contained
 
 " Highlight redacted content
 syn match nuRedacted /<redacted:\w\+>/ contained
@@ -417,15 +417,15 @@ def debug-secret [secret: any] {
 # Test all secret type operations
 def test-secret-operations [] {
     echo "Testing SecretString..."
-    let s_string = "test" | secret wrap-string
+    let s_string = "test" | secret wrap
     debug-secret $s_string
     
     echo "Testing SecretInt..."
-    let s_int = 42 | secret wrap-int  
+    let s_int = 42 | secret wrap  
     debug-secret $s_int
     
     echo "Testing SecretRecord..."
-    let s_record = {key: "value"} | secret wrap-record
+    let s_record = {key: "value"} | secret wrap
     debug-secret $s_record
 }
 
@@ -465,8 +465,8 @@ def tutorial-basic-types [] {
     echo ""
     
     echo "Let's create a secret string:"
-    echo '> let api_key = "sk-1234567890" | secret wrap-string'
-    let api_key = "sk-1234567890" | secret wrap-string
+    echo '> let api_key = "sk-1234567890" | secret wrap'
+    let api_key = "sk-1234567890" | secret wrap
     echo $"Result: ($api_key)"
     echo ""
     
@@ -488,7 +488,7 @@ def tutorial-advanced-usage [] {
     echo "Creating mixed sensitivity record:"
     let config = {
         host: "api.example.com",
-        api_key: ("secret123" | secret wrap-string),
+        api_key: ("secret123" | secret wrap),
         timeout: 30
     }
     echo $"Config: ($config)"

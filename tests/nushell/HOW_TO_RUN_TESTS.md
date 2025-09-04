@@ -33,7 +33,7 @@ cd tests/nushell
 nu -c "use setup.nu; setup setup_plugin"
 
 # 4. Test manually
-nu -c "plugin add ../../target/release/nu_plugin_secret; plugin use secret; 'test' | secret wrap-string"
+nu -c "plugin add ../../target/release/nu_plugin_secret; plugin use secret; 'test' | secret wrap"
 
 # 5. Cleanup when done
 nu -c "use setup.nu; setup cleanup_plugin"

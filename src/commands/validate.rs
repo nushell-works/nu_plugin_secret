@@ -28,7 +28,7 @@ impl PluginCommand for SecretValidateCommand {
     fn examples(&self) -> Vec<Example<'_>> {
         vec![
             Example {
-                example: r#""my-secret" | secret wrap-string | secret validate"#,
+                example: r#""my-secret" | secret wrap | secret validate"#,
                 description: "Check if a secret string is a secret type",
                 result: Some(Value::test_bool(true)),
             },

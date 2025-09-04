@@ -91,7 +91,7 @@ cargo build --release
 nu -c "plugin add target/release/nu_plugin_secret"
 
 # Test functionality
-nu -c 'echo "test" | secret wrap-string'
+nu -c 'echo "test" | secret wrap'
 nu -c 'secret info'
 ```
 

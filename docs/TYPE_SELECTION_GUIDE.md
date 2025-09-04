@@ -6,14 +6,14 @@ This guide helps you choose the appropriate secret type for your sensitive data 
 
 | Data Type | Secret Type | Use Case | Command |
 |-----------|-------------|----------|---------|
-| String | `SecretString` | API keys, passwords, tokens | `secret wrap-string` |
-| Integer | `SecretInt` | Port numbers, IDs, counts | `secret wrap-int` |
-| Boolean | `SecretBool` | Feature flags, permissions | `secret wrap-bool` |
-| Record | `SecretRecord` | Credentials, config objects | `secret wrap-record` |
-| List | `SecretList` | Arrays of secrets | `secret wrap-list` |
-| Float | `SecretFloat` | Sensitive measurements | `secret wrap-float` |
-| Binary | `SecretBinary` | Keys, certificates, hashes | `secret wrap-binary` |
-| Date | `SecretDate` | Sensitive timestamps | `secret wrap-date` |
+| String | `SecretString` | API keys, passwords, tokens | `secret wrap` |
+| Integer | `SecretInt` | Port numbers, IDs, counts | `secret wrap` |
+| Boolean | `SecretBool` | Feature flags, permissions | `secret wrap` |
+| Record | `SecretRecord` | Credentials, config objects | `secret wrap` |
+| List | `SecretList` | Arrays of secrets | `secret wrap` |
+| Float | `SecretFloat` | Sensitive measurements | `secret wrap` |
+| Binary | `SecretBinary` | Keys, certificates, hashes | `secret wrap` |
+| Date | `SecretDate` | Sensitive timestamps | `secret wrap` |
 
 ## Detailed Type Selection
 
@@ -28,7 +28,7 @@ This guide helps you choose the appropriate secret type for your sensitive data 
 **Example:**
 ```nushell
 # Protect an API key
-let api_key = "sk-1234567890abcdef" | secret wrap-string
+let api_key = "sk-1234567890abcdef" | secret wrap
 
 # Use in HTTP headers (remains protected)
 http get https://api.example.com --headers {Authorization: $"Bearer ($api_key)"}
@@ -46,7 +46,7 @@ http get https://api.example.com --headers {Authorization: $"Bearer ($api_key)"}
 **Example:**
 ```nushell
 # Protect a database ID
-let user_id = 12345 | secret wrap-int
+let user_id = 12345 | secret wrap
 
 # Use in queries (remains protected)
 let query = $"SELECT * FROM users WHERE id = ($user_id)"
@@ -64,7 +64,7 @@ let query = $"SELECT * FROM users WHERE id = ($user_id)"
 **Example:**
 ```nushell
 # Protect admin status
-let is_admin = true | secret wrap-bool
+let is_admin = true | secret wrap
 
 # Use in conditional logic
 if ($is_admin | secret unwrap) { 
@@ -89,7 +89,7 @@ let db_config = {
     username: "app_user", 
     password: "secret123",
     port: 5432
-} | secret wrap-record
+} | secret wrap
 
 # Access remains protected
 $db_config | secret unwrap | get password
@@ -107,7 +107,7 @@ $db_config | secret unwrap | get password
 **Example:**
 ```nushell
 # Protect array of backup codes
-let backup_codes = ["ABC123", "DEF456", "GHI789"] | secret wrap-list
+let backup_codes = ["ABC123", "DEF456", "GHI789"] | secret wrap
 
 # Individual elements remain protected
 $backup_codes | secret unwrap | get 0
@@ -125,7 +125,7 @@ $backup_codes | secret unwrap | get 0
 **Example:**
 ```nushell
 # Protect salary information
-let salary = 85000.50 | secret wrap-float
+let salary = 85000.50 | secret wrap
 
 # Use in calculations (data remains protected)
 let bonus = ($salary | secret unwrap) * 0.1
@@ -144,7 +144,7 @@ let bonus = ($salary | secret unwrap) * 0.1
 **Example:**
 ```nushell
 # Protect binary key data
-let cert_data = (open cert.pem | into binary) | secret wrap-binary
+let cert_data = (open cert.pem | into binary) | secret wrap
 
 # Length checks remain safe
 $cert_data | secret unwrap | length
@@ -162,7 +162,7 @@ $cert_data | secret unwrap | length
 **Example:**
 ```nushell
 # Protect account creation date
-let created_at = (date now) | secret wrap-date
+let created_at = (date now) | secret wrap
 
 # Safe date operations
 $created_at | secret unwrap | date to-record | get year
@@ -193,15 +193,15 @@ What type is your data?
 ### API Credentials
 ```nushell
 # Individual components
-let api_key = "key123" | secret wrap-string
-let api_secret = "secret456" | secret wrap-string
+let api_key = "key123" | secret wrap
+let api_secret = "secret456" | secret wrap
 
 # Or as structured data
 let api_creds = {
     key: "key123",
     secret: "secret456", 
     endpoint: "https://api.example.com"
-} | secret wrap-record
+} | secret wrap
 ```
 
 ### Database Connections
@@ -213,16 +213,16 @@ let db_config = {
     username: "myuser",
     password: "mypass",
     database: "mydb"
-} | secret wrap-record
+} | secret wrap
 ```
 
 ### Mixed Data Types
 ```nushell
 # Different types for different purposes
-let user_id = 12345 | secret wrap-int           # Sensitive ID
-let api_token = "token123" | secret wrap-string  # Access token  
-let is_premium = true | secret wrap-bool         # Feature flag
-let signup_date = (date now) | secret wrap-date # Privacy timestamp
+let user_id = 12345 | secret wrap           # Sensitive ID
+let api_token = "token123" | secret wrap  # Access token  
+let is_premium = true | secret wrap         # Feature flag
+let signup_date = (date now) | secret wrap # Privacy timestamp
 ```
 
 ## Best Practices

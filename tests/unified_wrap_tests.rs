@@ -336,9 +336,9 @@ fn test_unified_wrap_command_benefits() {
     // This test demonstrates the benefits of the unified approach
 
     // Before: Users had to know the exact type and use specific commands
-    // "my-secret" | secret wrap-string
-    // 42 | secret wrap-int
-    // true | secret wrap-bool
+    // "my-secret" | secret wrap
+    // 42 | secret wrap
+    // true | secret wrap
 
     // After: Users can use a single command for any type
     // "my-secret" | secret wrap

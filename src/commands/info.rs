@@ -57,7 +57,7 @@ impl PluginCommand for SecretInfoCommand {
             "commands",
             Value::list(
                 vec![
-                    Value::string("secret wrap-string", call.head),
+                    Value::string("secret wrap", call.head),
                     Value::string("secret unwrap", call.head),
                     Value::string("secret info", call.head),
                     Value::string("secret validate", call.head),

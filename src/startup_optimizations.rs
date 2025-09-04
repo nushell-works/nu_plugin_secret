@@ -177,68 +177,20 @@ pub mod command_optimizations {
         COMMAND_METADATA.get_or_init(|| {
             let mut cache = HashMap::new();
 
-            // Wrap commands
+            // Wrap commands (unified)
             cache.insert(
-                "secret wrap-string",
+                "secret wrap",
                 CommandMeta {
-                    name: "secret wrap-string",
-                    description: "Convert string to SecretString",
+                    name: "secret wrap",
+                    description: "Convert values to secret types (unified command with automatic type detection)",
                     category: CommandCategory::Wrap,
                 },
             );
             cache.insert(
-                "secret wrap-int",
+                "secret wrap-with",
                 CommandMeta {
-                    name: "secret wrap-int",
-                    description: "Convert int to SecretInt",
-                    category: CommandCategory::Wrap,
-                },
-            );
-            cache.insert(
-                "secret wrap-bool",
-                CommandMeta {
-                    name: "secret wrap-bool",
-                    description: "Convert bool to SecretBool",
-                    category: CommandCategory::Wrap,
-                },
-            );
-            cache.insert(
-                "secret wrap-record",
-                CommandMeta {
-                    name: "secret wrap-record",
-                    description: "Convert record to SecretRecord",
-                    category: CommandCategory::Wrap,
-                },
-            );
-            cache.insert(
-                "secret wrap-list",
-                CommandMeta {
-                    name: "secret wrap-list",
-                    description: "Convert list to SecretList",
-                    category: CommandCategory::Wrap,
-                },
-            );
-            cache.insert(
-                "secret wrap-float",
-                CommandMeta {
-                    name: "secret wrap-float",
-                    description: "Convert float to SecretFloat",
-                    category: CommandCategory::Wrap,
-                },
-            );
-            cache.insert(
-                "secret wrap-binary",
-                CommandMeta {
-                    name: "secret wrap-binary",
-                    description: "Convert binary to SecretBinary",
-                    category: CommandCategory::Wrap,
-                },
-            );
-            cache.insert(
-                "secret wrap-date",
-                CommandMeta {
-                    name: "secret wrap-date",
-                    description: "Convert date to SecretDate",
+                    name: "secret wrap-with",
+                    description: "Wrap values with custom redaction templates",
                     category: CommandCategory::Wrap,
                 },
             );
@@ -250,6 +202,30 @@ pub mod command_optimizations {
                     name: "secret unwrap",
                     description: "Extract underlying value (WARNING: exposes data)",
                     category: CommandCategory::Security,
+                },
+            );
+            cache.insert(
+                "secret contains",
+                CommandMeta {
+                    name: "secret contains",
+                    description: "Check if secret contains substring",
+                    category: CommandCategory::Utility,
+                },
+            );
+            cache.insert(
+                "secret hash",
+                CommandMeta {
+                    name: "secret hash",
+                    description: "Generate hash of secret value",
+                    category: CommandCategory::Security,
+                },
+            );
+            cache.insert(
+                "secret length",
+                CommandMeta {
+                    name: "secret length",
+                    description: "Get length of secret value",
+                    category: CommandCategory::Utility,
                 },
             );
             cache.insert(
@@ -273,6 +249,55 @@ pub mod command_optimizations {
                 CommandMeta {
                     name: "secret type-of",
                     description: "Get underlying type of secret",
+                    category: CommandCategory::Utility,
+                },
+            );
+            // Configuration commands
+            cache.insert(
+                "secret configure",
+                CommandMeta {
+                    name: "secret configure",
+                    description: "Interactive configuration setup",
+                    category: CommandCategory::Utility,
+                },
+            );
+            cache.insert(
+                "secret config show",
+                CommandMeta {
+                    name: "secret config show",
+                    description: "Show current configuration",
+                    category: CommandCategory::Utility,
+                },
+            );
+            cache.insert(
+                "secret config reset",
+                CommandMeta {
+                    name: "secret config reset",
+                    description: "Reset configuration to defaults",
+                    category: CommandCategory::Utility,
+                },
+            );
+            cache.insert(
+                "secret config validate",
+                CommandMeta {
+                    name: "secret config validate",
+                    description: "Validate configuration",
+                    category: CommandCategory::Utility,
+                },
+            );
+            cache.insert(
+                "secret config export",
+                CommandMeta {
+                    name: "secret config export",
+                    description: "Export configuration",
+                    category: CommandCategory::Utility,
+                },
+            );
+            cache.insert(
+                "secret config import",
+                CommandMeta {
+                    name: "secret config import",
+                    description: "Import configuration",
                     category: CommandCategory::Utility,
                 },
             );
@@ -316,7 +341,7 @@ mod tests {
         let wrap_commands = command_optimizations::get_commands_by_category(
             command_optimizations::CommandCategory::Wrap,
         );
-        assert_eq!(wrap_commands.len(), 8);
+        assert_eq!(wrap_commands.len(), 2); // secret wrap + secret wrap-with
     }
 
     #[test]
@@ -343,16 +368,16 @@ mod tests {
         let wrap_commands = command_optimizations::get_commands_by_category(
             command_optimizations::CommandCategory::Wrap,
         );
-        assert_eq!(wrap_commands.len(), 8);
+        assert_eq!(wrap_commands.len(), 2); // secret wrap + secret wrap-with
 
         let utility_commands = command_optimizations::get_commands_by_category(
             command_optimizations::CommandCategory::Utility,
         );
-        assert_eq!(utility_commands.len(), 3);
+        assert_eq!(utility_commands.len(), 11); // contains, length, info, validate, type-of, configure, config show/reset/validate/export/import
 
         let security_commands = command_optimizations::get_commands_by_category(
             command_optimizations::CommandCategory::Security,
         );
-        assert_eq!(security_commands.len(), 1);
+        assert_eq!(security_commands.len(), 2); // unwrap + hash
     }
 }

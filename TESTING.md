@@ -88,9 +88,9 @@ All secret types are tested for proper unwrap functionality:
 
 ```bash
 # Test in Nushell
-nu -c '"test" | secret wrap-string | secret unwrap'
-nu -c '42 | secret wrap-int | secret unwrap' 
-nu -c 'true | secret wrap-bool | secret unwrap'
+nu -c '"test" | secret wrap | secret unwrap'
+nu -c '42 | secret wrap | secret unwrap' 
+nu -c 'true | secret wrap | secret unwrap'
 # ... and so on for all 8 types
 ```
 

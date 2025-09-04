@@ -115,11 +115,11 @@ test_plugin() {
     echo -e "\n${BLUE}Testing plugin functionality...${NC}"
     
     local tests=(
-        'echo "test" | secret wrap-string'
-        '42 | secret wrap-int'
-        'true | secret wrap-bool'
-        '3.14159 | secret wrap-float'
-        'date now | secret wrap-date'
+        'echo "test" | secret wrap'
+        '42 | secret wrap'
+        'true | secret wrap'
+        '3.14159 | secret wrap'
+        'date now | secret wrap'
         'secret info'
     )
     
@@ -140,12 +140,12 @@ show_examples() {
     echo -e "\n${BLUE}Usage Examples:${NC}"
     echo ""
     echo "# Wrap different types of secrets:"
-    echo 'echo "my-api-key" | secret wrap-string'
-    echo '42 | secret wrap-int'
-    echo 'true | secret wrap-bool'
-    echo '3.14159 | secret wrap-float'
-    echo '0x[deadbeef] | secret wrap-binary'
-    echo 'date now | secret wrap-date'
+    echo 'echo "my-api-key" | secret wrap'
+    echo '42 | secret wrap'
+    echo 'true | secret wrap'
+    echo '3.14159 | secret wrap'
+    echo '0x[deadbeef] | secret wrap'
+    echo 'date now | secret wrap'
     echo ""
     echo "# Utility commands:"
     echo '$secret | secret unwrap          # Extract value (with warning)'
@@ -154,7 +154,7 @@ show_examples() {
     echo 'secret info                     # Plugin information'
     echo ""
     echo "# Real-world usage:"
-    echo 'let $api_key = ($env.API_KEY | secret wrap-string)'
+    echo 'let $api_key = ($env.API_KEY | secret wrap)'
     echo 'http get "https://example.com/api" -H [Authorization $"Bearer ($api_key | secret unwrap)"]'
     echo ""
 }

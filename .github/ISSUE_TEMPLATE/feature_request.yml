@@ -100,7 +100,7 @@ body:
       description: If applicable, provide examples of how this feature would be used
       placeholder: |
         # Example usage:
-        let secret_data = "sensitive" | secret wrap-string
+        let secret_data = "sensitive" | secret wrap
         $secret_data | secret new-command
       render: nushell
 

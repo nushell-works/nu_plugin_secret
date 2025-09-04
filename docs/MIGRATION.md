@@ -32,7 +32,7 @@ echo $api_key  # ❌ Exposes secret
 
 **After:**
 ```nushell
-let api_key = "sk-1234567890abcdef" | secret wrap-string
+let api_key = "sk-1234567890abcdef" | secret wrap
 echo $api_key  # ✅ Shows <redacted:string>
 ```
 
@@ -52,7 +52,7 @@ echo $user_id  # ❌ May expose sensitive ID
 
 **After:**
 ```nushell
-let user_id = 12345 | secret wrap-int
+let user_id = 12345 | secret wrap
 echo $user_id  # ✅ Shows <redacted:int>
 ```
 
@@ -72,7 +72,7 @@ echo $is_admin  # ❌ May expose privilege level
 
 **After:**
 ```nushell
-let is_admin = true | secret wrap-bool
+let is_admin = true | secret wrap
 echo $is_admin  # ✅ Shows <redacted:bool>
 ```
 
@@ -92,7 +92,7 @@ echo $latitude  # ❌ Exposes location data
 
 **After:**
 ```nushell
-let latitude = 37.7749 | secret wrap-float
+let latitude = 37.7749 | secret wrap
 echo $latitude  # ✅ Shows <redacted:float>
 ```
 
@@ -120,7 +120,7 @@ let credentials = {
   username: "admin",
   password: "secret123",
   server: "prod.example.com"
-} | secret wrap-record
+} | secret wrap
 echo $credentials  # ✅ Shows <redacted:record>
 ```
 
@@ -140,7 +140,7 @@ echo $api_keys  # ❌ Exposes all keys
 
 **After:**
 ```nushell
-let api_keys = ["key1", "key2", "key3"] | secret wrap-list
+let api_keys = ["key1", "key2", "key3"] | secret wrap
 echo $api_keys  # ✅ Shows <redacted:list>
 ```
 
@@ -160,7 +160,7 @@ echo $key_data  # ❌ Exposes binary key
 
 **After:**
 ```nushell
-let key_data = 0x[deadbeef1234567890abcdef] | secret wrap-binary
+let key_data = 0x[deadbeef1234567890abcdef] | secret wrap
 echo $key_data  # ✅ Shows <redacted:binary>
 ```
 
@@ -180,7 +180,7 @@ echo $birth_date  # ❌ Exposes personal information
 
 **After:**
 ```nushell
-let birth_date = "2000-01-01" | into datetime | secret wrap-date
+let birth_date = "2000-01-01" | into datetime | secret wrap
 echo $birth_date  # ✅ Shows <redacted:date>
 ```
 
@@ -215,7 +215,7 @@ $secret_value | secret type-of
 ```nushell
 # Secret types work in pipelines
 "sensitive-data" 
-| secret wrap-string 
+| secret wrap 
 | secret type-of  # Returns "string"
 ```
 
@@ -235,10 +235,10 @@ let config = {
 **After:**
 ```nushell
 let config = {
-  database_url: "postgres://user:pass@localhost/db" | secret wrap-string,
-  api_key: "sk-1234567890" | secret wrap-string,
-  debug: true | secret wrap-bool
-} | secret wrap-record
+  database_url: "postgres://user:pass@localhost/db" | secret wrap,
+  api_key: "sk-1234567890" | secret wrap,
+  debug: true | secret wrap
+} | secret wrap
 ```
 
 ### Pattern 2: Environment Variables
@@ -254,9 +254,9 @@ let env_vars = {
 **After:**
 ```nushell
 let env_vars = {
-  API_KEY: ($env.API_KEY | secret wrap-string),
-  DB_PASSWORD: ($env.DB_PASSWORD | secret wrap-string)
-} | secret wrap-record
+  API_KEY: ($env.API_KEY | secret wrap),
+  DB_PASSWORD: ($env.DB_PASSWORD | secret wrap)
+} | secret wrap
 ```
 
 ### Pattern 3: User Input
@@ -269,7 +269,7 @@ echo $"Password entered: {$password}"  # ❌ Exposes password
 
 **After:**
 ```nushell
-let password = (input "Enter password: ") | secret wrap-string
+let password = (input "Enter password: ") | secret wrap
 echo $"Password entered: {$password}"  # ✅ Shows <redacted:string>
 ```
 
@@ -291,9 +291,9 @@ let server_config = {
 let server_config = {
   hostname: "api.example.com",                        # Keep public
   port: 443,                                          # Keep public
-  api_key: ("sk-secret123" | secret wrap-string),    # Wrap secret
+  api_key: ("sk-secret123" | secret wrap),    # Wrap secret
   timeout: 30,                                        # Keep public
-  admin_password: ("admin123" | secret wrap-string)  # Wrap secret
+  admin_password: ("admin123" | secret wrap)  # Wrap secret
 }
 # Don't wrap entire record - only sensitive fields
 ```
@@ -319,9 +319,9 @@ let connection = db connect $db_creds
 ```nushell
 let db_creds = {
   host: "db.internal.com",                               # Public
-  port: (5432 | secret wrap-int),                        # May be sensitive
-  username: ("app_user" | secret wrap-string),           # Sensitive
-  password: ("db_password_123" | secret wrap-string),    # Secret
+  port: (5432 | secret wrap),                        # May be sensitive
+  username: ("app_user" | secret wrap),           # Sensitive
+  password: ("db_password_123" | secret wrap),    # Secret
   database: "production",                                 # Public
   ssl: true                                              # Public
 }
@@ -359,7 +359,7 @@ def call_api [endpoint: string, api_key: any] {
   }
 }
 
-let key = "sk-1234567890" | secret wrap-string
+let key = "sk-1234567890" | secret wrap
 call_api "https://api.example.com/data" $key  # Key remains protected
 ```
 
@@ -382,8 +382,8 @@ $users | each { |user|
 ```nushell
 # Wrap sensitive fields during processing
 let users = [
-  {id: 123, name: "Alice", ssn: ("123-45-6789" | secret wrap-string)},
-  {id: 456, name: "Bob", ssn: ("987-65-4321" | secret wrap-string)}
+  {id: 123, name: "Alice", ssn: ("123-45-6789" | secret wrap)},
+  {id: 456, name: "Bob", ssn: ("987-65-4321" | secret wrap)}
 ]
 
 $users | each { |user|
@@ -410,7 +410,7 @@ echo $"API key: ($config.api_key)"  # ❌ May expose in logs
 # Reading and immediately protecting
 let config = open config.json | from json
 let secure_config = {
-  api_key: ($config.api_key | secret wrap-string),
+  api_key: ($config.api_key | secret wrap),
   other_field: $config.other_field
 }
 echo $"API key: ($secure_config.api_key)"  # ✅ Shows <redacted:string>
@@ -468,9 +468,9 @@ def deploy_app [
 
 # Call with secret types
 deploy_app "myapp" 
-  ("sk-secret123" | secret wrap-string)
-  ("postgres://user:pass@host/db" | secret wrap-string)
-  (8080 | secret wrap-int)
+  ("sk-secret123" | secret wrap)
+  ("postgres://user:pass@host/db" | secret wrap)
+  (8080 | secret wrap)
 ```
 
 ### Pattern 10: Gradual Migration Strategy
@@ -492,8 +492,8 @@ def audit_script [file: path] {
 **Phase 2: Add secret wrapping at input boundaries**
 ```nushell
 # Wrap secrets as soon as they enter your script
-let api_key = ($env.API_KEY | default "" | secret wrap-string)
-let db_pass = ($env.DB_PASSWORD | default "" | secret wrap-string)
+let api_key = ($env.API_KEY | default "" | secret wrap)
+let db_pass = ($env.DB_PASSWORD | default "" | secret wrap)
 ```
 
 **Phase 3: Update functions to accept secret types**
@@ -503,7 +503,7 @@ def flexible_auth [token: any] {
   let auth_token = if ($token | secret validate) {
     $token
   } else {
-    $token | secret wrap-string  # Auto-wrap plain types
+    $token | secret wrap  # Auto-wrap plain types
   }
   
   # Work with secret type from here on
@@ -518,7 +518,7 @@ def secure_auth [token: any] {
   if not ($token | secret validate) {
     error make {
       msg: "Authentication token must be a secret type",
-      help: "Use: $token | secret wrap-string"
+      help: "Use: $token | secret wrap"
     }
   }
   
@@ -549,19 +549,19 @@ Secret types automatically clean memory when dropped.
 ```nushell
 # ❌ Still exposed
 let api_key = "secret123"
-let wrapped = $api_key | secret wrap-string  # Too late!
+let wrapped = $api_key | secret wrap  # Too late!
 
 # ✅ Immediate protection
-let api_key = "secret123" | secret wrap-string
+let api_key = "secret123" | secret wrap
 ```
 
 ### 2. **Unnecessary Unwrapping**
 ```nushell
 # ❌ Defeats the purpose
-let secret = "data" | secret wrap-string | secret unwrap
+let secret = "data" | secret wrap | secret unwrap
 
 # ✅ Keep it wrapped
-let secret = "data" | secret wrap-string
+let secret = "data" | secret wrap
 ```
 
 ### 3. **Type Confusion**
@@ -577,19 +577,19 @@ if ($value | secret validate) {
 
 ### 1. **Verify Protection**
 ```nushell
-let secret = "sensitive" | secret wrap-string
+let secret = "sensitive" | secret wrap
 echo $secret  # Should show <redacted:string>
 ```
 
 ### 2. **Test Functionality**
 ```nushell
-let secret = 42 | secret wrap-int
+let secret = 42 | secret wrap
 ($secret | secret type-of) == "int"  # Should be true
 ```
 
 ### 3. **Pipeline Compatibility**
 ```nushell
-"test" | secret wrap-string | secret validate  # Should be true
+"test" | secret wrap | secret validate  # Should be true
 ```
 
 ## 📚 Additional Resources
@@ -605,7 +605,7 @@ If you encounter issues during migration:
 
 1. **Check Plugin Status**: `plugin list | where name == secret`
 2. **Validate Installation**: `secret info`
-3. **Test Basic Functionality**: `"test" | secret wrap-string`
+3. **Test Basic Functionality**: `"test" | secret wrap`
 4. **Review Logs**: Check for any error messages
 5. **File Issues**: [GitHub Issues](https://github.com/nushell-works/nu_plugin_secret/issues)
 
