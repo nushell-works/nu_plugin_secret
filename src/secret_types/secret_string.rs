@@ -697,7 +697,7 @@ mod tests {
         // Test custom template using the replicate function
         let secret = SecretString::new_with_template(
             "password123".to_string(),
-            "{{replicate(character='*', length=secret_length)}}".to_string(),
+            "{{replicate(s='*', n=secret_length)}}".to_string(),
         );
 
         let display = format!("{}", secret);
