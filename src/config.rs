@@ -47,21 +47,16 @@ pub enum RedactionContext {
 }
 
 /// Security levels for configuration validation
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum SecurityLevel {
     /// Minimal restrictions, more user flexibility
     Minimal,
     /// Standard security (recommended)
+    #[default]
     Standard,
     /// Maximum security, minimal information disclosure
     Paranoid,
-}
-
-impl Default for SecurityLevel {
-    fn default() -> Self {
-        Self::Standard
-    }
 }
 
 /// Main redaction configuration

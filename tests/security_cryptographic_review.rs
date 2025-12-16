@@ -569,7 +569,8 @@ mod cryptographic_performance {
 
             // Operations should complete in reasonable time
             // Allow more time for larger operations (scale with size)
-            let max_allowed_nanos = 5000 + (size as u128 * 20); // Base + linear scaling
+            // Use generous thresholds to accommodate CI environments with variable timing
+            let max_allowed_nanos = 10000 + (size as u128 * 50); // Base + linear scaling
             assert!(
                 per_op_nanos < max_allowed_nanos,
                 "Cryptographic operation too slow for {} bytes: {}ns (max: {}ns)",

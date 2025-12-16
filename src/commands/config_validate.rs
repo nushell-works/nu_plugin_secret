@@ -644,7 +644,7 @@ mod tests {
 
     #[test]
     fn test_validation_result_counting() {
-        let validation_results = vec![
+        let validation_results = [
             ("Test1", "Valid", "All good"),
             ("Test2", "Warning", "Minor issue"),
             ("Test3", "Error", "Major issue"),
