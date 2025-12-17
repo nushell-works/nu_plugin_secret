@@ -77,7 +77,7 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Configuration and filesystem
 toml = "0.8"
-dirs = "5.0"
+dirs = "6.0"
 sha2 = "0.10"
 thiserror = "2.0"
 
