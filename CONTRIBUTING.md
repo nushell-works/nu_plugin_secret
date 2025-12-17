@@ -15,8 +15,8 @@ This project handles sensitive data and security is our top priority. All contri
 
 ### Prerequisites
 
-- **Rust 1.85.0+** (MSRV - Minimum Supported Rust Version)
-- **Nushell 0.106.1+** for testing
+- **Rust 1.88.0+** (MSRV - Minimum Supported Rust Version)
+- **Nushell 0.109.1+** for testing
 - **Git** for version control
 
 ### Development Setup
@@ -160,7 +160,7 @@ nu -c 'secret info'
 ## Environment
 - OS: [e.g., macOS 13.5, Ubuntu 22.04]
 - Rust Version: [e.g., 1.75.0]
-- Nushell Version: [e.g., 0.106.1]
+- Nushell Version: [e.g., 0.109.1]
 - Plugin Version: [e.g., 0.1.0]
 
 ## Additional Context

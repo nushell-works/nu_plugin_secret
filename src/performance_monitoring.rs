@@ -172,7 +172,7 @@ impl PerformanceMonitor {
         let max = values[count - 1];
         let mean = values.iter().sum::<f64>() / count as f64;
 
-        let median = if count % 2 == 0 {
+        let median = if count.is_multiple_of(2) {
             (values[count / 2 - 1] + values[count / 2]) / 2.0
         } else {
             values[count / 2]

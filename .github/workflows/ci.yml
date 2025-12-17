@@ -188,7 +188,7 @@ jobs:
 
       - name: Install Nushell
         run: |
-          cargo install nu --version 0.106.1 --locked
+          cargo install nu --version 0.109.1 --locked
 
       - name: Install plugin
         run: |
@@ -282,7 +282,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install MSRV Rust toolchain
-        uses: dtolnay/rust-toolchain@1.85.0
+        uses: dtolnay/rust-toolchain@1.88.0
 
       - name: Check MSRV compatibility
         run: cargo check --all-features

@@ -120,7 +120,7 @@ Create a secure Nushell plugin that provides a family of secret custom types to:
 #### 3.1 Comprehensive CI/CD Pipeline ✅ COMPLETED
 **Multi-Platform Build Matrix**:
 - [x] Linux (ubuntu-latest), Windows (windows-latest), macOS (macos-latest)
-- [x] Rust stable, beta versions with MSRV (1.85.0) testing
+- [x] Rust stable, beta versions with MSRV (1.88.0) testing
 - [x] ARM64 cross-compilation support for Linux
 - [x] Release binary generation for all platforms
 
@@ -885,7 +885,7 @@ Successfully implemented **comprehensive CI/CD infrastructure** with production-
 - **Security Automation**: cargo-audit, cargo-deny, Miri memory safety testing
 - **Performance Monitoring**: Criterion benchmarks with regression detection  
 - **Code Coverage**: codecov.io integration with >95% target coverage
-- **MSRV Testing**: Rust 1.85.0 compatibility validation
+- **MSRV Testing**: Rust 1.88.0 compatibility validation
 - **Integration Testing**: Complete Nushell plugin registration and functionality testing
 - **Release Automation**: Multi-platform binary generation pipeline
 

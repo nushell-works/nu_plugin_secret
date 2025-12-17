@@ -245,7 +245,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code coverage tracking with codecov.io
 
 ### Changed
-- Updated MSRV to Rust 1.85.0 for nushell compatibility
+- Updated MSRV to Rust 1.88.0 for nushell compatibility
 
 ### Fixed
 - Plugin registration issues in CI environment
