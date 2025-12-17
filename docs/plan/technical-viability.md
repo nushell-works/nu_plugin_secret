@@ -138,7 +138,7 @@ secret validate $value          // Checks if value is secret
 ## Compatibility Assessment
 
 ### Nushell Version Support
-- **Current**: Compatible with Nushell 0.106.1+
+- **Current**: Compatible with Nushell 0.109.1+
 - **Future**: Plugin protocol stability expected
 - **Backwards**: May need version-specific implementations
 

@@ -11,7 +11,7 @@ documentation = "https://docs.rs/nu_plugin_secret/"
 keywords = ["nushell", "secret", "security", "plugin", "custom-types"]
 categories = ["command-line-utilities", "development-tools", "cryptography", "data-structures"]
 readme = "README.md"
-rust-version = "1.85.0"
+rust-version = "1.88.0"
 publish = true
 include = [
     "src/**/*.rs",
@@ -57,8 +57,8 @@ path = "src/lib.rs"
 
 [dependencies]
 # Core Nushell plugin dependencies
-nu-plugin = "0.106.1"
-nu-protocol = "0.106.1"
+nu-plugin = "0.109.1"
+nu-protocol = "0.109.1"
 
 # Serialization and type system
 serde = { version = "1.0", features = ["derive"] }
@@ -77,7 +77,7 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Configuration and filesystem
 toml = "0.8"
-dirs = "5.0"
+dirs = "6.0"
 sha2 = "0.10"
 thiserror = "2.0"
 
@@ -85,7 +85,7 @@ thiserror = "2.0"
 tera = "1.20"
 
 [dev-dependencies]
-nu-test-support = "0.106.1"
+nu-test-support = "0.109.1"
 criterion = { version = "0.5", features = ["html_reports"] }
 proptest = "1.5"
 serde_json = "1.0"
