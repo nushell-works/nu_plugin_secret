@@ -1,4 +1,5 @@
 use nu_plugin::{Plugin, PluginCommand};
+use std::sync::{Arc, RwLock};
 
 pub mod commands;
 pub mod config;
@@ -10,12 +11,51 @@ pub mod startup_optimizations;
 pub mod tera_functions;
 
 use commands::*;
+pub use config::ConfigManager;
 pub use secret_types::{
     SecretBinary, SecretBool, SecretDate, SecretFloat, SecretInt, SecretList, SecretRecord,
     SecretString,
 };
 
-pub struct SecretPlugin;
+/// Secret Plugin with dependency-injected configuration
+#[derive(Clone)]
+pub struct SecretPlugin {
+    config_manager: Arc<RwLock<ConfigManager>>,
+}
+
+impl SecretPlugin {
+    /// Create a new SecretPlugin with a specific ConfigManager
+    /// Useful for testing with custom configurations
+    pub fn new(config_manager: ConfigManager) -> Self {
+        Self {
+            config_manager: Arc::new(RwLock::new(config_manager)),
+        }
+    }
+
+    /// Get a reference to the config manager
+    pub fn config_manager(&self) -> &Arc<RwLock<ConfigManager>> {
+        &self.config_manager
+    }
+}
+
+impl Default for SecretPlugin {
+    fn default() -> Self {
+        // Load configuration from file system or use defaults
+        // Skip config loading under Miri since it involves file system operations
+        #[cfg(not(miri))]
+        let config_manager = ConfigManager::load().unwrap_or_else(|_| {
+            // If config loading fails, use default configuration
+            ConfigManager::new(config::PluginConfig::default())
+        });
+
+        #[cfg(miri)]
+        let config_manager = ConfigManager::new(config::PluginConfig::default());
+
+        Self {
+            config_manager: Arc::new(RwLock::new(config_manager)),
+        }
+    }
+}
 
 impl Plugin for SecretPlugin {
     fn version(&self) -> String {
@@ -23,16 +63,11 @@ impl Plugin for SecretPlugin {
     }
 
     fn commands(&self) -> Vec<Box<dyn PluginCommand<Plugin = Self>>> {
-        // Initialize optimizations and configuration on first command access
+        // Initialize optimizations on first command access
         startup_optimizations::command_optimizations::init_command_cache();
 
         // Initialize Tera-based redaction templating system
         let _ = redaction::init_redaction_templating();
-
-        // Initialize configuration system (ignore errors for now)
-        // Skip config initialization under Miri since it involves file system operations
-        #[cfg(not(miri))]
-        let _ = config::init_config();
 
         vec![
             // Unified wrap command
@@ -63,13 +98,13 @@ mod tests {
 
     #[test]
     fn test_plugin_version() {
-        let plugin = SecretPlugin;
+        let plugin = SecretPlugin::default();
         assert!(!plugin.version().is_empty());
     }
 
     #[test]
     fn test_plugin_commands() {
-        let plugin = SecretPlugin;
+        let plugin = SecretPlugin::default();
         let commands = plugin.commands();
         assert_eq!(commands.len(), 15);
 

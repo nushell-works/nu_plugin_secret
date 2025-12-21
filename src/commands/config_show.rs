@@ -1,6 +1,5 @@
 //! Configuration display command for nu_plugin_secret
 
-use crate::config::ConfigManager;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, Example, LabeledError, PipelineData, Record, Signature, Type, Value};
 
@@ -48,7 +47,7 @@ impl PluginCommand for SecretConfigShowCommand {
 
     fn run(
         &self,
-        _plugin: &Self::Plugin,
+        plugin: &Self::Plugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
@@ -64,15 +63,15 @@ impl PluginCommand for SecretConfigShowCommand {
             return Ok(PipelineData::Value(Value::string(config_path, span), None));
         }
 
-        // Load current configuration
-        let manager = ConfigManager::load().map_err(|e| {
+        // Get configuration from plugin
+        let config_manager = plugin.config_manager().read().map_err(|e| {
             LabeledError::new("Configuration Error")
-                .with_label(format!("Failed to load configuration: {}", e), span)
+                .with_label(format!("Failed to access configuration: {}", e), span)
         })?;
 
         // Handle raw TOML flag
         if call.has_flag("raw")? {
-            let toml_content = toml::to_string_pretty(manager.config()).map_err(|e| {
+            let toml_content = toml::to_string_pretty(config_manager.config()).map_err(|e| {
                 LabeledError::new("Serialization Error")
                     .with_label(format!("Failed to serialize configuration: {}", e), span)
             })?;
@@ -86,7 +85,7 @@ impl PluginCommand for SecretConfigShowCommand {
         // General information
         record.push(
             "version",
-            Value::string(manager.config().version.clone(), span),
+            Value::string(config_manager.config().version.clone(), span),
         );
 
         // Configuration file path
@@ -101,7 +100,10 @@ impl PluginCommand for SecretConfigShowCommand {
         let mut redaction_record = Record::new();
         redaction_record.push(
             "redaction_template",
-            Value::string(manager.config().redaction.get_redaction_template(), span),
+            Value::string(
+                config_manager.config().redaction.get_redaction_template(),
+                span,
+            ),
         );
 
         record.push("redaction", Value::record(redaction_record, span));
@@ -111,18 +113,18 @@ impl PluginCommand for SecretConfigShowCommand {
         security_record.push(
             "level",
             Value::string(
-                format!("{:?}", manager.config().security.level).to_lowercase(),
+                format!("{:?}", config_manager.config().security.level).to_lowercase(),
                 span,
             ),
         );
         security_record.push(
             "audit_config_changes",
-            Value::bool(manager.config().security.audit_config_changes, span),
+            Value::bool(config_manager.config().security.audit_config_changes, span),
         );
         security_record.push(
             "max_custom_text_length",
             Value::int(
-                manager.config().security.max_custom_text_length as i64,
+                config_manager.config().security.max_custom_text_length as i64,
                 span,
             ),
         );

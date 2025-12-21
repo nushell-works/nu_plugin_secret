@@ -39,7 +39,7 @@ pub fn initialize_plugin(config: StartupConfig) -> crate::SecretPlugin {
         pre_allocate_common_structures();
     }
 
-    crate::SecretPlugin
+    crate::SecretPlugin::default()
 }
 
 /// Pre-allocate common data structures to reduce allocation overhead

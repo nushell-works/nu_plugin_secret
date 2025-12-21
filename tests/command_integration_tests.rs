@@ -184,7 +184,7 @@ mod command_functionality_tests {
     #[test]
     fn test_plugin_has_unified_wrap_command() {
         // Test that the plugin includes the unified wrap command
-        let plugin = nu_plugin_secret::SecretPlugin;
+        let plugin = nu_plugin_secret::SecretPlugin::default();
         let commands = plugin.commands();
 
         let command_names: Vec<&str> = commands.iter().map(|cmd| cmd.name()).collect();
@@ -194,7 +194,7 @@ mod command_functionality_tests {
     #[test]
     fn test_plugin_has_unwrap_command() {
         // Test that the plugin includes the unwrap command
-        let plugin = nu_plugin_secret::SecretPlugin;
+        let plugin = nu_plugin_secret::SecretPlugin::default();
         let commands = plugin.commands();
 
         let command_names: Vec<&str> = commands.iter().map(|cmd| cmd.name()).collect();
@@ -204,7 +204,7 @@ mod command_functionality_tests {
     #[test]
     fn test_unified_wrap_command_signature() {
         // Test the unified wrap command signature
-        let plugin = nu_plugin_secret::SecretPlugin;
+        let plugin = nu_plugin_secret::SecretPlugin::default();
         let commands = plugin.commands();
 
         let wrap_command = commands
@@ -224,7 +224,7 @@ mod command_functionality_tests {
     #[test]
     fn test_unwrap_command_signature() {
         // Test the unwrap command signature
-        let plugin = nu_plugin_secret::SecretPlugin;
+        let plugin = nu_plugin_secret::SecretPlugin::default();
         let commands = plugin.commands();
 
         let unwrap_command = commands
@@ -243,7 +243,7 @@ mod command_functionality_tests {
     #[test]
     fn test_unified_wrap_command_description() {
         // Test the unified wrap command description
-        let plugin = nu_plugin_secret::SecretPlugin;
+        let plugin = nu_plugin_secret::SecretPlugin::default();
         let commands = plugin.commands();
 
         let wrap_command = commands
@@ -260,7 +260,7 @@ mod command_functionality_tests {
     #[test]
     fn test_unwrap_command_description() {
         // Test the unwrap command description
-        let plugin = nu_plugin_secret::SecretPlugin;
+        let plugin = nu_plugin_secret::SecretPlugin::default();
         let commands = plugin.commands();
 
         let unwrap_command = commands
@@ -277,7 +277,7 @@ mod command_functionality_tests {
     #[test]
     fn test_command_examples() {
         // Test that commands have examples
-        let plugin = nu_plugin_secret::SecretPlugin;
+        let plugin = nu_plugin_secret::SecretPlugin::default();
         let commands = plugin.commands();
 
         let wrap_command = commands

@@ -8,7 +8,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::{OnceLock, RwLock};
 
 /// Errors that can occur during configuration operations
 #[derive(Debug, thiserror::Error)]
@@ -358,54 +357,8 @@ pub fn get_config_file_path() -> Option<PathBuf> {
     })
 }
 
-/// Global configuration manager instance
-static CONFIG_MANAGER: OnceLock<RwLock<ConfigManager>> = OnceLock::new();
-
-/// Initialize the global configuration manager
-pub fn init_config() -> Result<(), ConfigError> {
-    let manager = ConfigManager::load()?;
-    CONFIG_MANAGER
-        .set(RwLock::new(manager))
-        .map_err(|_| ConfigError::Invalid("Configuration already initialized".to_string()))?;
-    Ok(())
-}
-
-/// Get a reference to the global configuration
-pub fn get_config() -> Result<std::sync::RwLockReadGuard<'static, ConfigManager>, ConfigError> {
-    CONFIG_MANAGER
-        .get()
-        .ok_or_else(|| ConfigError::Invalid("Configuration not initialized".to_string()))?
-        .read()
-        .map_err(|_| ConfigError::Invalid("Configuration lock poisoned".to_string()))
-}
-
-/// Get a mutable reference to the global configuration
-pub fn get_config_mut() -> Result<std::sync::RwLockWriteGuard<'static, ConfigManager>, ConfigError>
-{
-    CONFIG_MANAGER
-        .get()
-        .ok_or_else(|| ConfigError::Invalid("Configuration not initialized".to_string()))?
-        .write()
-        .map_err(|_| ConfigError::Invalid("Configuration lock poisoned".to_string()))
-}
-
-/// Update the global configuration with a new config
-pub fn update_config(new_config: PluginConfig) -> Result<(), ConfigError> {
-    let mut config_guard = get_config_mut()?;
-
-    // Log configuration change if audit logging is enabled
-    let old_config = config_guard.config().clone();
-    if old_config.security.audit_config_changes {
-        audit_config_change(&old_config, &new_config)?;
-    }
-
-    *config_guard.config_mut() = new_config;
-    config_guard.save()?;
-    Ok(())
-}
-
 /// Log configuration changes for audit purposes
-fn audit_config_change(
+pub fn audit_config_change(
     old_config: &PluginConfig,
     new_config: &PluginConfig,
 ) -> Result<(), ConfigError> {

@@ -330,7 +330,7 @@ fn bench_startup_regression(c: &mut Criterion) {
         b.iter_custom(|iters| {
             let start = Instant::now();
             for _ in 0..iters {
-                let _plugin = nu_plugin_secret::SecretPlugin;
+                let _plugin = nu_plugin_secret::SecretPlugin::default();
                 std::hint::black_box(_plugin);
             }
             let duration = start.elapsed();
@@ -353,7 +353,7 @@ fn bench_startup_regression(c: &mut Criterion) {
         b.iter_custom(|iters| {
             let start = Instant::now();
             for _ in 0..iters {
-                let plugin = nu_plugin_secret::SecretPlugin;
+                let plugin = nu_plugin_secret::SecretPlugin::default();
                 let _commands = plugin.commands();
                 std::hint::black_box(_commands);
             }

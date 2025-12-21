@@ -1,6 +1,6 @@
 //! Configuration reset command for nu_plugin_secret
 
-use crate::config::{ConfigManager, PluginConfig};
+use crate::config::PluginConfig;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, Example, LabeledError, PipelineData, Record, Signature, Type, Value};
 
@@ -51,7 +51,7 @@ impl PluginCommand for SecretConfigResetCommand {
 
     fn run(
         &self,
-        _plugin: &Self::Plugin,
+        plugin: &Self::Plugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
@@ -70,61 +70,65 @@ impl PluginCommand for SecretConfigResetCommand {
 
         // Create backup if requested
         if call.has_flag("backup")? {
-            // Try to load current configuration for backup
-            match ConfigManager::load() {
-                Ok(current_manager) => {
-                    let backup_timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-                    let backup_filename = format!("config_backup_{}.toml", backup_timestamp);
+            // Get current configuration from plugin for backup
+            if let Ok(current_manager) = plugin.config_manager().read() {
+                let backup_timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+                let backup_filename = format!("config_backup_{}.toml", backup_timestamp);
 
-                    if let Some(config_dir) = crate::config::get_config_file_path()
-                        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-                    {
-                        let backup_path = config_dir.join(&backup_filename);
+                if let Some(config_dir) = crate::config::get_config_file_path()
+                    .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+                {
+                    let backup_path = config_dir.join(&backup_filename);
 
-                        match current_manager.save_to_path(&backup_path) {
-                            Ok(()) => {
-                                result_record.push(
-                                    "backup_created",
-                                    Value::string(backup_path.to_string_lossy().to_string(), span),
-                                );
-                            }
-                            Err(e) => {
-                                return Err(LabeledError::new("Backup Failed")
-                                    .with_label(format!("Failed to create backup: {}", e), span));
-                            }
+                    match current_manager.save_to_path(&backup_path) {
+                        Ok(()) => {
+                            result_record.push(
+                                "backup_created",
+                                Value::string(backup_path.to_string_lossy().to_string(), span),
+                            );
                         }
-                    } else {
-                        return Err(LabeledError::new("Backup Failed")
-                            .with_label("Cannot determine config directory for backup", span));
+                        Err(e) => {
+                            return Err(LabeledError::new("Backup Failed")
+                                .with_label(format!("Failed to create backup: {}", e), span));
+                        }
                     }
+                } else {
+                    return Err(LabeledError::new("Backup Failed")
+                        .with_label("Cannot determine config directory for backup", span));
                 }
-                Err(e) => {
-                    // If we can't load current config, warn but continue with reset
-                    result_record.push(
-                        "backup_warning",
-                        Value::string(format!("Could not backup current config: {}", e), span),
-                    );
-                }
+            } else {
+                // If we can't access current config, warn but continue with reset
+                result_record.push(
+                    "backup_warning",
+                    Value::string("Could not backup current config: lock error", span),
+                );
             }
         }
 
         // Create default configuration
         let default_config = PluginConfig::default();
-        let manager = ConfigManager::new(default_config);
 
-        // Save default configuration
-        manager.save().map_err(|e| {
-            LabeledError::new("Reset Failed")
-                .with_label(format!("Failed to save default configuration: {}", e), span)
-        })?;
+        // Audit the configuration change if enabled
+        if let Ok(current_manager) = plugin.config_manager().read() {
+            if current_manager.config().security.audit_config_changes {
+                let _ =
+                    crate::config::audit_config_change(current_manager.config(), &default_config);
+            }
+        }
 
-        // Update global configuration
-        crate::config::update_config(manager.config().clone()).map_err(|e| {
-            LabeledError::new("Update Error").with_label(
-                format!("Failed to update runtime configuration: {}", e),
-                span,
-            )
-        })?;
+        // Update plugin's configuration
+        if let Ok(mut config_manager) = plugin.config_manager().write() {
+            *config_manager.config_mut() = default_config;
+
+            // Save to disk
+            config_manager.save().map_err(|e| {
+                LabeledError::new("Reset Failed")
+                    .with_label(format!("Failed to save default configuration: {}", e), span)
+            })?;
+        } else {
+            return Err(LabeledError::new("Update Error")
+                .with_label("Failed to acquire write lock on configuration", span));
+        }
 
         result_record.push(
             "status",
