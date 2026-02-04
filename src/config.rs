@@ -152,10 +152,32 @@ pub struct ConfigManager {
 
 impl ConfigManager {
     /// Create a new ConfigManager with the given config
+    /// Note: This calls get_config_file_path() which involves filesystem operations
+    /// that are not supported under Miri. Use new_in_memory() for Miri-compatible testing.
+    #[cfg(not(miri))]
     pub fn new(config: PluginConfig) -> Self {
         Self {
             config,
             config_path: get_config_file_path(),
+        }
+    }
+
+    /// Create a new ConfigManager with the given config (Miri-compatible version)
+    /// This version doesn't attempt filesystem operations
+    #[cfg(miri)]
+    pub fn new(config: PluginConfig) -> Self {
+        Self {
+            config,
+            config_path: None,
+        }
+    }
+
+    /// Create a new ConfigManager without filesystem path lookup
+    /// Useful for testing and Miri compatibility
+    pub fn new_in_memory(config: PluginConfig) -> Self {
+        Self {
+            config,
+            config_path: None,
         }
     }
 
