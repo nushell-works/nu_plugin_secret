@@ -296,9 +296,8 @@ mod command_functionality_tests {
 
         // Wrap examples should not show results (for security)
         for example in wrap_command.examples() {
-            if example.result.is_some() {
+            if let Some(result) = &example.result {
                 // If there's a result, it should be redacted
-                let result = example.result.as_ref().unwrap();
                 let display = format!("{:?}", result);
                 assert!(!display.contains("secret") || display.contains("redacted"));
             }
