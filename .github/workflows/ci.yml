@@ -195,7 +195,7 @@ jobs:
       - name: Install plugin
         run: |
           echo "Installing plugin..."
-          cargo install --path .
+          cargo install --path . --locked
           echo "Checking installation..."
           ls -la ~/.cargo/bin/nu_plugin_secret*
           echo "PATH: $PATH"
