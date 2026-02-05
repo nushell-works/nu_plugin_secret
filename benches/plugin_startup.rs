@@ -11,12 +11,12 @@ fn bench_plugin_initialization(c: &mut Criterion) {
     let mut group = c.benchmark_group("plugin_startup");
 
     // Benchmark plugin struct creation
-    group.bench_function("plugin_creation", |b| b.iter(|| SecretPlugin));
+    group.bench_function("plugin_creation", |b| b.iter(SecretPlugin::default));
 
     // Benchmark command registration
     group.bench_function("command_registration", |b| {
         b.iter(|| {
-            let plugin = SecretPlugin;
+            let plugin = SecretPlugin::default();
             let _commands = plugin.commands();
         })
     });
@@ -24,7 +24,7 @@ fn bench_plugin_initialization(c: &mut Criterion) {
     // Benchmark plugin metadata
     group.bench_function("plugin_metadata", |b| {
         b.iter(|| {
-            let plugin = SecretPlugin;
+            let plugin = SecretPlugin::default();
             let _metadata = plugin.version();
         })
     });
@@ -36,7 +36,7 @@ fn bench_plugin_initialization(c: &mut Criterion) {
 fn bench_command_lookup(c: &mut Criterion) {
     let mut group = c.benchmark_group("command_lookup");
 
-    let plugin = SecretPlugin;
+    let plugin = SecretPlugin::default();
     let commands = plugin.commands();
 
     // Test lookup for each command
@@ -73,7 +73,7 @@ fn bench_plugin_memory(c: &mut Criterion) {
             b.iter(|| {
                 let mut plugins = Vec::new();
                 for _ in 0..count {
-                    plugins.push(SecretPlugin);
+                    plugins.push(SecretPlugin::default());
                 }
                 // Implicit drop
             })
@@ -96,7 +96,7 @@ fn bench_process_startup(c: &mut Criterion) {
 
             // Simulate what happens during plugin startup:
             // 1. Create plugin instance
-            let plugin = SecretPlugin;
+            let plugin = SecretPlugin::default();
 
             // 2. Register all commands
             let _commands = plugin.commands();
@@ -123,9 +123,9 @@ fn bench_first_command_latency(c: &mut Criterion) {
         b.iter_batched(
             || {
                 // Setup: Create fresh plugin instance (simulating startup)
-                SecretPlugin
+                SecretPlugin::default()
             },
-            |plugin| {
+            |plugin: SecretPlugin| {
                 // Execute: Run first command
                 let commands = plugin.commands();
                 let wrap_cmd = commands

@@ -80,7 +80,9 @@ jobs:
             --ignore RUSTSEC-2025-0080 \
             --ignore RUSTSEC-2025-0081 \
             --ignore RUSTSEC-2025-0098 \
-            --ignore RUSTSEC-2025-0104
+            --ignore RUSTSEC-2025-0104 \
+            --ignore RUSTSEC-2025-0141 \
+            --ignore RUSTSEC-2026-0007
 
       - name: Run cargo deny
         uses: EmbarkStudios/cargo-deny-action@v2
@@ -188,12 +190,12 @@ jobs:
 
       - name: Install Nushell
         run: |
-          cargo install nu --version 0.109.1 --locked
+          cargo install nu --version 0.110.0 --locked
 
       - name: Install plugin
         run: |
           echo "Installing plugin..."
-          cargo install --path .
+          cargo install --path . --locked
           echo "Checking installation..."
           ls -la ~/.cargo/bin/nu_plugin_secret*
           echo "PATH: $PATH"

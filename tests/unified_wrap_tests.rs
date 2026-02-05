@@ -180,7 +180,7 @@ fn test_unified_wrap_maintains_security() {
 #[test]
 fn test_unified_wrap_command_registration() {
     // Test that the SecretWrapCommand is properly registered in the plugin
-    let plugin = SecretPlugin;
+    let plugin = SecretPlugin::default();
     let commands = plugin.commands();
 
     // Find the unified wrap command
@@ -284,7 +284,7 @@ fn test_unified_wrap_type_detection_capabilities() {
 #[test]
 fn test_unified_wrap_replaces_individual_commands() {
     // Test that we only have the unified wrap command, no individual type commands
-    let plugin = SecretPlugin;
+    let plugin = SecretPlugin::default();
     let commands = plugin.commands();
 
     // Should have no individual type-specific wrap commands (but wrap-with is different)

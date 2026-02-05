@@ -59,7 +59,7 @@ impl PluginCommand for SecretConfigImportCommand {
 
     fn run(
         &self,
-        _plugin: &Self::Plugin,
+        plugin: &Self::Plugin,
         _engine: &EngineInterface,
         call: &EvaluatedCall,
         _input: PipelineData,
@@ -136,21 +136,33 @@ impl PluginCommand for SecretConfigImportCommand {
             );
         }
 
-        // Save imported configuration as the active configuration
-        imported_manager.save().map_err(|e| {
-            LabeledError::new("Save Failed").with_label(
-                format!("Failed to save imported configuration: {}", e),
-                span,
-            )
-        })?;
+        // Audit the configuration change if enabled
+        if let Ok(current_manager) = plugin.config_manager().read() {
+            if current_manager.config().security.audit_config_changes {
+                let _ = crate::config::audit_config_change(
+                    current_manager.config(),
+                    imported_manager.config(),
+                );
+            }
+        }
 
-        // Update global configuration
-        crate::config::update_config(imported_manager.config().clone()).map_err(|e| {
-            LabeledError::new("Update Error").with_label(
-                format!("Failed to update runtime configuration: {}", e),
-                span,
-            )
-        })?;
+        // Update plugin's configuration
+        {
+            let mut config_manager = plugin.config_manager().write().map_err(|e| {
+                LabeledError::new("Update Error")
+                    .with_label(format!("Failed to acquire write lock: {}", e), span)
+            })?;
+
+            *config_manager.config_mut() = imported_manager.config().clone();
+
+            // Save to disk
+            config_manager.save().map_err(|e| {
+                LabeledError::new("Save Failed").with_label(
+                    format!("Failed to save imported configuration: {}", e),
+                    span,
+                )
+            })?;
+        }
 
         result_record.push(
             "status",

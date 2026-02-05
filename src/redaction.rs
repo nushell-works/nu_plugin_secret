@@ -57,16 +57,9 @@ fn generate_redacted_string_with_length(
     secret_type: &str,
     secret_length: Option<usize>,
 ) -> String {
-    // Get template from config, fallback to default if config unavailable
-    let template = if let Ok(config) = crate::config::get_config() {
-        config
-            .config()
-            .redaction
-            .get_redaction_template()
-            .to_string()
-    } else {
-        REDACTION_TEMPLATE.to_string()
-    };
+    // Use default template
+    // TODO: Add support for passing ConfigManager to enable custom templates
+    let template = REDACTION_TEMPLATE.to_string();
 
     // Always create a fresh Tera instance to pick up template changes
     // This is slightly less efficient but allows for dynamic template updates
@@ -117,21 +110,13 @@ pub fn get_cached_redacted_string_with_length(
 }
 
 /// Get configurable redacted string with optional unredacted mode support
-/// This checks if SHOW_UNREDACTED is enabled and returns actual value if so
+/// Note: SHOW_UNREDACTED support requires access to ConfigManager (not available in Display context)
+/// TODO: Add variant that accepts ConfigManager for dynamic configuration
 pub fn get_redacted_string_with_value<T: std::fmt::Display + ?Sized>(
     secret_type: &str,
     _context: crate::config::RedactionContext,
     actual_value: Option<&T>,
 ) -> String {
-    // Check if unredacted mode is enabled
-    if let Ok(config) = crate::config::get_config() {
-        if config.config().redaction.show_unredacted {
-            if let Some(value) = actual_value {
-                return value.to_string();
-            }
-        }
-    }
-
     // Calculate length if we have a value
     let secret_length = actual_value.map(|v| v.to_string().len());
 
@@ -173,14 +158,8 @@ pub fn generate_redacted_string_with_custom_template_and_value(
     secret_length: Option<usize>,
     secret_value: Option<String>,
 ) -> String {
-    // Check for special configuration modes
-    if let Ok(config) = crate::config::get_config() {
-        if config.config().redaction.show_unredacted {
-            if let Some(value) = &secret_value {
-                return value.clone();
-            }
-        }
-    }
+    // Note: show_unredacted support requires ConfigManager access
+    // TODO: Add variant that accepts ConfigManager parameter
 
     // Create a fresh Tera instance with the custom template
     let mut tera = tera::Tera::default();
@@ -188,20 +167,10 @@ pub fn generate_redacted_string_with_custom_template_and_value(
     // Register all standard template functions
     crate::tera_functions::register_all_standard_functions(&mut tera);
 
-    // Determine the effective secret value (masked if masking is enabled)
-    let effective_secret_value = if let Some(value) = &secret_value {
-        if let Ok(config) = crate::config::get_config() {
-            if config.config().redaction.mask_secret {
-                Some("*".repeat(value.len()))
-            } else {
-                Some(value.clone())
-            }
-        } else {
-            Some(value.clone())
-        }
-    } else {
-        None
-    };
+    // Use the secret value as-is for template rendering
+    // Note: mask_secret feature disabled in this context without ConfigManager
+    // TODO: Add variant that accepts ConfigManager to enable mask_secret
+    let effective_secret_value = secret_value;
 
     // Note: secret_string is available as a template variable, not a function
 
@@ -228,21 +197,14 @@ pub fn generate_redacted_string_with_custom_template_and_value(
 }
 
 /// Get redacted string using a custom template with optional value and length
+/// Note: show_unredacted support requires access to ConfigManager (not available in Display context)
+/// TODO: Add variant that accepts ConfigManager for dynamic configuration
 pub fn get_redacted_string_with_custom_template_and_value<T: std::fmt::Display + ?Sized>(
     custom_template: &str,
     secret_type: &str,
     _context: crate::config::RedactionContext,
     actual_value: Option<&T>,
 ) -> String {
-    // Check if unredacted mode is enabled
-    if let Ok(config) = crate::config::get_config() {
-        if config.config().redaction.show_unredacted {
-            if let Some(value) = actual_value {
-                return value.to_string();
-            }
-        }
-    }
-
     // Calculate length and string value if we have a value
     let (secret_length, secret_string_value) = if let Some(value) = actual_value {
         let string_value = value.to_string();

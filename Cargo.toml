@@ -57,8 +57,8 @@ path = "src/lib.rs"
 
 [dependencies]
 # Core Nushell plugin dependencies
-nu-plugin = "0.109.1"
-nu-protocol = "0.109.1"
+nu-plugin = "0.110.0"
+nu-protocol = "0.110.0"
 
 # Serialization and type system
 serde = { version = "1.0", features = ["derive"] }
@@ -85,7 +85,7 @@ thiserror = "2.0"
 tera = "1.20"
 
 [dev-dependencies]
-nu-test-support = "0.109.1"
+nu-test-support = "0.110.0"
 criterion = { version = "0.5", features = ["html_reports"] }
 proptest = "1.5"
 serde_json = "1.0"
