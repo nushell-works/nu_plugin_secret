@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-02-05
+
+### 🔧 Enhanced
+
+#### Dependency Updates
+- **Nushell 0.110.0**: Updated to nushell 0.110.0 for latest features and compatibility
+
+#### Architecture Improvements
+- **Dependency Injection for Configuration**: Replaced global static configuration state with dependency-injected ConfigManager throughout the plugin architecture
+  - Added ConfigManager field to SecretPlugin struct with Arc<RwLock<>> wrapper
+  - Implemented new() constructor for custom configuration injection (useful for testing)
+  - Updated Default implementation to load configuration from filesystem
+  - Removed global CONFIG_MANAGER static and related helper functions
+  - Pass plugin reference to all command run() methods for config access
+
+#### CI/CD Improvements
+- **Miri Compatibility**: Fixed memory safety tests by adding conditional compilation for ConfigManager to avoid unsupported foreign function calls
+- **Locked Dependencies**: Plugin installation in CI now uses --locked flag for consistent dependency resolution
+
 ## [0.5.0] - 2024-12-22
 
 ### 🔧 Enhanced

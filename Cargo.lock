@@ -1330,7 +1330,7 @@ dependencies = [
 
 [[package]]
 name = "nu_plugin_secret"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "bincode",
  "blake3",
