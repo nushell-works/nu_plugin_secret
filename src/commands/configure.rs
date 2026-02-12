@@ -7,11 +7,12 @@
 //! - `secret config validate` - Validate configuration
 //! - `secret config export/import` - Configuration backup/restore
 
-use crate::config::{ConfigManager, SecurityLevel};
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
 };
+
+use crate::config::{ConfigManager, SecurityLevel};
 
 /// Main configuration command that provides subcommands for config management
 pub struct SecretConfigureCommand;

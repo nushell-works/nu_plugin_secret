@@ -19,6 +19,7 @@
 //! - `strlen("text")` or `strlen(s="text")`: Returns the length of the input string as a number
 
 use std::sync::OnceLock;
+
 use tera::{Context, Tera};
 
 /// Global Tera template engine for redaction

@@ -1,10 +1,11 @@
-use crate::{
-    SecretBinary, SecretBool, SecretDate, SecretFloat, SecretInt, SecretList, SecretRecord,
-    SecretString,
-};
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value,
+};
+
+use crate::{
+    SecretBinary, SecretBool, SecretDate, SecretFloat, SecretInt, SecretList, SecretRecord,
+    SecretString,
 };
 
 #[derive(Clone)]

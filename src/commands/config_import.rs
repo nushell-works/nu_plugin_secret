@@ -1,11 +1,13 @@
 //! Configuration import command for nu_plugin_secret
 
-use crate::config::ConfigManager;
+use std::path::PathBuf;
+
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
 };
-use std::path::PathBuf;
+
+use crate::config::ConfigManager;
 
 /// Command to import configuration from a file
 pub struct SecretConfigImportCommand;

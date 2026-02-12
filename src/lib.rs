@@ -1,5 +1,6 @@
-use nu_plugin::{Plugin, PluginCommand};
 use std::sync::{Arc, RwLock};
+
+use nu_plugin::{Plugin, PluginCommand};
 
 pub mod commands;
 pub mod config;

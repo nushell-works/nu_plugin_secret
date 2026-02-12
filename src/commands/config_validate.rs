@@ -1,8 +1,9 @@
 //! Configuration validation command for nu_plugin_secret
 
-use crate::config::ConfigManager;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, Example, LabeledError, PipelineData, Record, Signature, Type, Value};
+
+use crate::config::ConfigManager;
 
 /// Command to validate configuration settings
 pub struct SecretConfigValidateCommand;

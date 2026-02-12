@@ -1,6 +1,7 @@
+use std::time::Instant;
+
 use nu_plugin::{serve_plugin, MsgPackSerializer};
 use nu_plugin_secret::{performance_monitoring, startup_optimizations};
-use std::time::Instant;
 
 fn main() {
     let start_time = Instant::now();

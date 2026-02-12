@@ -1,6 +1,7 @@
-use crate::{SecretBinary, SecretList, SecretString};
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
+
+use crate::{SecretBinary, SecretList, SecretString};
 
 #[derive(Clone)]
 pub struct SecretLengthCommand;

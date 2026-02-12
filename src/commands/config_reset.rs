@@ -1,8 +1,9 @@
 //! Configuration reset command for nu_plugin_secret
 
-use crate::config::PluginConfig;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, Example, LabeledError, PipelineData, Record, Signature, Type, Value};
+
+use crate::config::PluginConfig;
 
 /// Command to reset configuration to defaults
 pub struct SecretConfigResetCommand;

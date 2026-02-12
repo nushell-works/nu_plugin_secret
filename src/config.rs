@@ -6,8 +6,9 @@
 //! - Runtime configuration changes
 //! - Hierarchical configuration loading with security validation
 
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
 
 /// Errors that can occur during configuration operations
 #[derive(Debug, thiserror::Error)]

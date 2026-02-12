@@ -1,10 +1,11 @@
-use crate::{SecretBinary, SecretList, SecretRecord, SecretString};
 use blake3;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value,
 };
 use sha2::{Digest, Sha256, Sha512};
+
+use crate::{SecretBinary, SecretList, SecretRecord, SecretString};
 
 #[derive(Clone)]
 pub struct SecretHashCommand;
