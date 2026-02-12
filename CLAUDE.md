@@ -1,54 +1,69 @@
-# Claude AI Guidelines for nu_plugin_secret
+# CLAUDE.md
 
-This document contains specific guidelines for Claude when working on this codebase to avoid common mistakes and maintain code quality.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Code Quality Guidelines
+## Project Overview
 
-### Mathematical Constants
-- **NEVER** use hardcoded mathematical constants like `3.14`, `2.718`, etc. in test code
-- **ALWAYS** use standard library constants instead:
-  - Use `std::f64::consts::PI` instead of `3.14` or `3.14159`
-  - Use `std::f64::consts::E` instead of `2.718` or `2.71828`
-  - Use `std::f64::consts::TAU` instead of `6.28` (2π)
-  - This prevents clippy warnings about approximate constants
+A Nushell plugin (`nu_plugin_secret`) providing 8 custom value types for secure secret handling. Secrets are always redacted in display/debug output but preserve their actual data through serialization for pipeline operations (the "dual-layer security model").
 
-### Testing Guidelines
-- When writing tests that need mathematical values, prefer standard constants
-- For non-mathematical test values, use clear, descriptive values like `42` or `"test_value"`
-- Avoid magic numbers that could trigger clippy warnings
+**Nushell compatibility**: nu-plugin/nu-protocol 0.110.0 · **MSRV**: 1.88.0 · **License**: BSD-3-Clause
 
-### Linting and Formatting
-- Always run `cargo clippy --all-targets --all-features -- -D warnings` before completing tasks
-- Fix all clippy warnings, especially `approx_constant` warnings  
-- Add `#[allow(dead_code)]` for genuinely unused helper functions in tests
-- Run `cargo fmt` to ensure consistent code formatting
-- The project has a pre-commit hook that automatically runs `cargo fmt --check` and `cargo clippy`
+## Build & Development Commands
 
-## Project-Specific Guidelines
-
-### Security Focus
-- This is a security-focused plugin for handling secrets
-- All code changes should maintain or improve security posture
-- Never introduce code that could leak sensitive information
-
-### Test Coverage
-- Maintain comprehensive test coverage for all secret types
-- Include edge cases and security-related test scenarios
-- Use Miri-compatible code where possible (avoid system time in tests under Miri)
-
-### Commands
-To run linting, formatting, and testing:
 ```bash
 cargo fmt                                                    # Format code
-cargo clippy --all-targets --all-features -- -D warnings    # Check for warnings
-cargo test                                                   # Run tests
-cargo +nightly miri test  # with MIRIFLAGS=-Zmiri-disable-isolation if needed
+cargo clippy --all-targets --all-features -- -D warnings    # Lint (treat warnings as errors)
+cargo test                                                   # Run all tests
+cargo test <test_name>                                       # Run a single test
+cargo test --test unified_wrap_tests                         # Run a specific test file
+cargo +nightly miri test                                     # Run under Miri (MIRIFLAGS=-Zmiri-disable-isolation)
+cargo bench --bench secret_performance                       # Run specific benchmark
+./scripts/run_nu_tests.sh                                    # Run Nushell integration tests
+./scripts/install-plugin.sh                                  # Build and register plugin with Nushell
 ```
 
-### Pre-commit Hook
-The project includes a pre-commit hook at `.git/hooks/pre-commit` that automatically:
-- Runs `cargo fmt --check` to ensure code is formatted
-- Runs `cargo clippy --all-targets --all-features -- -D warnings` to check for warnings
-- Prevents commits if either check fails
+**Pre-commit hook** runs `cargo fmt --check` and `cargo clippy --all-targets --all-features -- -D warnings` automatically. Always run both before completing tasks.
 
-To bypass the hook in emergency situations, use `git commit --no-verify`, but this should be avoided.
+## Architecture
+
+### Plugin Entry Point
+
+[main.rs](src/main.rs) serves the plugin via `nu-plugin`'s MsgPackSerializer. The `SecretPlugin` struct ([lib.rs](src/lib.rs)) implements the `Plugin` trait and registers 15 commands. Configuration is dependency-injected via `Arc<RwLock<ConfigManager>>`.
+
+### Secret Types (`src/secret_types/`)
+
+Eight types wrapping Nushell value types: `SecretString`, `SecretInt`, `SecretBool`, `SecretFloat`, `SecretDate`, `SecretBinary`, `SecretList`, `SecretRecord`.
+
+Each type follows the same pattern:
+- Struct with `inner: T` and `redaction_template: Option<String>`
+- `Display`/`Debug` always return redacted output (never the real value)
+- `Serialize`/`Deserialize` carry the actual data for pipeline operations
+- `Drop` zeros memory via `zeroize` crate
+- `CustomValue` impl integrates with Nushell's type system via `#[typetag::serde]`
+- `reveal()` and `into_inner()` provide controlled access to the underlying value
+
+### Commands (`src/commands/`)
+
+- **`secret wrap`** / **`secret wrap-with`** — wrap values into secret types (with optional custom redaction template)
+- **`secret unwrap`** — extract the underlying value
+- **`secret contains`**, **`secret hash`**, **`secret length`**, **`secret validate`**, **`secret type-of`** — operate on secrets without exposing them
+- **`secret info`** — plugin information
+- **`secret configure`**, **`secret config {show,reset,validate,export,import}`** — configuration management
+
+### Redaction System (`src/redaction.rs`, `src/tera_functions.rs`)
+
+Uses the Tera template engine. Default template: `<redacted:{{secret_type}}>`. Custom functions available in templates: `replicate`, `reverse`, `take`, `strlen`, `mask_partial`, `secret_string`.
+
+### Configuration (`src/config.rs`)
+
+TOML-based config loaded from `~/.local/share/nushell/plugins/secret/config.toml` (platform-dependent via `dirs` crate). Supports environment variable overrides (e.g., `SHOW_UNREDACTED=1`). Three security levels: minimal, standard, paranoid.
+
+## Code Quality Rules
+
+- **NEVER** use hardcoded mathematical constants (`3.14`, `2.718`). Use `std::f64::consts::PI`, `E`, `TAU` to avoid clippy `approx_constant` warnings.
+- Write Miri-compatible code where possible (avoid system time in tests under Miri; config loading is `#[cfg(not(miri))]`-gated).
+- This is security-focused code — never introduce changes that could leak sensitive information in display, debug, or log output.
+
+## ADRs
+
+Architecture Decision Records live in [docs/adrs/](docs/adrs/). Use four-digit zero-padded numbering (e.g., `adr-0001.md`). Run the `update-adr-inventory` skill after adding or changing an ADR.
