@@ -12,10 +12,82 @@ use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
 };
 
-use crate::config::{ConfigManager, SecurityLevel};
+use crate::config::{ConfigManager, PluginConfig, SecurityLevel};
 
 /// Main configuration command that provides subcommands for config management
 pub struct SecretConfigureCommand;
+
+/// Parse a security level string and apply it to the current config, returning
+/// the updated config ready for validation and persistence.
+fn apply_security_level_change(
+    plugin: &crate::SecretPlugin,
+    level_str: &str,
+    span: nu_protocol::Span,
+) -> Result<PluginConfig, LabeledError> {
+    let mut config = plugin
+        .config_manager()
+        .read()
+        .map_err(|e| {
+            LabeledError::new("Configuration Error")
+                .with_label(format!("Failed to read configuration: {}", e), span)
+        })?
+        .config()
+        .clone();
+
+    let level = match level_str {
+        "minimal" => SecurityLevel::Minimal,
+        "standard" => SecurityLevel::Standard,
+        "paranoid" => SecurityLevel::Paranoid,
+        _ => {
+            return Err(LabeledError::new("Invalid Security Level").with_label(
+                format!(
+                    "Unknown level '{}'. Valid options: minimal, standard, paranoid",
+                    level_str
+                ),
+                span,
+            ));
+        }
+    };
+    config.security.level = level;
+
+    Ok(config)
+}
+
+/// Build a summary record of the current configuration state for output.
+fn build_config_summary_record(
+    config_manager: &ConfigManager,
+    config_changed: bool,
+    span: nu_protocol::Span,
+) -> Record {
+    let mut record = Record::new();
+
+    record.push(
+        "redaction_template",
+        Value::string(
+            config_manager.config().redaction.get_redaction_template(),
+            span,
+        ),
+    );
+
+    record.push(
+        "security_level",
+        Value::string(
+            format!("{:?}", config_manager.config().security.level).to_lowercase(),
+            span,
+        ),
+    );
+
+    if config_changed {
+        record.push(
+            "status",
+            Value::string("Configuration updated successfully", span),
+        );
+    } else {
+        record.push("status", Value::string("No changes made", span));
+    }
+
+    record
+}
 
 impl PluginCommand for SecretConfigureCommand {
     type Plugin = crate::SecretPlugin;
@@ -62,67 +134,38 @@ impl PluginCommand for SecretConfigureCommand {
 
         // Handle security level changes
         if let Some(level_str) = call.get_flag::<String>("security-level")? {
-            // Get current config
-            let mut config = plugin
-                .config_manager()
-                .read()
-                .map_err(|e| {
-                    LabeledError::new("Configuration Error")
-                        .with_label(format!("Failed to read configuration: {}", e), span)
-                })?
-                .config()
-                .clone();
-
-            let level = match level_str.as_str() {
-                "minimal" => SecurityLevel::Minimal,
-                "standard" => SecurityLevel::Standard,
-                "paranoid" => SecurityLevel::Paranoid,
-                _ => {
-                    return Err(LabeledError::new("Invalid Security Level").with_label(
-                        format!(
-                            "Unknown level '{}'. Valid options: minimal, standard, paranoid",
-                            level_str
-                        ),
-                        span,
-                    ));
-                }
-            };
-            config.security.level = level;
-            new_config = Some(config);
+            new_config = Some(apply_security_level_change(plugin, &level_str, span)?);
             config_changed = true;
         }
 
         // Validate and apply configuration changes
-        if config_changed {
-            if let Some(config) = new_config {
-                // Validate configuration
-                if let Err(e) = ConfigManager::validate_config(&config) {
-                    return Err(LabeledError::new("Configuration Validation Failed")
-                        .with_label(format!("Invalid configuration: {}", e), span));
-                }
-
-                // Audit the change if enabled
-                if let Ok(current_manager) = plugin.config_manager().read() {
-                    if current_manager.config().security.audit_config_changes {
-                        let _ =
-                            crate::config::audit_config_change(current_manager.config(), &config);
-                    }
-                }
-
-                // Update plugin configuration
-                let mut config_manager = plugin.config_manager().write().map_err(|e| {
-                    LabeledError::new("Configuration Error")
-                        .with_label(format!("Failed to acquire write lock: {}", e), span)
-                })?;
-
-                *config_manager.config_mut() = config;
-
-                // Save to disk
-                config_manager.save().map_err(|e| {
-                    LabeledError::new("Save Error")
-                        .with_label(format!("Failed to save configuration: {}", e), span)
-                })?;
+        if let Some(config) = new_config {
+            // Validate configuration
+            if let Err(e) = ConfigManager::validate_config(&config) {
+                return Err(LabeledError::new("Configuration Validation Failed")
+                    .with_label(format!("Invalid configuration: {}", e), span));
             }
+
+            // Audit the change if enabled
+            if let Ok(current_manager) = plugin.config_manager().read() {
+                if current_manager.config().security.audit_config_changes {
+                    let _ = crate::config::audit_config_change(current_manager.config(), &config);
+                }
+            }
+
+            // Update plugin configuration
+            let mut config_manager = plugin.config_manager().write().map_err(|e| {
+                LabeledError::new("Configuration Error")
+                    .with_label(format!("Failed to acquire write lock: {}", e), span)
+            })?;
+
+            *config_manager.config_mut() = config;
+
+            // Save to disk
+            config_manager.save().map_err(|e| {
+                LabeledError::new("Save Error")
+                    .with_label(format!("Failed to save configuration: {}", e), span)
+            })?;
         }
 
         // Create summary record of current configuration
@@ -131,32 +174,7 @@ impl PluginCommand for SecretConfigureCommand {
                 .with_label(format!("Failed to read configuration: {}", e), span)
         })?;
 
-        let mut record = Record::new();
-
-        record.push(
-            "redaction_template",
-            Value::string(
-                config_manager.config().redaction.get_redaction_template(),
-                span,
-            ),
-        );
-
-        record.push(
-            "security_level",
-            Value::string(
-                format!("{:?}", config_manager.config().security.level).to_lowercase(),
-                span,
-            ),
-        );
-
-        if config_changed {
-            record.push(
-                "status",
-                Value::string("Configuration updated successfully", span),
-            );
-        } else {
-            record.push("status", Value::string("No changes made", span));
-        }
+        let record = build_config_summary_record(&config_manager, config_changed, span);
 
         Ok(PipelineData::Value(Value::record(record, span), None))
     }

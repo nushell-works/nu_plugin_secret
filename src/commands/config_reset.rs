@@ -8,6 +8,68 @@ use crate::config::PluginConfig;
 /// Command to reset configuration to defaults
 pub struct SecretConfigResetCommand;
 
+/// Create a backup of the current configuration before resetting.
+///
+/// Returns the backup file path on success, or a warning message if the
+/// current config could not be read.
+fn create_backup(
+    plugin: &crate::SecretPlugin,
+    span: nu_protocol::Span,
+) -> Result<Option<String>, LabeledError> {
+    if let Ok(current_manager) = plugin.config_manager().read() {
+        let backup_timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+        let backup_filename = format!("config_backup_{}.toml", backup_timestamp);
+
+        if let Some(config_dir) =
+            crate::config::get_config_file_path().and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        {
+            let backup_path = config_dir.join(&backup_filename);
+
+            current_manager.save_to_path(&backup_path).map_err(|e| {
+                LabeledError::new("Backup Failed")
+                    .with_label(format!("Failed to create backup: {}", e), span)
+            })?;
+
+            Ok(Some(backup_path.to_string_lossy().to_string()))
+        } else {
+            Err(LabeledError::new("Backup Failed")
+                .with_label("Cannot determine config directory for backup", span))
+        }
+    } else {
+        // If we can't access current config, return None to indicate a warning
+        Ok(None)
+    }
+}
+
+/// Build the result record for a successful reset, including default settings.
+fn build_reset_result(backup_info: &Record, span: nu_protocol::Span) -> Record {
+    let mut record = backup_info.clone();
+
+    record.push(
+        "status",
+        Value::string("Configuration reset to defaults", span),
+    );
+    record.push(
+        "config_file",
+        Value::string(
+            crate::config::get_config_file_path()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|| "Unknown".to_string()),
+            span,
+        ),
+    );
+
+    let mut defaults_record = Record::new();
+    defaults_record.push("redaction_style", Value::string("typed_brackets", span));
+    defaults_record.push("security_level", Value::string("standard", span));
+    defaults_record.push("show_type_info", Value::bool(true, span));
+    defaults_record.push("preserve_length", Value::bool(false, span));
+
+    record.push("default_settings", Value::record(defaults_record, span));
+
+    record
+}
+
 impl PluginCommand for SecretConfigResetCommand {
     type Plugin = crate::SecretPlugin;
 
@@ -67,42 +129,21 @@ impl PluginCommand for SecretConfigResetCommand {
             ));
         }
 
-        let mut result_record = Record::new();
+        let mut backup_record = Record::new();
 
         // Create backup if requested
         if call.has_flag("backup")? {
-            // Get current configuration from plugin for backup
-            if let Ok(current_manager) = plugin.config_manager().read() {
-                let backup_timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-                let backup_filename = format!("config_backup_{}.toml", backup_timestamp);
-
-                if let Some(config_dir) = crate::config::get_config_file_path()
-                    .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-                {
-                    let backup_path = config_dir.join(&backup_filename);
-
-                    match current_manager.save_to_path(&backup_path) {
-                        Ok(()) => {
-                            result_record.push(
-                                "backup_created",
-                                Value::string(backup_path.to_string_lossy().to_string(), span),
-                            );
-                        }
-                        Err(e) => {
-                            return Err(LabeledError::new("Backup Failed")
-                                .with_label(format!("Failed to create backup: {}", e), span));
-                        }
-                    }
-                } else {
-                    return Err(LabeledError::new("Backup Failed")
-                        .with_label("Cannot determine config directory for backup", span));
+            match create_backup(plugin, span)? {
+                Some(backup_path) => {
+                    backup_record.push("backup_created", Value::string(backup_path, span));
                 }
-            } else {
-                // If we can't access current config, warn but continue with reset
-                result_record.push(
-                    "backup_warning",
-                    Value::string("Could not backup current config: lock error", span),
-                );
+                None => {
+                    // If we can't access current config, warn but continue with reset
+                    backup_record.push(
+                        "backup_warning",
+                        Value::string("Could not backup current config: lock error", span),
+                    );
+                }
             }
         }
 
@@ -131,28 +172,7 @@ impl PluginCommand for SecretConfigResetCommand {
                 .with_label("Failed to acquire write lock on configuration", span));
         }
 
-        result_record.push(
-            "status",
-            Value::string("Configuration reset to defaults", span),
-        );
-        result_record.push(
-            "config_file",
-            Value::string(
-                crate::config::get_config_file_path()
-                    .map(|p| p.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "Unknown".to_string()),
-                span,
-            ),
-        );
-
-        // Show what the defaults are
-        let mut defaults_record = Record::new();
-        defaults_record.push("redaction_style", Value::string("typed_brackets", span));
-        defaults_record.push("security_level", Value::string("standard", span));
-        defaults_record.push("show_type_info", Value::bool(true, span));
-        defaults_record.push("preserve_length", Value::bool(false, span));
-
-        result_record.push("default_settings", Value::record(defaults_record, span));
+        let result_record = build_reset_result(&backup_record, span);
 
         Ok(PipelineData::Value(
             Value::record(result_record, span),

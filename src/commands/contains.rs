@@ -13,6 +13,104 @@ use crate::{
 #[derive(Clone)]
 pub struct SecretContainsCommand;
 
+/// Compare a secret custom value against a search value, returning a boolean result.
+///
+/// Handles type dispatch for all eight secret types. Returns a type mismatch error
+/// if the search value's type does not match the secret's inner type.
+fn compare_secret_value(
+    val: &dyn nu_protocol::CustomValue,
+    search_value: &Value,
+    span: nu_protocol::Span,
+) -> Result<Value, LabeledError> {
+    if let Some(secret_string) = val.as_any().downcast_ref::<SecretString>() {
+        match search_value {
+            Value::String {
+                val: search_str, ..
+            } => Ok(Value::bool(secret_string.reveal() == search_str, span)),
+            _ => Err(LabeledError::new("Type mismatch")
+                .with_label("Expected string value to compare with SecretString", span)),
+        }
+    } else if let Some(secret_int) = val.as_any().downcast_ref::<SecretInt>() {
+        match search_value {
+            Value::Int {
+                val: search_int, ..
+            } => Ok(Value::bool(secret_int.reveal() == *search_int, span)),
+            _ => Err(LabeledError::new("Type mismatch")
+                .with_label("Expected integer value to compare with SecretInt", span)),
+        }
+    } else if let Some(secret_bool) = val.as_any().downcast_ref::<SecretBool>() {
+        match search_value {
+            Value::Bool {
+                val: search_bool, ..
+            } => Ok(Value::bool(secret_bool.reveal() == *search_bool, span)),
+            _ => Err(LabeledError::new("Type mismatch")
+                .with_label("Expected boolean value to compare with SecretBool", span)),
+        }
+    } else if let Some(secret_float) = val.as_any().downcast_ref::<SecretFloat>() {
+        match search_value {
+            Value::Float {
+                val: search_float, ..
+            } => {
+                // Use epsilon comparison for floating point values
+                let diff = (secret_float.reveal() - search_float).abs();
+                Ok(Value::bool(diff < f64::EPSILON, span))
+            }
+            _ => Err(LabeledError::new("Type mismatch")
+                .with_label("Expected float value to compare with SecretFloat", span)),
+        }
+    } else if let Some(secret_date) = val.as_any().downcast_ref::<SecretDate>() {
+        match search_value {
+            Value::Date {
+                val: search_date, ..
+            } => Ok(Value::bool(secret_date.reveal() == search_date, span)),
+            _ => Err(LabeledError::new("Type mismatch")
+                .with_label("Expected date value to compare with SecretDate", span)),
+        }
+    } else if let Some(secret_binary) = val.as_any().downcast_ref::<SecretBinary>() {
+        match search_value {
+            Value::Binary {
+                val: search_binary, ..
+            } => Ok(Value::bool(
+                secret_binary.reveal().as_ref() == search_binary.as_slice(),
+                span,
+            )),
+            _ => Err(LabeledError::new("Type mismatch")
+                .with_label("Expected binary value to compare with SecretBinary", span)),
+        }
+    } else if let Some(secret_list) = val.as_any().downcast_ref::<SecretList>() {
+        match search_value {
+            Value::List {
+                vals: search_list, ..
+            } => {
+                // Create Value::List instances for comparison since Value implements PartialEq
+                let secret_value = Value::list(secret_list.reveal().clone(), span);
+                let search_value_list = Value::list(search_list.clone(), span);
+                Ok(Value::bool(secret_value == search_value_list, span))
+            }
+            _ => Err(LabeledError::new("Type mismatch")
+                .with_label("Expected list value to compare with SecretList", span)),
+        }
+    } else if let Some(secret_record) = val.as_any().downcast_ref::<SecretRecord>() {
+        match search_value {
+            Value::Record {
+                val: search_record, ..
+            } => {
+                // Create Value::Record instances for comparison since Value implements PartialEq
+                let secret_value = Value::record(secret_record.reveal().clone(), span);
+                let search_value_record = Value::record((**search_record).clone(), span);
+                Ok(Value::bool(secret_value == search_value_record, span))
+            }
+            _ => Err(LabeledError::new("Type mismatch")
+                .with_label("Expected record value to compare with SecretRecord", span)),
+        }
+    } else {
+        Err(LabeledError::new("Invalid input").with_label(
+            "Input must be a secret type (SecretString, SecretInt, etc.)",
+            span,
+        ))
+    }
+}
+
 impl PluginCommand for SecretContainsCommand {
     type Plugin = crate::SecretPlugin;
 
@@ -97,138 +195,7 @@ impl PluginCommand for SecretContainsCommand {
             PipelineData::Value(value, metadata) => {
                 let result = match value {
                     Value::Custom { val, .. } => {
-                        if let Some(secret_string) = val.as_any().downcast_ref::<SecretString>() {
-                            match &search_value {
-                                Value::String {
-                                    val: search_str, ..
-                                } => Value::bool(secret_string.reveal() == search_str, call.head),
-                                _ => {
-                                    return Err(LabeledError::new("Type mismatch").with_label(
-                                        "Expected string value to compare with SecretString",
-                                        call.head,
-                                    ));
-                                }
-                            }
-                        } else if let Some(secret_int) = val.as_any().downcast_ref::<SecretInt>() {
-                            match &search_value {
-                                Value::Int {
-                                    val: search_int, ..
-                                } => Value::bool(secret_int.reveal() == *search_int, call.head),
-                                _ => {
-                                    return Err(LabeledError::new("Type mismatch").with_label(
-                                        "Expected integer value to compare with SecretInt",
-                                        call.head,
-                                    ));
-                                }
-                            }
-                        } else if let Some(secret_bool) = val.as_any().downcast_ref::<SecretBool>()
-                        {
-                            match &search_value {
-                                Value::Bool {
-                                    val: search_bool, ..
-                                } => Value::bool(secret_bool.reveal() == *search_bool, call.head),
-                                _ => {
-                                    return Err(LabeledError::new("Type mismatch").with_label(
-                                        "Expected boolean value to compare with SecretBool",
-                                        call.head,
-                                    ));
-                                }
-                            }
-                        } else if let Some(secret_float) =
-                            val.as_any().downcast_ref::<SecretFloat>()
-                        {
-                            match &search_value {
-                                Value::Float {
-                                    val: search_float, ..
-                                } => {
-                                    // Use epsilon comparison for floating point values
-                                    let diff = (secret_float.reveal() - search_float).abs();
-                                    Value::bool(diff < f64::EPSILON, call.head)
-                                }
-                                _ => {
-                                    return Err(LabeledError::new("Type mismatch").with_label(
-                                        "Expected float value to compare with SecretFloat",
-                                        call.head,
-                                    ));
-                                }
-                            }
-                        } else if let Some(secret_date) = val.as_any().downcast_ref::<SecretDate>()
-                        {
-                            match &search_value {
-                                Value::Date {
-                                    val: search_date, ..
-                                } => Value::bool(secret_date.reveal() == search_date, call.head),
-                                _ => {
-                                    return Err(LabeledError::new("Type mismatch").with_label(
-                                        "Expected date value to compare with SecretDate",
-                                        call.head,
-                                    ));
-                                }
-                            }
-                        } else if let Some(secret_binary) =
-                            val.as_any().downcast_ref::<SecretBinary>()
-                        {
-                            match &search_value {
-                                Value::Binary {
-                                    val: search_binary, ..
-                                } => Value::bool(
-                                    secret_binary.reveal().as_ref() == search_binary.as_slice(),
-                                    call.head,
-                                ),
-                                _ => {
-                                    return Err(LabeledError::new("Type mismatch").with_label(
-                                        "Expected binary value to compare with SecretBinary",
-                                        call.head,
-                                    ));
-                                }
-                            }
-                        } else if let Some(secret_list) = val.as_any().downcast_ref::<SecretList>()
-                        {
-                            match &search_value {
-                                Value::List {
-                                    vals: search_list, ..
-                                } => {
-                                    // Create Value::List instances for comparison since Value implements PartialEq
-                                    let secret_value =
-                                        Value::list(secret_list.reveal().clone(), call.head);
-                                    let search_value_list =
-                                        Value::list(search_list.clone(), call.head);
-                                    Value::bool(secret_value == search_value_list, call.head)
-                                }
-                                _ => {
-                                    return Err(LabeledError::new("Type mismatch").with_label(
-                                        "Expected list value to compare with SecretList",
-                                        call.head,
-                                    ));
-                                }
-                            }
-                        } else if let Some(secret_record) =
-                            val.as_any().downcast_ref::<SecretRecord>()
-                        {
-                            match &search_value {
-                                Value::Record {
-                                    val: search_record, ..
-                                } => {
-                                    // Create Value::Record instances for comparison since Value implements PartialEq
-                                    let secret_value =
-                                        Value::record(secret_record.reveal().clone(), call.head);
-                                    let search_value_record =
-                                        Value::record((**search_record).clone(), call.head);
-                                    Value::bool(secret_value == search_value_record, call.head)
-                                }
-                                _ => {
-                                    return Err(LabeledError::new("Type mismatch").with_label(
-                                        "Expected record value to compare with SecretRecord",
-                                        call.head,
-                                    ));
-                                }
-                            }
-                        } else {
-                            return Err(LabeledError::new("Invalid input").with_label(
-                                "Input must be a secret type (SecretString, SecretInt, etc.)",
-                                call.head,
-                            ));
-                        }
+                        compare_secret_value(val.as_ref(), &search_value, call.head)?
                     }
                     _ => {
                         return Err(LabeledError::new("Invalid input")

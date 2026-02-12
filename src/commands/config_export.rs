@@ -12,6 +12,45 @@ use crate::config::ConfigManager;
 /// Command to export configuration to a file
 pub struct SecretConfigExportCommand;
 
+/// Build the result record summarising a successful configuration export.
+fn build_export_result(
+    manager: &ConfigManager,
+    export_path: &std::path::Path,
+    span: nu_protocol::Span,
+) -> Record {
+    let mut record = Record::new();
+
+    record.push(
+        "status",
+        Value::string("Configuration exported successfully", span),
+    );
+    record.push(
+        "export_path",
+        Value::string(export_path.to_string_lossy().to_string(), span),
+    );
+
+    if let Some(source_path) = crate::config::get_config_file_path() {
+        record.push(
+            "source_config",
+            Value::string(source_path.to_string_lossy().to_string(), span),
+        );
+    }
+
+    record.push(
+        "redaction_template",
+        Value::string(manager.config().redaction.get_redaction_template(), span),
+    );
+    record.push(
+        "security_level",
+        Value::string(
+            format!("{:?}", manager.config().security.level).to_lowercase(),
+            span,
+        ),
+    );
+
+    record
+}
+
 impl PluginCommand for SecretConfigExportCommand {
     type Plugin = crate::SecretPlugin;
 
@@ -87,37 +126,7 @@ impl PluginCommand for SecretConfigExportCommand {
                 .with_label(format!("Failed to export configuration: {}", e), span)
         })?;
 
-        // Create result record
-        let mut record = Record::new();
-        record.push(
-            "status",
-            Value::string("Configuration exported successfully", span),
-        );
-        record.push(
-            "export_path",
-            Value::string(export_path.to_string_lossy().to_string(), span),
-        );
-
-        // Add source configuration file path
-        if let Some(source_path) = crate::config::get_config_file_path() {
-            record.push(
-                "source_config",
-                Value::string(source_path.to_string_lossy().to_string(), span),
-            );
-        }
-
-        // Add configuration summary
-        record.push(
-            "redaction_template",
-            Value::string(manager.config().redaction.get_redaction_template(), span),
-        );
-        record.push(
-            "security_level",
-            Value::string(
-                format!("{:?}", manager.config().security.level).to_lowercase(),
-                span,
-            ),
-        );
+        let record = build_export_result(&manager, &export_path, span);
 
         Ok(PipelineData::Value(Value::record(record, span), None))
     }

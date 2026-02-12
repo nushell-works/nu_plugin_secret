@@ -380,19 +380,8 @@ pub fn get_config_file_path() -> Option<PathBuf> {
     })
 }
 
-/// Log configuration changes for audit purposes
-pub fn audit_config_change(
-    old_config: &PluginConfig,
-    new_config: &PluginConfig,
-) -> Result<(), ConfigError> {
-    use std::io::Write;
-
-    // Only log if there are actual changes
-    if old_config == new_config {
-        return Ok(());
-    }
-
-    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+/// Collect the list of human-readable change descriptions between two configs.
+fn collect_config_changes(old_config: &PluginConfig, new_config: &PluginConfig) -> Vec<String> {
     let mut changes = Vec::new();
 
     // Track redaction template changes
@@ -419,44 +408,72 @@ pub fn audit_config_change(
         ));
     }
 
-    if !changes.is_empty() {
-        // Try to write to audit log file
-        if let Some(config_dir) =
-            get_config_file_path().and_then(|p| p.parent().map(|p| p.to_path_buf()))
-        {
-            let audit_file = config_dir.join("audit.log");
+    changes
+}
 
-            // Create directory if it doesn't exist
-            if let Err(e) = std::fs::create_dir_all(&config_dir) {
-                eprintln!(
-                    "Warning: Failed to create config directory for audit log: {}",
-                    e
-                );
+/// Write a timestamped audit log entry for the given changes.
+///
+/// Silently prints warnings to stderr and returns `Ok(())` if the audit log
+/// file cannot be written, to avoid blocking the caller.
+fn write_audit_log_entry(changes: &[String]) -> Result<(), ConfigError> {
+    use std::io::Write;
+
+    let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+
+    if let Some(config_dir) =
+        get_config_file_path().and_then(|p| p.parent().map(|p| p.to_path_buf()))
+    {
+        let audit_file = config_dir.join("audit.log");
+
+        // Create directory if it doesn't exist
+        if let Err(e) = std::fs::create_dir_all(&config_dir) {
+            eprintln!(
+                "Warning: Failed to create config directory for audit log: {}",
+                e
+            );
+            return Ok(());
+        }
+
+        // Append to audit log
+        let mut file = match std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&audit_file)
+        {
+            Ok(file) => file,
+            Err(e) => {
+                eprintln!("Warning: Failed to open audit log file: {}", e);
                 return Ok(());
             }
+        };
 
-            // Append to audit log
-            let mut file = match std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&audit_file)
-            {
-                Ok(file) => file,
-                Err(e) => {
-                    eprintln!("Warning: Failed to open audit log file: {}", e);
-                    return Ok(());
-                }
-            };
-
-            let log_entry = format!(
-                "[{}] Configuration changed: {}\n",
-                timestamp,
-                changes.join(", ")
-            );
-            if let Err(e) = file.write_all(log_entry.as_bytes()) {
-                eprintln!("Warning: Failed to write to audit log: {}", e);
-            }
+        let log_entry = format!(
+            "[{}] Configuration changed: {}\n",
+            timestamp,
+            changes.join(", ")
+        );
+        if let Err(e) = file.write_all(log_entry.as_bytes()) {
+            eprintln!("Warning: Failed to write to audit log: {}", e);
         }
+    }
+
+    Ok(())
+}
+
+/// Log configuration changes for audit purposes
+pub fn audit_config_change(
+    old_config: &PluginConfig,
+    new_config: &PluginConfig,
+) -> Result<(), ConfigError> {
+    // Only log if there are actual changes
+    if old_config == new_config {
+        return Ok(());
+    }
+
+    let changes = collect_config_changes(old_config, new_config);
+
+    if !changes.is_empty() {
+        write_audit_log_entry(&changes)?;
     }
 
     Ok(())
