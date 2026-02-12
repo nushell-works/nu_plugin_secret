@@ -60,6 +60,8 @@ TOML-based config loaded from `~/.local/share/nushell/plugins/secret/config.toml
 
 ## Code Quality Rules
 
+See [docs/STYLE_GUIDE.md](docs/STYLE_GUIDE.md) for detailed, numbered coding conventions.
+
 - **NEVER** use hardcoded mathematical constants (`3.14`, `2.718`). Use `std::f64::consts::PI`, `E`, `TAU` to avoid clippy `approx_constant` warnings.
 - Write Miri-compatible code where possible (avoid system time in tests under Miri; config loading is `#[cfg(not(miri))]`-gated).
 - This is security-focused code — never introduce changes that could leak sensitive information in display, debug, or log output.
