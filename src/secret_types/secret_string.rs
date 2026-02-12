@@ -1,3 +1,5 @@
+//! Secure string type with redacted display and zeroed-on-drop memory.
+
 use std::fmt;
 
 use nu_protocol::ast::{Comparison, Operator};

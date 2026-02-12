@@ -1,3 +1,5 @@
+//! Implements `secret hash` — computes a cryptographic hash of a secret value.
+
 use blake3;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{

@@ -1,3 +1,5 @@
+//! Secure date type with redacted display and zeroed-on-drop memory.
+
 use std::fmt;
 
 use chrono::{self, Datelike};

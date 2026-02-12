@@ -1,3 +1,5 @@
+//! Secure integer type with redacted display and zeroed-on-drop memory.
+
 use std::fmt;
 
 use nu_protocol::CustomValue;

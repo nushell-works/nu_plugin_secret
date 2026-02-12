@@ -1,3 +1,5 @@
+//! Command implementations for the `secret` plugin.
+
 mod config_export;
 mod config_import;
 mod config_reset;

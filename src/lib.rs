@@ -1,3 +1,5 @@
+//! Core library for `nu_plugin_secret` — registers commands and re-exports secret types.
+
 use std::sync::{Arc, RwLock};
 
 use nu_plugin::{Plugin, PluginCommand};

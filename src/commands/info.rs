@@ -1,3 +1,5 @@
+//! Implements `secret info` — displays plugin version and metadata.
+
 use nu_plugin::{EngineInterface, EvaluatedCall, Plugin, PluginCommand};
 use nu_protocol::{Category, Example, LabeledError, PipelineData, Record, Signature, Type, Value};
 

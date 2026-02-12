@@ -1,3 +1,5 @@
+//! Implements `secret wrap` — wraps a Nushell value into a secret type.
+
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 

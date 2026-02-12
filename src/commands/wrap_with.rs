@@ -1,3 +1,5 @@
+//! Implements `secret wrap-with` — wraps a value with a custom redaction template.
+
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Signature, SyntaxShape, Type, Value,

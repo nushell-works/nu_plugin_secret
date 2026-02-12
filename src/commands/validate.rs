@@ -1,3 +1,5 @@
+//! Implements `secret validate` — checks whether a value is a valid secret type.
+
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 

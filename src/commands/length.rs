@@ -1,3 +1,5 @@
+//! Implements `secret length` — returns the length of a secret value.
+
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 

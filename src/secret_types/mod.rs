@@ -1,3 +1,5 @@
+//! Secure custom value types that redact content in display while preserving data in pipelines.
+
 mod secret_binary;
 mod secret_bool;
 mod secret_date;

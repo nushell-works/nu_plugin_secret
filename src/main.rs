@@ -1,3 +1,5 @@
+//! Plugin binary entry point — serves `SecretPlugin` via MsgPackSerializer.
+
 use std::time::Instant;
 
 use nu_plugin::{serve_plugin, MsgPackSerializer};

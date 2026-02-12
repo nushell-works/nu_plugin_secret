@@ -1,3 +1,5 @@
+//! Implements `secret unwrap` — extracts the underlying value from a secret.
+
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 
