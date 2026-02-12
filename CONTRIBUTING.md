@@ -228,7 +228,7 @@ nu -c 'secret info'
 - [ ] API documentation updated
 
 ## Checklist
-- [ ] Code follows project style guidelines
+- [ ] Code follows project [style guidelines](docs/STYLE_GUIDE.md)
 - [ ] Self-review completed
 - [ ] Quality checks pass (`./scripts/check.sh`)
 - [ ] Security considerations documented

@@ -44,7 +44,7 @@
 
 ## Code Quality
 <!-- Mark the relevant options with an "x" -->
-- [ ] Code follows project style guidelines
+- [ ] Code follows project [style guidelines](docs/STYLE_GUIDE.md)
 - [ ] Self-review completed
 - [ ] Quality checks pass (`./scripts/check.sh`)
 - [ ] No new clippy warnings
