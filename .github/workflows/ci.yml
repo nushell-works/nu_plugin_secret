@@ -267,8 +267,10 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install Rust toolchain
+        # Pinned: nightly-2026-02-12 breaks Miri (https://github.com/rust-lang/miri/issues/4855)
         uses: dtolnay/rust-toolchain@nightly
         with:
+          toolchain: nightly-2026-02-11
           components: rust-src, miri
 
       - name: Cache cargo registry
