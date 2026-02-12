@@ -1,6 +1,6 @@
 # Style Guide
 
-Coding conventions for the nu_plugin_nw_ulid project. Each item has a unique ID for easy reference.
+Coding conventions for the nu_plugin_secret project. Each item has a unique ID for easy reference.
 
 ## STYLE-0000: Style guide structure
 
@@ -63,18 +63,6 @@ Considering `unwrap()`, `expect()`, or other panicking calls.
 
 **`unwrap()` is acceptable** in these cases only:
 
-- **Static regex** — use `std::sync::LazyLock` so the pattern is compiled once and the
-  `unwrap()` is confined to the initialiser. Clippy's `invalid_regex` lint (deny by default)
-  validates the literal at compile time, so the `unwrap()` is provably safe.
-
-  ```rust
-  use std::sync::LazyLock;
-  use regex::Regex;
-
-  static SCOPE_RE: LazyLock<Regex> =
-      LazyLock::new(|| Regex::new(r"^[a-z][a-z0-9-]*$").unwrap());
-  ```
-
 - **Known-safe constructors** — `FixedOffset::east_opt(0).unwrap()` where the argument is
   a constant that cannot fail.
 - **Test code** — tests may use `unwrap()` freely.
@@ -85,15 +73,24 @@ Considering `unwrap()`, `expect()`, or other panicking calls.
 io::stdout().flush().expect("Failed to flush stdout");
 ```
 
+**Prefer `unwrap_or_else` or `unwrap_or`** when a sensible fallback exists. This is the
+dominant pattern in the codebase:
+
+```rust
+// Good — graceful fallback with context
+let config_manager = ConfigManager::load().unwrap_or_else(|_| {
+    ConfigManager::new(PluginConfig::default())
+});
+```
+
 **Never** use `unwrap()` or `expect()` on user-supplied or runtime data in library code.
 Use `?` with appropriate error conversion instead.
 
 ### Motivation
 
 Panics in library code produce poor diagnostics and cannot be handled by callers. Limiting
-panics to provably-safe or catastrophic cases keeps the error surface predictable.
-A lazy static avoids recompiling the regex on every call and makes the safety argument
-obvious at the declaration site.
+panics to provably-safe or catastrophic cases keeps the error surface predictable. Preferring
+`unwrap_or_else` with fallbacks keeps the plugin resilient to configuration or I/O failures.
 
 ---
 
@@ -107,15 +104,15 @@ Naming a new type, function, CLI command, or constant.
 
 ### Guidance
 
-| Element           | Convention            | Examples                                      |
-|-------------------|-----------------------|-----------------------------------------------|
-| Structs / Enums   | PascalCase            | `UlidEngine`, `UlidError`, `SecurityRating`   |
-| Traits            | PascalCase (adj/verb) | `PluginCommand`, `Serialize`, `Display`       |
-| Functions/Methods | snake_case            | `extract_timestamp()`, `validate()`           |
-| Type aliases      | PascalCase            | `Result<T>` (for crate-local aliases)         |
-| Constants         | UPPER_SNAKE_CASE      | `ULID_STRING_LENGTH`, `DEFAULT_BATCH_SIZE`    |
-| CLI commands      | kebab-case            | `ulid generate`, `ulid encode-base32`         |
-| Modules / files   | snake_case            | `ulid_engine.rs`, `security.rs`               |
+| Element           | Convention            | Examples                                         |
+|-------------------|-----------------------|--------------------------------------------------|
+| Structs / Enums   | PascalCase            | `SecretPlugin`, `ConfigError`, `SecurityLevel`   |
+| Traits            | PascalCase (adj/verb) | `PluginCommand`, `Serialize`, `CustomValue`      |
+| Functions/Methods | snake_case            | `init_redaction_templating()`, `reveal()`        |
+| Type aliases      | PascalCase            | `Result<T>` (for crate-local aliases)            |
+| Constants         | UPPER_SNAKE_CASE      | `REDACTION_TEMPLATE`, `TEMPLATE_NAME`            |
+| CLI commands      | kebab-case            | `secret wrap`, `secret wrap-with`                |
+| Modules / files   | snake_case            | `secret_string.rs`, `config.rs`                  |
 
 ### Motivation
 
@@ -150,20 +147,23 @@ Follow the [Conventional Commits](https://www.conventionalcommits.org/) specific
 
 **Scopes** (use the most specific that applies):
 
-| Scope      | Covers                                        |
-|------------|-----------------------------------------------|
-| `plugin`   | Plugin registration, command dispatch         |
-| `engine`   | Core UlidEngine operations                    |
-| `commands` | Individual command implementations            |
-| `security` | Security warnings, rating system              |
-| `error`    | Error types and conversion                    |
-| `ci`       | CI/CD workflows and configuration             |
-| `deps`     | Dependency updates                            |
-| `docs`     | Documentation                                 |
-| `release`  | Version bumps, release process                |
+| Scope           | Covers                                       |
+|-----------------|----------------------------------------------|
+| `core`          | Plugin registration, command dispatch        |
+| `commands`      | Individual command implementations           |
+| `secret-types`  | Secret type definitions and behaviour        |
+| `config`        | Configuration system and validation          |
+| `redaction`     | Redaction templating system                  |
+| `tera-functions`| Custom Tera template functions               |
+| `templates`     | Template engine integration                  |
+| `memory`        | Memory optimisation and zeroization          |
+| `ci`            | CI/CD workflows and configuration            |
+| `deps`          | Dependency updates                           |
+| `docs`          | Documentation                                |
+| `release`       | Version bumps, release process               |
 
 **Multi-scope commits** — when a change touches multiple scopes equally, list them
-comma-separated: `style(engine,commands): standardise doc comments`.
+comma-separated: `refactor(redaction,templates): extract Tera functions`.
 
 **Subject line rules:**
 
@@ -193,18 +193,18 @@ Adding or updating documentation on a module, type, or function.
 **Module-level docs** — every module file starts with a `//!` comment:
 
 ```rust
-//! Core ULID engine providing all ULID operations for the plugin.
+//! Tera-based redaction templating system
 ```
 
 **Item-level docs** — every public struct, enum, field, variant, and method gets `///`:
 
 ```rust
-/// Parsed components of a ULID.
-pub struct UlidComponents {
-    /// ISO 8601 timestamp extracted from the ULID.
-    pub timestamp: String,
-    /// Hexadecimal representation of the random component.
-    pub randomness_hex: String,
+/// Errors that can occur during configuration operations
+pub enum ConfigError {
+    /// IO error during config file access
+    Io(#[from] std::io::Error),
+    /// TOML parsing error in config file
+    TomlParse(#[from] toml::de::Error),
 }
 ```
 
@@ -213,11 +213,11 @@ pub struct UlidComponents {
 sentences ending with a period:
 
 ```rust
-/// Generates a new ULID with the current timestamp.
-pub fn generate() -> Result<String, UlidError> { ... }
+/// Initializes the Tera template engine for redaction.
+pub fn init_redaction_templating() -> Result<(), tera::Error> { ... }
 
-/// Returns `true` if the string is a valid ULID.
-pub fn validate(input: &str) -> bool { ... }
+/// Returns `true` if the input matches the secret's content.
+pub fn contains(&self, needle: &str) -> bool { ... }
 ```
 
 | Correct (third-person)         | Incorrect (imperative)        |
@@ -254,14 +254,15 @@ Group imports into three blocks separated by a blank line, in this order:
 Within each group, let `cargo fmt` sort alphabetically.
 
 ```rust
-use std::str::FromStr;
+use std::fmt;
+use std::sync::OnceLock;
 
-use nu_protocol::{Record, Span, Value};
+use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Serialize};
-use ulid::Ulid;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
-use crate::security::SecurityWarnings;
-use crate::UlidEngine;
+use crate::config::RedactionContext;
+use crate::redaction;
 ```
 
 **Enforcement note:** The rustfmt option `group_imports = "StdExternalCrate"` that codifies
@@ -327,8 +328,8 @@ This project should not require `unsafe` code. If `unsafe` is ever needed, it mu
 ### Motivation
 
 This project has no need for `unsafe` — it delegates low-level operations to well-audited
-dependencies (`ulid`, `chrono`, `sha2`, `blake3`). Requiring an ADR for any exception
-ensures the decision is reviewed and documented.
+dependencies (`zeroize`, `chrono`, `sha2`, `blake3`, `tera`). Requiring an ADR for any
+exception ensures the decision is reviewed and documented.
 
 ---
 
@@ -347,10 +348,10 @@ Discarding the result is almost certainly a bug:
 
 ```rust
 #[must_use]
-pub fn validate(input: &str) -> bool { ... }
+pub fn reveal(&self) -> &str { ... }
 
 #[must_use]
-pub fn is_security_sensitive_context(description: &str) -> bool { ... }
+pub fn contains(&self, needle: &str) -> bool { ... }
 ```
 
 **Do not apply** `#[must_use]` to:
@@ -381,11 +382,11 @@ Deciding whether a function parameter should be `&str`, `String`, or generic.
 
 Use the cheapest type that satisfies the function's needs:
 
-| The function…                          | Accept              | Example                                     |
-|----------------------------------------|---------------------|---------------------------------------------|
-| Only reads the string                  | `&str`              | `fn validate(input: &str) -> bool`          |
-| Stores the string in a struct/`Vec`    | `String`            | `fn set_title(&mut self, title: String)`    |
-| Needs flexibility (public API surface) | `impl Into<String>` | `fn new(name: impl Into<String>) -> Self`   |
+| The function…                          | Accept              | Example                                      |
+|----------------------------------------|---------------------|----------------------------------------------|
+| Only reads the string                  | `&str`              | `fn contains(&self, needle: &str) -> bool`   |
+| Stores the string in a struct/`Vec`    | `String`            | `fn new(inner: String) -> Self`              |
+| Needs flexibility (public API surface) | `impl Into<String>` | `fn new(name: impl Into<String>) -> Self`    |
 
 Prefer `&str` for internal helpers and `impl Into<String>` sparingly — only at public API
 boundaries where caller ergonomics justify the generic. Avoid `impl AsRef<str>` unless you
@@ -397,19 +398,18 @@ borrow-or-own flexibility is needed.
 
 ```rust
 // Good — borrows for read-only access
-pub fn timestamp(&self) -> &str {
-    &self.timestamp
+pub fn reveal(&self) -> &str {
+    &self.inner
 }
 
 // Good — takes ownership because it stores the value
-pub fn with_title(mut self, title: String) -> Self {
-    self.title = title;
-    self
+pub fn new(inner: String) -> Self {
+    Self { inner, redaction_template: None }
 }
 
 // Good — constructs a new string
-pub fn format_summary(&self) -> String {
-    format!("{}: {}", self.timestamp, self.randomness_hex)
+pub fn redacted_display(&self) -> String {
+    format!("<redacted:{}>", self.secret_type())
 }
 ```
 
@@ -436,25 +436,12 @@ Extract **magic literals** into named constants or `const` items. A literal is "
 purpose is not self-evident at the usage site:
 
 ```rust
-// Bad — what does 26 mean?
-if input.len() != 26 {
+// Bad — what does this string mean?
+if template == "<redacted:{{secret_type}}>" {
 
 // Good — the name documents the intent
-const ULID_STRING_LENGTH: usize = 26;
-if input.len() != ULID_STRING_LENGTH {
-```
-
-```rust
-// Bad — why 10_000?
-if count > 10_000 {
-    return Err(...)
-}
-
-// Good
-const MAX_BULK_GENERATION: usize = 10_000;
-if count > MAX_BULK_GENERATION {
-    return Err(...)
-}
+const REDACTION_TEMPLATE: &str = "<redacted:{{secret_type}}>";
+if template == REDACTION_TEMPLATE {
 ```
 
 Literals that do **not** need extraction:
@@ -463,6 +450,8 @@ Literals that do **not** need extraction:
 - **Format strings** — `format!("{}: {}", key, value)`.
 - **Known-safe constructor arguments** — `FixedOffset::east_opt(0)` (covered by STYLE-0001).
 - **Test assertions** — `assert_eq!(result.len(), 3)` where the value is local to the test.
+- **Serialization field counts** — `serializer.serialize_struct("SecretString", 2)` where the
+  count is immediately obvious from context.
 
 Place constants at the narrowest useful scope: module-level `const` if used across functions in
 the same module, crate-level if shared across modules, or function-local `const` if truly local.
@@ -470,8 +459,9 @@ the same module, crate-level if shared across modules, or function-local `const`
 ### Motivation
 
 Named constants make the code self-documenting and provide a single point of change when a value
-needs updating. Searching for `ULID_STRING_LENGTH` finds every usage; searching for `26` returns
-hundreds of false positives. The exceptions prevent over-extraction of trivially obvious values.
+needs updating. Searching for `REDACTION_TEMPLATE` finds every usage; searching for the raw
+template string returns false positives. The exceptions prevent over-extraction of trivially
+obvious values.
 
 ---
 
@@ -491,23 +481,22 @@ sub-operations into well-named helper functions.
 
 Common extraction targets:
 
-- **Setup / teardown** — opening resources, building configuration structs.
+- **Setup / teardown** — initialising the Tera engine, loading configuration.
 - **Distinct phases** — validation, transformation, output formatting.
 - **Repeated patterns** — similar blocks that differ only in parameters.
-- **Nested closures or callbacks** — especially credential handlers, diff callbacks.
+- **Match arms** — large `match` blocks over `Value` variants (common in command `run` methods).
 
 ```rust
-// Before — 120-line run() mixing validation, parsing, formatting, and output
+// Before — long run() mixing validation, type dispatch, and wrapping
 fn run(&self, ...) -> Result<PipelineData, LabeledError> {
-    // ... 120 lines ...
+    // ... 100+ lines ...
 }
 
 // After — orchestrator delegates to focused helpers
 fn run(&self, ...) -> Result<PipelineData, LabeledError> {
-    let input = self.parse_input(&call)?;
-    let components = self.build_components(&input)?;
-    let record = self.format_output(components, &call)?;
-    Ok(Value::record(record, span).into_pipeline_data())
+    let input = self.extract_input(&call)?;
+    let secret = self.wrap_value(input)?;
+    Ok(secret.into_pipeline_data())
 }
 ```
 
@@ -556,17 +545,14 @@ for:
    or I/O failure hides broken data from the user:
 
    ```rust
-   // Bad — silently returns 0 on parse failure
-   let timestamp = UlidEngine::extract_timestamp(input).unwrap_or(0);
+   // Bad — silently returns default on load failure
+   let config = ConfigManager::load().unwrap_or_default();
 
-   // Good — the default is documented, or the error is surfaced
-   let timestamp = match UlidEngine::extract_timestamp(input) {
-       Ok(ts) => ts,
-       Err(e) => {
-           eprintln!("Failed to extract timestamp: {e}");
-           0
-       }
-   };
+   // Good — the fallback is documented
+   let config_manager = ConfigManager::load().unwrap_or_else(|_| {
+       // If config loading fails, use default configuration
+       ConfigManager::new(PluginConfig::default())
+   });
    ```
 
 3. **`.unwrap_or_default()` on non-trivial results** — acceptable for genuinely optional data,
@@ -577,6 +563,8 @@ for:
 - Closing a file or flushing a logger during shutdown.
 - Sending on a channel where the receiver may have been dropped.
 - Test cleanup in `Drop` implementations.
+- Template engine initialisation where the `OnceLock` has already been set:
+  `let _ = tera.add_raw_template(TEMPLATE_NAME, REDACTION_TEMPLATE);`
 
 ### Motivation
 
@@ -611,12 +599,11 @@ as an **earlier** commit so that:
 ```
 # Good — reviewable, bisectable, revertible
 git log --oneline
-a1b2c3  refactor(engine): extract timestamp formatting helper
-d4e5f6  feat(commands): add --json output to inspect command
+a1b2c3  refactor(templates): extract Tera functions into dedicated module
+d4e5f6  feat(tera-functions): add mask_partial template function
 
 # Bad — mixed intent, hard to review or revert half of it
-git log --oneline
-f7g8h9  feat(commands): add --json output and refactor timestamp formatting
+f7g8h9  feat(tera-functions): add mask_partial and refactor template engine
 ```
 
 **Acceptable exceptions:**
@@ -653,7 +640,7 @@ would be clearer in separate modules.
 **Signals that a module should be split:**
 
 - It contains multiple independent command or handler types that share little or no private
-  state (e.g., `UlidSortCommand` and `UlidInspectCommand` in one file).
+  state (e.g., `SecretConfigExportCommand` and `SecretHashCommand` in one file).
 - Unrelated sections require scanning past hundreds of lines to find the piece you need.
 - Changes to one logical area routinely cause merge conflicts with work in another area of
   the same file.
