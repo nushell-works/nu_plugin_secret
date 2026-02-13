@@ -228,6 +228,8 @@ impl PluginCommand for SecretConfigValidateCommand {
 
 #[cfg(test)]
 mod tests {
+    use serial_test::serial;
+
     use super::*;
     use crate::config::{ConfigManager, PluginConfig, SecurityLevel};
     use std::env;
@@ -394,6 +396,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(not(miri), serial(env))]
     #[cfg_attr(miri, ignore)] // Miri doesn't support environment variable manipulation in tests
     fn test_environment_variable_detection() {
         // Set some environment variables that should be detected

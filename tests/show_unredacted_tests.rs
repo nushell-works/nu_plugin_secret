@@ -4,9 +4,11 @@ use nu_plugin_secret::config::RedactionContext;
 use nu_plugin_secret::config::{ConfigManager, PluginConfig};
 // Functions moved to redaction module
 use nu_plugin_secret::{SecretBool, SecretInt, SecretString};
+use serial_test::serial;
 use std::env;
 
 #[test]
+#[cfg_attr(not(miri), serial)]
 fn test_show_unredacted_with_secret_string() {
     // Set up environment to show unredacted secrets
     env::set_var("SHOW_UNREDACTED", "1");
