@@ -1,9 +1,12 @@
+//! Implements `secret unwrap` — extracts the underlying value from a secret.
+
+use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
+use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
+
 use crate::{
     SecretBinary, SecretBool, SecretDate, SecretFloat, SecretInt, SecretList, SecretRecord,
     SecretString,
 };
-use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
 
 #[derive(Clone)]
 pub struct SecretUnwrapCommand;

@@ -1,4 +1,5 @@
-use crate::{SecretBinary, SecretList, SecretRecord, SecretString};
+//! Implements `secret hash` — computes a cryptographic hash of a secret value.
+
 use blake3;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
@@ -6,8 +7,39 @@ use nu_protocol::{
 };
 use sha2::{Digest, Sha256, Sha512};
 
+use crate::{SecretBinary, SecretList, SecretRecord, SecretString};
+
 #[derive(Clone)]
 pub struct SecretHashCommand;
+
+/// Compute the hash of a secret custom value using the given algorithm.
+///
+/// Dispatches to the appropriate inner data extraction for each supported
+/// secret type (SecretString, SecretBinary, SecretList, SecretRecord).
+fn hash_secret_value(
+    val: &dyn nu_protocol::CustomValue,
+    algorithm: &HashAlgorithm,
+    span: nu_protocol::Span,
+) -> Result<Value, LabeledError> {
+    if let Some(secret_string) = val.as_any().downcast_ref::<SecretString>() {
+        let data = secret_string.reveal().as_bytes();
+        Ok(Value::string(compute_hash(algorithm, data), span))
+    } else if let Some(secret_binary) = val.as_any().downcast_ref::<SecretBinary>() {
+        let data = secret_binary.reveal();
+        Ok(Value::string(compute_hash(algorithm, &data), span))
+    } else if let Some(secret_list) = val.as_any().downcast_ref::<SecretList>() {
+        let data = serialize_list_for_hash(secret_list)?;
+        Ok(Value::string(compute_hash(algorithm, &data), span))
+    } else if let Some(secret_record) = val.as_any().downcast_ref::<SecretRecord>() {
+        let data = serialize_record_for_hash(secret_record)?;
+        Ok(Value::string(compute_hash(algorithm, &data), span))
+    } else {
+        Err(LabeledError::new("Unsupported secret type").with_label(
+            "Only SecretString, SecretBinary, SecretList, and SecretRecord support hash operation",
+            span,
+        ))
+    }
+}
 
 #[derive(Clone, Debug)]
 pub enum HashAlgorithm {
@@ -141,35 +173,7 @@ impl PluginCommand for SecretHashCommand {
             PipelineData::Value(value, metadata) => {
                 let result = match value {
                     Value::Custom { val, .. } => {
-                        if let Some(secret_string) = val.as_any().downcast_ref::<SecretString>() {
-                            let data = secret_string.reveal().as_bytes();
-                            let hash_hex = compute_hash(&algorithm, data);
-                            Value::string(hash_hex, call.head)
-                        } else if let Some(secret_binary) =
-                            val.as_any().downcast_ref::<SecretBinary>()
-                        {
-                            let data = secret_binary.reveal();
-                            let hash_hex = compute_hash(&algorithm, &data);
-                            Value::string(hash_hex, call.head)
-                        } else if let Some(secret_list) = val.as_any().downcast_ref::<SecretList>()
-                        {
-                            // Serialize the list to bytes for hashing
-                            let data = serialize_list_for_hash(secret_list)?;
-                            let hash_hex = compute_hash(&algorithm, &data);
-                            Value::string(hash_hex, call.head)
-                        } else if let Some(secret_record) =
-                            val.as_any().downcast_ref::<SecretRecord>()
-                        {
-                            // Serialize the record to bytes for hashing
-                            let data = serialize_record_for_hash(secret_record)?;
-                            let hash_hex = compute_hash(&algorithm, &data);
-                            Value::string(hash_hex, call.head)
-                        } else {
-                            return Err(LabeledError::new("Unsupported secret type").with_label(
-                                "Only SecretString, SecretBinary, SecretList, and SecretRecord support hash operation",
-                                call.head,
-                            ));
-                        }
+                        hash_secret_value(val.as_ref(), &algorithm, call.head)?
                     }
                     _ => {
                         return Err(LabeledError::new("Invalid input").with_label(

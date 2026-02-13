@@ -6,6 +6,75 @@ use nu_protocol::{Category, Example, LabeledError, PipelineData, Record, Signatu
 /// Command to display current configuration settings
 pub struct SecretConfigShowCommand;
 
+/// Build the structured configuration display record from a ConfigManager.
+fn build_structured_config_display(
+    config_manager: &crate::config::ConfigManager,
+    span: nu_protocol::Span,
+) -> Record {
+    let mut record = Record::new();
+
+    // General information
+    record.push(
+        "version",
+        Value::string(config_manager.config().version.clone(), span),
+    );
+
+    // Configuration file path
+    if let Some(config_path) = crate::config::get_config_file_path() {
+        record.push(
+            "config_file",
+            Value::string(config_path.to_string_lossy().to_string(), span),
+        );
+    }
+
+    // Redaction configuration
+    let mut redaction_record = Record::new();
+    redaction_record.push(
+        "redaction_template",
+        Value::string(
+            config_manager.config().redaction.get_redaction_template(),
+            span,
+        ),
+    );
+    record.push("redaction", Value::record(redaction_record, span));
+
+    // Security configuration
+    let mut security_record = Record::new();
+    security_record.push(
+        "level",
+        Value::string(
+            format!("{:?}", config_manager.config().security.level).to_lowercase(),
+            span,
+        ),
+    );
+    security_record.push(
+        "audit_config_changes",
+        Value::bool(config_manager.config().security.audit_config_changes, span),
+    );
+    security_record.push(
+        "max_custom_text_length",
+        Value::int(
+            config_manager.config().security.max_custom_text_length as i64,
+            span,
+        ),
+    );
+    record.push("security", Value::record(security_record, span));
+
+    // Environment variable overrides status
+    let env_overrides = std::env::vars()
+        .filter(|(key, _)| key.starts_with("NU_PLUGIN_SECRET_"))
+        .count();
+
+    if env_overrides > 0 {
+        record.push(
+            "environment_overrides",
+            Value::int(env_overrides as i64, span),
+        );
+    }
+
+    record
+}
+
 impl PluginCommand for SecretConfigShowCommand {
     type Plugin = crate::SecretPlugin;
 
@@ -79,69 +148,7 @@ impl PluginCommand for SecretConfigShowCommand {
             return Ok(PipelineData::Value(Value::string(toml_content, span), None));
         }
 
-        // Create structured configuration display
-        let mut record = Record::new();
-
-        // General information
-        record.push(
-            "version",
-            Value::string(config_manager.config().version.clone(), span),
-        );
-
-        // Configuration file path
-        if let Some(config_path) = crate::config::get_config_file_path() {
-            record.push(
-                "config_file",
-                Value::string(config_path.to_string_lossy().to_string(), span),
-            );
-        }
-
-        // Redaction configuration
-        let mut redaction_record = Record::new();
-        redaction_record.push(
-            "redaction_template",
-            Value::string(
-                config_manager.config().redaction.get_redaction_template(),
-                span,
-            ),
-        );
-
-        record.push("redaction", Value::record(redaction_record, span));
-
-        // Security configuration
-        let mut security_record = Record::new();
-        security_record.push(
-            "level",
-            Value::string(
-                format!("{:?}", config_manager.config().security.level).to_lowercase(),
-                span,
-            ),
-        );
-        security_record.push(
-            "audit_config_changes",
-            Value::bool(config_manager.config().security.audit_config_changes, span),
-        );
-        security_record.push(
-            "max_custom_text_length",
-            Value::int(
-                config_manager.config().security.max_custom_text_length as i64,
-                span,
-            ),
-        );
-
-        record.push("security", Value::record(security_record, span));
-
-        // Environment variable overrides status
-        let env_overrides = std::env::vars()
-            .filter(|(key, _)| key.starts_with("NU_PLUGIN_SECRET_"))
-            .count();
-
-        if env_overrides > 0 {
-            record.push(
-                "environment_overrides",
-                Value::int(env_overrides as i64, span),
-            );
-        }
+        let record = build_structured_config_display(&config_manager, span);
 
         Ok(PipelineData::Value(Value::record(record, span), None))
     }

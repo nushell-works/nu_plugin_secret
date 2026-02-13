@@ -12,6 +12,7 @@
 //! - `secret_string()`: Returns the actual secret value (WARNING: exposes sensitive data!)
 
 use std::collections::HashMap;
+
 use tera::{Error as TeraError, Result as TeraResult, Value as TeraValue};
 
 /// Register the replicate function with a Tera instance

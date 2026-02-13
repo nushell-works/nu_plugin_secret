@@ -1,11 +1,169 @@
 //! Configuration validation command for nu_plugin_secret
 
-use crate::config::ConfigManager;
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{Category, Example, LabeledError, PipelineData, Record, Signature, Type, Value};
 
+use crate::config::{ConfigManager, PluginConfig};
+
 /// Command to validate configuration settings
 pub struct SecretConfigValidateCommand;
+
+/// Run all validation checks against a configuration, returning a list of
+/// (category, level, message) tuples plus error/warning flags.
+fn run_validation_checks(
+    config: &PluginConfig,
+) -> (Vec<(&'static str, &'static str, &'static str)>, bool, bool) {
+    let mut results: Vec<(&'static str, &'static str, &'static str)> = Vec::new();
+    let mut has_errors = false;
+    let mut has_warnings = false;
+
+    // Validate using the manager's validation method
+    match ConfigManager::validate_config(config) {
+        Ok(()) => {
+            results.push((
+                "Configuration",
+                "Valid",
+                "Configuration passed all validation checks",
+            ));
+        }
+        Err(e) => {
+            let error_msg = format!("Validation failed: {}", e);
+            results.push((
+                "Configuration",
+                "Error",
+                Box::leak(error_msg.into_boxed_str()),
+            ));
+            has_errors = true;
+        }
+    }
+
+    // Validate redaction template
+    if let Some(template) = &config.redaction.redaction_template {
+        if template.trim().is_empty() {
+            results.push((
+                "Redaction Template",
+                "Warning",
+                "Redaction template is empty or whitespace-only",
+            ));
+            has_warnings = true;
+        } else {
+            results.push((
+                "Redaction Template",
+                "Valid",
+                "Custom redaction template is configured",
+            ));
+        }
+    } else {
+        results.push((
+            "Redaction Template",
+            "Valid",
+            "Using default redaction template",
+        ));
+    }
+
+    // Validate security settings
+    match config.security.level {
+        crate::config::SecurityLevel::Minimal => {
+            results.push((
+                "Security Level",
+                "Warning",
+                "Minimal security level provides basic protection only",
+            ));
+            has_warnings = true;
+        }
+        crate::config::SecurityLevel::Standard => {
+            results.push((
+                "Security Level",
+                "Valid",
+                "Standard security level is recommended",
+            ));
+        }
+        crate::config::SecurityLevel::Paranoid => {
+            results.push((
+                "Security Level",
+                "Valid",
+                "Paranoid security level provides maximum protection",
+            ));
+        }
+    }
+
+    // Check environment overrides
+    let env_overrides: Vec<_> = std::env::vars()
+        .filter(|(key, _)| key.starts_with("NU_PLUGIN_SECRET_"))
+        .collect();
+
+    if !env_overrides.is_empty() {
+        let env_msg = format!(
+            "Found {} environment variable overrides",
+            env_overrides.len()
+        );
+        results.push((
+            "Environment Overrides",
+            "Info",
+            Box::leak(env_msg.into_boxed_str()),
+        ));
+    }
+
+    (results, has_errors, has_warnings)
+}
+
+/// Build the final validation result record from the collected validation data.
+fn build_validation_record(
+    validation_results: Vec<(&str, &str, &str)>,
+    has_errors: bool,
+    has_warnings: bool,
+    verbose: bool,
+    span: nu_protocol::Span,
+) -> Record {
+    let mut record = Record::new();
+
+    let status = if has_errors {
+        "INVALID"
+    } else if has_warnings {
+        "VALID_WITH_WARNINGS"
+    } else {
+        "VALID"
+    };
+
+    record.push("status", Value::string(status, span));
+    record.push("has_errors", Value::bool(has_errors, span));
+    record.push("has_warnings", Value::bool(has_warnings, span));
+
+    let error_count = validation_results
+        .iter()
+        .filter(|(_, level, _)| level == &"Error")
+        .count();
+    let warning_count = validation_results
+        .iter()
+        .filter(|(_, level, _)| level == &"Warning")
+        .count();
+
+    record.push("error_count", Value::int(error_count as i64, span));
+    record.push("warning_count", Value::int(warning_count as i64, span));
+
+    if verbose || has_errors || has_warnings {
+        let mut details = Vec::new();
+
+        for (category, level, message) in validation_results {
+            let mut detail_record = Record::new();
+            detail_record.push("category", Value::string(category, span));
+            detail_record.push("level", Value::string(level, span));
+            detail_record.push("message", Value::string(message, span));
+            details.push(Value::record(detail_record, span));
+        }
+
+        record.push("details", Value::list(details, span));
+    }
+
+    if let Some(config_path) = crate::config::get_config_file_path() {
+        record.push(
+            "config_file",
+            Value::string(config_path.to_string_lossy().to_string(), span),
+        );
+    }
+
+    record
+}
 
 impl PluginCommand for SecretConfigValidateCommand {
     type Plugin = crate::SecretPlugin;
@@ -59,152 +217,10 @@ impl PluginCommand for SecretConfigValidateCommand {
             }
         };
 
-        // Validate configuration
-        let mut validation_results = Vec::new();
-        let mut has_errors = false;
-        let mut has_warnings = false;
-
-        // Validate using the manager's validation method
-        match ConfigManager::validate_config(manager.config()) {
-            Ok(()) => {
-                validation_results.push((
-                    "Configuration",
-                    "Valid",
-                    "Configuration passed all validation checks",
-                ));
-            }
-            Err(e) => {
-                let error_msg = format!("Validation failed: {}", e);
-                validation_results.push((
-                    "Configuration",
-                    "Error",
-                    Box::leak(error_msg.into_boxed_str()),
-                ));
-                has_errors = true;
-            }
-        }
-
-        // Additional detailed validations
-        let config = manager.config();
-
-        // Validate redaction template
-        if let Some(template) = &config.redaction.redaction_template {
-            if template.trim().is_empty() {
-                validation_results.push((
-                    "Redaction Template",
-                    "Warning",
-                    "Redaction template is empty or whitespace-only",
-                ));
-                has_warnings = true;
-            } else {
-                validation_results.push((
-                    "Redaction Template",
-                    "Valid",
-                    "Custom redaction template is configured",
-                ));
-            }
-        } else {
-            validation_results.push((
-                "Redaction Template",
-                "Valid",
-                "Using default redaction template",
-            ));
-        }
-
-        // Validate security settings
-        match config.security.level {
-            crate::config::SecurityLevel::Minimal => {
-                validation_results.push((
-                    "Security Level",
-                    "Warning",
-                    "Minimal security level provides basic protection only",
-                ));
-                has_warnings = true;
-            }
-            crate::config::SecurityLevel::Standard => {
-                validation_results.push((
-                    "Security Level",
-                    "Valid",
-                    "Standard security level is recommended",
-                ));
-            }
-            crate::config::SecurityLevel::Paranoid => {
-                validation_results.push((
-                    "Security Level",
-                    "Valid",
-                    "Paranoid security level provides maximum protection",
-                ));
-            }
-        }
-
-        // Check environment overrides
-        let env_overrides: Vec<_> = std::env::vars()
-            .filter(|(key, _)| key.starts_with("NU_PLUGIN_SECRET_"))
-            .collect();
-
-        if !env_overrides.is_empty() {
-            let env_msg = format!(
-                "Found {} environment variable overrides",
-                env_overrides.len()
-            );
-            validation_results.push((
-                "Environment Overrides",
-                "Info",
-                Box::leak(env_msg.into_boxed_str()),
-            ));
-        }
-
-        // Create result record
-        let mut record = Record::new();
-
-        // Overall status
-        let status = if has_errors {
-            "INVALID"
-        } else if has_warnings {
-            "VALID_WITH_WARNINGS"
-        } else {
-            "VALID"
-        };
-
-        record.push("status", Value::string(status, span));
-        record.push("has_errors", Value::bool(has_errors, span));
-        record.push("has_warnings", Value::bool(has_warnings, span));
-
-        // Summary counts
-        let error_count = validation_results
-            .iter()
-            .filter(|(_, level, _)| level == &"Error")
-            .count();
-        let warning_count = validation_results
-            .iter()
-            .filter(|(_, level, _)| level == &"Warning")
-            .count();
-
-        record.push("error_count", Value::int(error_count as i64, span));
-        record.push("warning_count", Value::int(warning_count as i64, span));
-
-        // Add detailed results if verbose or if there are issues
-        if verbose || has_errors || has_warnings {
-            let mut details = Vec::new();
-
-            for (category, level, message) in validation_results {
-                let mut detail_record = Record::new();
-                detail_record.push("category", Value::string(category, span));
-                detail_record.push("level", Value::string(level, span));
-                detail_record.push("message", Value::string(message, span));
-                details.push(Value::record(detail_record, span));
-            }
-
-            record.push("details", Value::list(details, span));
-        }
-
-        // Configuration file path
-        if let Some(config_path) = crate::config::get_config_file_path() {
-            record.push(
-                "config_file",
-                Value::string(config_path.to_string_lossy().to_string(), span),
-            );
-        }
+        let (validation_results, has_errors, has_warnings) =
+            run_validation_checks(manager.config());
+        let record =
+            build_validation_record(validation_results, has_errors, has_warnings, verbose, span);
 
         Ok(PipelineData::Value(Value::record(record, span), None))
     }

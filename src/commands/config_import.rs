@@ -1,14 +1,86 @@
 //! Configuration import command for nu_plugin_secret
 
-use crate::config::ConfigManager;
+use std::path::PathBuf;
+
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
     Category, Example, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
 };
-use std::path::PathBuf;
+
+use crate::config::ConfigManager;
 
 /// Command to import configuration from a file
 pub struct SecretConfigImportCommand;
+
+/// Create a backup of the current configuration before importing a new one.
+///
+/// Returns the backup file path on success, or `None` if no existing config was found.
+fn create_backup_before_import(span: nu_protocol::Span) -> Result<Option<String>, LabeledError> {
+    match ConfigManager::load() {
+        Ok(current_manager) => {
+            let backup_timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+            let backup_filename = format!("config_backup_before_import_{}.toml", backup_timestamp);
+
+            if let Some(config_dir) = crate::config::get_config_file_path()
+                .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            {
+                let backup_path = config_dir.join(&backup_filename);
+
+                current_manager.save_to_path(&backup_path).map_err(|e| {
+                    LabeledError::new("Backup Failed")
+                        .with_label(format!("Failed to create backup: {}", e), span)
+                })?;
+
+                Ok(Some(backup_path.to_string_lossy().to_string()))
+            } else {
+                Ok(None)
+            }
+        }
+        Err(_) => {
+            // If no current config exists, that's okay for import
+            Ok(None)
+        }
+    }
+}
+
+/// Build the summary portion of the import result record, including config metadata.
+fn build_import_summary(
+    imported_config: &crate::config::PluginConfig,
+    import_path: &std::path::Path,
+    span: nu_protocol::Span,
+) -> Record {
+    let mut record = Record::new();
+
+    record.push(
+        "status",
+        Value::string("Configuration imported successfully", span),
+    );
+    record.push(
+        "import_path",
+        Value::string(import_path.to_string_lossy().to_string(), span),
+    );
+
+    if let Some(config_path) = crate::config::get_config_file_path() {
+        record.push(
+            "active_config",
+            Value::string(config_path.to_string_lossy().to_string(), span),
+        );
+    }
+
+    record.push(
+        "redaction_template",
+        Value::string(imported_config.redaction.get_redaction_template(), span),
+    );
+    record.push(
+        "security_level",
+        Value::string(
+            format!("{:?}", imported_config.security.level).to_lowercase(),
+            span,
+        ),
+    );
+
+    record
+}
 
 impl PluginCommand for SecretConfigImportCommand {
     type Plugin = crate::SecretPlugin;
@@ -81,33 +153,11 @@ impl PluginCommand for SecretConfigImportCommand {
 
         // Create backup if requested
         if call.has_flag("backup")? {
-            match ConfigManager::load() {
-                Ok(current_manager) => {
-                    let backup_timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-                    let backup_filename =
-                        format!("config_backup_before_import_{}.toml", backup_timestamp);
-
-                    if let Some(config_dir) = crate::config::get_config_file_path()
-                        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-                    {
-                        let backup_path = config_dir.join(&backup_filename);
-
-                        match current_manager.save_to_path(&backup_path) {
-                            Ok(()) => {
-                                result_record.push(
-                                    "backup_created",
-                                    Value::string(backup_path.to_string_lossy().to_string(), span),
-                                );
-                            }
-                            Err(e) => {
-                                return Err(LabeledError::new("Backup Failed")
-                                    .with_label(format!("Failed to create backup: {}", e), span));
-                            }
-                        }
-                    }
+            match create_backup_before_import(span)? {
+                Some(backup_path) => {
+                    result_record.push("backup_created", Value::string(backup_path, span));
                 }
-                Err(_) => {
-                    // If no current config exists, that's okay for import
+                None => {
                     result_record.push(
                         "backup_note",
                         Value::string("No existing configuration to backup", span),
@@ -164,38 +214,11 @@ impl PluginCommand for SecretConfigImportCommand {
             })?;
         }
 
-        result_record.push(
-            "status",
-            Value::string("Configuration imported successfully", span),
-        );
-        result_record.push(
-            "import_path",
-            Value::string(import_path.to_string_lossy().to_string(), span),
-        );
-
-        // Add active configuration file path
-        if let Some(config_path) = crate::config::get_config_file_path() {
-            result_record.push(
-                "active_config",
-                Value::string(config_path.to_string_lossy().to_string(), span),
-            );
+        // Build the summary fields into the result record
+        let summary = build_import_summary(imported_manager.config(), &import_path, span);
+        for (col, val) in summary.into_iter() {
+            result_record.push(col, val);
         }
-
-        // Add configuration summary
-        result_record.push(
-            "redaction_template",
-            Value::string(
-                imported_manager.config().redaction.get_redaction_template(),
-                span,
-            ),
-        );
-        result_record.push(
-            "security_level",
-            Value::string(
-                format!("{:?}", imported_manager.config().security.level).to_lowercase(),
-                span,
-            ),
-        );
 
         Ok(PipelineData::Value(
             Value::record(result_record, span),

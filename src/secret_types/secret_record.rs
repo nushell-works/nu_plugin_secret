@@ -1,10 +1,14 @@
-use crate::config::RedactionContext;
+//! Secure record type with redacted display and zeroed-on-drop memory.
+
+use std::fmt;
+
 use nu_protocol::ast::{Comparison, Operator};
 use nu_protocol::{CustomValue, Record};
 use nu_protocol::{ShellError, Span, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt;
 use zeroize::ZeroizeOnDrop;
+
+use crate::config::RedactionContext;
 
 /// A secure record type that redacts its content in all display contexts
 /// and zeros its memory on drop
