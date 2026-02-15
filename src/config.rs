@@ -481,6 +481,8 @@ pub fn audit_config_change(
 
 #[cfg(test)]
 mod tests {
+    use serial_test::serial;
+
     use super::*;
     use std::fs;
     use tempfile::TempDir;
@@ -527,6 +529,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(not(miri), serial(env))]
     fn test_show_unredacted_env_var() {
         use std::env;
 
