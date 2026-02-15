@@ -14,7 +14,6 @@ use crate::config::RedactionContext;
 #[derive(Clone)]
 pub struct SecretInt {
     inner: i64,
-    #[allow(dead_code)]
     redaction_template: Option<String>,
 }
 
