@@ -2,8 +2,11 @@
 
 use std::fmt;
 
+use nu_protocol::ast::Operator;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
+
+use super::secret_comparison_operation;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use zeroize::ZeroizeOnDrop;
 
@@ -148,6 +151,16 @@ impl CustomValue for SecretList {
 
     fn notify_plugin_on_drop(&self) -> bool {
         false // We handle cleanup via ZeroizeOnDrop
+    }
+
+    fn operation(
+        &self,
+        lhs_span: Span,
+        operator: Operator,
+        op: Span,
+        right: &Value,
+    ) -> Result<Value, ShellError> {
+        secret_comparison_operation(self, lhs_span, operator, op, right, "secret_list")
     }
 }
 

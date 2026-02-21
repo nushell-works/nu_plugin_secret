@@ -2,9 +2,11 @@
 
 use std::fmt;
 
-use nu_protocol::ast::{Comparison, Operator};
+use nu_protocol::ast::Operator;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
+
+use super::secret_comparison_operation;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -166,45 +168,7 @@ impl CustomValue for SecretString {
         op: Span,
         right: &Value,
     ) -> Result<Value, ShellError> {
-        match operator {
-            Operator::Comparison(Comparison::Equal) => {
-                if let Value::Custom { val, .. } = right {
-                    if let Some(other_secret) = val.as_any().downcast_ref::<SecretString>() {
-                        // Use our existing PartialEq implementation for comparison
-                        let result = self == other_secret;
-                        Ok(Value::bool(result, lhs_span))
-                    } else {
-                        // Different custom type, so not equal
-                        Ok(Value::bool(false, lhs_span))
-                    }
-                } else {
-                    // Comparing with non-custom value, so not equal
-                    Ok(Value::bool(false, lhs_span))
-                }
-            }
-            Operator::Comparison(Comparison::NotEqual) => {
-                if let Value::Custom { val, .. } = right {
-                    if let Some(other_secret) = val.as_any().downcast_ref::<SecretString>() {
-                        // Use our existing PartialEq implementation for comparison
-                        let result = self != other_secret;
-                        Ok(Value::bool(result, lhs_span))
-                    } else {
-                        // Different custom type, so not equal (therefore not-equal is true)
-                        Ok(Value::bool(true, lhs_span))
-                    }
-                } else {
-                    // Comparing with non-custom value, so not equal (therefore not-equal is true)
-                    Ok(Value::bool(true, lhs_span))
-                }
-            }
-            _ => Err(ShellError::GenericError {
-                error: format!("Operator {:?} is not supported for secret_string", operator),
-                msg: "".to_string(),
-                span: Some(op),
-                help: None,
-                inner: vec![],
-            }),
-        }
+        secret_comparison_operation(self, lhs_span, operator, op, right, "secret_string")
     }
 }
 
@@ -270,6 +234,7 @@ impl PartialEq for SecretString {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nu_protocol::ast::Comparison;
 
     #[test]
     fn test_secret_string_creation() {
