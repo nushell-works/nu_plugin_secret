@@ -168,7 +168,7 @@ fn luhn_check(digits: &[u8]) -> bool {
         sum += d;
     }
 
-    sum % 10 == 0
+    sum.is_multiple_of(10)
 }
 
 #[derive(Clone)]
