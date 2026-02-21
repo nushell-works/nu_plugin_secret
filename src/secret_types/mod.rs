@@ -1,5 +1,6 @@
 //! Secure custom value types that redact content in display while preserving data in pipelines.
 
+mod operations;
 mod secret_binary;
 mod secret_bool;
 mod secret_date;
@@ -8,6 +9,8 @@ mod secret_int;
 mod secret_list;
 mod secret_record;
 mod secret_string;
+
+pub(crate) use operations::secret_comparison_operation;
 
 pub use secret_binary::SecretBinary;
 pub use secret_bool::SecretBool;
