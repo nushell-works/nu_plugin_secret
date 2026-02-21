@@ -7,7 +7,7 @@ use nu_protocol::ast::Operator;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 
-use super::secret_comparison_operation;
+use super::{secret_comparison_operation, secret_ordering_operation};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use zeroize::ZeroizeOnDrop;
 
@@ -159,7 +159,15 @@ impl CustomValue for SecretDate {
         op: Span,
         right: &Value,
     ) -> Result<Value, ShellError> {
-        secret_comparison_operation(self, lhs_span, operator, op, right, "secret_date")
+        match operator {
+            Operator::Comparison(
+                nu_protocol::ast::Comparison::LessThan
+                | nu_protocol::ast::Comparison::GreaterThan
+                | nu_protocol::ast::Comparison::LessThanOrEqual
+                | nu_protocol::ast::Comparison::GreaterThanOrEqual,
+            ) => secret_ordering_operation(self, lhs_span, operator, op, right, "secret_date"),
+            _ => secret_comparison_operation(self, lhs_span, operator, op, right, "secret_date"),
+        }
     }
 }
 
@@ -219,6 +227,12 @@ impl PartialEq for SecretDate {
             result |= self_ser[i] ^ other_ser[i];
         }
         result == 0
+    }
+}
+
+impl PartialOrd for SecretDate {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.inner.partial_cmp(&other.inner)
     }
 }
 

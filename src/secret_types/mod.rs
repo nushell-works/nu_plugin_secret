@@ -11,6 +11,7 @@ mod secret_record;
 mod secret_string;
 
 pub(crate) use operations::secret_comparison_operation;
+pub(crate) use operations::secret_ordering_operation;
 
 pub use secret_binary::SecretBinary;
 pub use secret_bool::SecretBool;
