@@ -97,6 +97,11 @@ impl SecretRecord {
         self.inner.get(field)
     }
 
+    /// Check if the record has no fields
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
     /// Get all field names (safe to expose)
     pub fn fields(&self) -> impl Iterator<Item = &String> {
         self.inner.columns()
