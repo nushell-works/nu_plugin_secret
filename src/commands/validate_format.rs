@@ -1,5 +1,6 @@
 //! Implements `secret validate-format` — validates secret content against common patterns.
 
+use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::OnceLock;
 
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
@@ -11,7 +12,8 @@ use regex::Regex;
 use crate::SecretString;
 
 /// Supported format names for display in error messages.
-const SUPPORTED_FORMATS: &str = "email, uuid, hex, base64, jwt, regex";
+const SUPPORTED_FORMATS: &str =
+    "email, uuid, hex, base64, jwt, ipv4, ipv6, ssn, credit-card, regex";
 
 /// Returns a compiled regex, caching it in the provided `OnceLock`.
 fn cached_regex<'a>(lock: &'a OnceLock<Regex>, pattern: &str) -> &'a Regex {
@@ -51,6 +53,12 @@ fn jwt_regex() -> &'static Regex {
     cached_regex(&RE, r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$")
 }
 
+/// Returns the compiled US Social Security Number regex (XXX-XX-XXXX).
+fn ssn_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    cached_regex(&RE, r"^\d{3}-\d{2}-\d{4}$")
+}
+
 /// Represents a format validator parsed from user input.
 #[derive(Clone, Debug)]
 pub enum FormatValidator {
@@ -59,6 +67,10 @@ pub enum FormatValidator {
     Hex,
     Base64,
     Jwt,
+    Ipv4,
+    Ipv6,
+    Ssn,
+    CreditCard,
     Regex(String),
 }
 
@@ -70,6 +82,10 @@ impl std::fmt::Display for FormatValidator {
             FormatValidator::Hex => write!(f, "hex"),
             FormatValidator::Base64 => write!(f, "base64"),
             FormatValidator::Jwt => write!(f, "jwt"),
+            FormatValidator::Ipv4 => write!(f, "ipv4"),
+            FormatValidator::Ipv6 => write!(f, "ipv6"),
+            FormatValidator::Ssn => write!(f, "ssn"),
+            FormatValidator::CreditCard => write!(f, "credit-card"),
             FormatValidator::Regex(pat) => write!(f, "regex {}", pat),
         }
     }
@@ -84,6 +100,10 @@ impl FormatValidator {
             FormatValidator::Hex => Ok(!input.is_empty() && hex_regex().is_match(input)),
             FormatValidator::Base64 => Ok(!input.is_empty() && base64_regex().is_match(input)),
             FormatValidator::Jwt => Ok(jwt_regex().is_match(input)),
+            FormatValidator::Ipv4 => Ok(input.parse::<Ipv4Addr>().is_ok()),
+            FormatValidator::Ipv6 => Ok(input.parse::<Ipv6Addr>().is_ok()),
+            FormatValidator::Ssn => Ok(validate_ssn(input)),
+            FormatValidator::CreditCard => Ok(validate_credit_card(input)),
             FormatValidator::Regex(pattern) => {
                 let re =
                     Regex::new(pattern).map_err(|e| format!("Invalid regex pattern: {}", e))?;
@@ -91,6 +111,64 @@ impl FormatValidator {
             }
         }
     }
+}
+
+/// Validates a US Social Security Number.
+///
+/// Checks format (XXX-XX-XXXX) and rejects known-invalid area numbers
+/// (000, 666, 900-999).
+fn validate_ssn(input: &str) -> bool {
+    if !ssn_regex().is_match(input) {
+        return false;
+    }
+    // Reject invalid area numbers per SSA rules
+    let area: u16 = input[..3].parse().unwrap_or(0);
+    area != 0 && area != 666 && area < 900
+}
+
+/// Validates a credit card number using the Luhn algorithm.
+///
+/// Accepts digits with optional dashes or spaces as separators.
+/// Valid card lengths are 13-19 digits.
+fn validate_credit_card(input: &str) -> bool {
+    let digits: Vec<u8> = input
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .map(|c| c as u8 - b'0')
+        .collect();
+
+    if digits.len() < 13 || digits.len() > 19 {
+        return false;
+    }
+
+    // Ensure input only contains digits, dashes, and spaces
+    if input
+        .chars()
+        .any(|c| !c.is_ascii_digit() && c != '-' && c != ' ')
+    {
+        return false;
+    }
+
+    luhn_check(&digits)
+}
+
+/// Performs the Luhn checksum validation on a slice of digits.
+fn luhn_check(digits: &[u8]) -> bool {
+    let mut sum: u32 = 0;
+    let parity = digits.len() % 2;
+
+    for (i, &digit) in digits.iter().enumerate() {
+        let mut d = u32::from(digit);
+        if i % 2 == parity {
+            d *= 2;
+            if d > 9 {
+                d -= 9;
+            }
+        }
+        sum += d;
+    }
+
+    sum % 10 == 0
 }
 
 #[derive(Clone)]
@@ -109,7 +187,7 @@ impl PluginCommand for SecretValidateFormatCommand {
             .required(
                 "format",
                 SyntaxShape::String,
-                "Format to validate against (email, uuid, hex, base64, jwt, regex)",
+                "Format to validate against (email, uuid, hex, base64, jwt, ipv4, ipv6, ssn, credit-card, regex)",
             )
             .optional(
                 "pattern",
@@ -148,6 +226,26 @@ impl PluginCommand for SecretValidateFormatCommand {
             Example {
                 example: r#""eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123" | secret wrap | secret validate-format jwt"#,
                 description: "Validate JWT structure",
+                result: Some(Value::bool(true, nu_protocol::Span::test_data())),
+            },
+            Example {
+                example: r#""192.168.1.1" | secret wrap | secret validate-format ipv4"#,
+                description: "Validate IPv4 address format",
+                result: Some(Value::bool(true, nu_protocol::Span::test_data())),
+            },
+            Example {
+                example: r#""::1" | secret wrap | secret validate-format ipv6"#,
+                description: "Validate IPv6 address format",
+                result: Some(Value::bool(true, nu_protocol::Span::test_data())),
+            },
+            Example {
+                example: r#""078-05-1120" | secret wrap | secret validate-format ssn"#,
+                description: "Validate US Social Security Number format",
+                result: Some(Value::bool(true, nu_protocol::Span::test_data())),
+            },
+            Example {
+                example: r#""4539578763621486" | secret wrap | secret validate-format credit-card"#,
+                description: "Validate credit card number (Luhn check)",
                 result: Some(Value::bool(true, nu_protocol::Span::test_data())),
             },
             Example {
@@ -213,6 +311,10 @@ fn parse_format_validator(
         "hex" => Ok(FormatValidator::Hex),
         "base64" => Ok(FormatValidator::Base64),
         "jwt" => Ok(FormatValidator::Jwt),
+        "ipv4" => Ok(FormatValidator::Ipv4),
+        "ipv6" => Ok(FormatValidator::Ipv6),
+        "ssn" => Ok(FormatValidator::Ssn),
+        "credit-card" => Ok(FormatValidator::CreditCard),
         "regex" => {
             let pattern = match call.positional.get(1) {
                 Some(Value::String { val, .. }) => val.clone(),
@@ -284,7 +386,7 @@ mod tests {
     fn test_examples_count() {
         let command = SecretValidateFormatCommand;
         let examples = command.examples();
-        assert_eq!(examples.len(), 7);
+        assert_eq!(examples.len(), 11);
     }
 
     #[test]
@@ -418,6 +520,96 @@ mod tests {
         assert!(!validator.validate("").unwrap());
     }
 
+    // IPv4 validation tests
+    #[test]
+    fn test_ipv4_valid() {
+        let validator = FormatValidator::Ipv4;
+        assert!(validator.validate("192.168.1.1").unwrap());
+        assert!(validator.validate("0.0.0.0").unwrap());
+        assert!(validator.validate("255.255.255.255").unwrap());
+        assert!(validator.validate("127.0.0.1").unwrap());
+        assert!(validator.validate("10.0.0.1").unwrap());
+    }
+
+    #[test]
+    fn test_ipv4_invalid() {
+        let validator = FormatValidator::Ipv4;
+        assert!(!validator.validate("256.1.1.1").unwrap()); // octet > 255
+        assert!(!validator.validate("1.2.3").unwrap()); // too few octets
+        assert!(!validator.validate("1.2.3.4.5").unwrap()); // too many octets
+        assert!(!validator.validate("abc.def.ghi.jkl").unwrap());
+        assert!(!validator.validate("").unwrap());
+        assert!(!validator.validate("192.168.01.1").unwrap()); // leading zero
+    }
+
+    // IPv6 validation tests
+    #[test]
+    fn test_ipv6_valid() {
+        let validator = FormatValidator::Ipv6;
+        assert!(validator.validate("::1").unwrap()); // loopback
+        assert!(validator.validate("::").unwrap()); // unspecified
+        assert!(validator
+            .validate("2001:0db8:85a3:0000:0000:8a2e:0370:7334")
+            .unwrap()); // full form
+        assert!(validator.validate("2001:db8:85a3::8a2e:370:7334").unwrap()); // compressed
+        assert!(validator.validate("fe80::1").unwrap()); // link-local
+        assert!(validator.validate("::ffff:192.0.2.1").unwrap()); // IPv4-mapped
+    }
+
+    #[test]
+    fn test_ipv6_invalid() {
+        let validator = FormatValidator::Ipv6;
+        assert!(!validator.validate("not-ipv6").unwrap());
+        assert!(!validator
+            .validate("2001:db8:85a3::8a2e:370:7334:extra:segment")
+            .unwrap()); // too many
+        assert!(!validator.validate("").unwrap());
+        assert!(!validator.validate("192.168.1.1").unwrap()); // IPv4, not IPv6
+        assert!(!validator.validate("gggg::1").unwrap()); // invalid hex
+    }
+
+    // SSN validation tests
+    #[test]
+    fn test_ssn_valid() {
+        let validator = FormatValidator::Ssn;
+        assert!(validator.validate("078-05-1120").unwrap());
+        assert!(validator.validate("123-45-6789").unwrap());
+        assert!(validator.validate("001-01-0001").unwrap());
+    }
+
+    #[test]
+    fn test_ssn_invalid() {
+        let validator = FormatValidator::Ssn;
+        assert!(!validator.validate("000-12-3456").unwrap()); // area 000 invalid
+        assert!(!validator.validate("666-12-3456").unwrap()); // area 666 invalid
+        assert!(!validator.validate("900-12-3456").unwrap()); // area 900+ invalid
+        assert!(!validator.validate("999-12-3456").unwrap()); // area 999 invalid
+        assert!(!validator.validate("123456789").unwrap()); // no dashes
+        assert!(!validator.validate("12-345-6789").unwrap()); // wrong dash positions
+        assert!(!validator.validate("").unwrap());
+    }
+
+    // Credit card validation tests
+    #[test]
+    fn test_credit_card_valid() {
+        let validator = FormatValidator::CreditCard;
+        assert!(validator.validate("4539578763621486").unwrap()); // Visa
+        assert!(validator.validate("5500000000000004").unwrap()); // Mastercard
+        assert!(validator.validate("340000000000009").unwrap()); // Amex (15 digits)
+        assert!(validator.validate("4539 5787 6362 1486").unwrap()); // with spaces
+        assert!(validator.validate("4539-5787-6362-1486").unwrap()); // with dashes
+    }
+
+    #[test]
+    fn test_credit_card_invalid() {
+        let validator = FormatValidator::CreditCard;
+        assert!(!validator.validate("1234567890123456").unwrap()); // fails Luhn
+        assert!(!validator.validate("123").unwrap()); // too short
+        assert!(!validator.validate("12345678901234567890").unwrap()); // too long
+        assert!(!validator.validate("abcdefghijklmnop").unwrap()); // not digits
+        assert!(!validator.validate("").unwrap());
+    }
+
     // Custom regex tests
     #[test]
     fn test_custom_regex_valid() {
@@ -441,6 +633,10 @@ mod tests {
         assert_eq!(FormatValidator::Hex.to_string(), "hex");
         assert_eq!(FormatValidator::Base64.to_string(), "base64");
         assert_eq!(FormatValidator::Jwt.to_string(), "jwt");
+        assert_eq!(FormatValidator::Ipv4.to_string(), "ipv4");
+        assert_eq!(FormatValidator::Ipv6.to_string(), "ipv6");
+        assert_eq!(FormatValidator::Ssn.to_string(), "ssn");
+        assert_eq!(FormatValidator::CreditCard.to_string(), "credit-card");
         assert_eq!(
             FormatValidator::Regex("^test$".to_string()).to_string(),
             "regex ^test$"
@@ -545,6 +741,34 @@ mod tests {
         let call = make_call(vec![Value::test_string("jwt")]);
         let validator = parse_format_validator("jwt", &call).unwrap();
         assert!(matches!(validator, FormatValidator::Jwt));
+    }
+
+    #[test]
+    fn test_parse_format_validator_ipv4() {
+        let call = make_call(vec![Value::test_string("ipv4")]);
+        let validator = parse_format_validator("ipv4", &call).unwrap();
+        assert!(matches!(validator, FormatValidator::Ipv4));
+    }
+
+    #[test]
+    fn test_parse_format_validator_ipv6() {
+        let call = make_call(vec![Value::test_string("ipv6")]);
+        let validator = parse_format_validator("ipv6", &call).unwrap();
+        assert!(matches!(validator, FormatValidator::Ipv6));
+    }
+
+    #[test]
+    fn test_parse_format_validator_ssn() {
+        let call = make_call(vec![Value::test_string("ssn")]);
+        let validator = parse_format_validator("ssn", &call).unwrap();
+        assert!(matches!(validator, FormatValidator::Ssn));
+    }
+
+    #[test]
+    fn test_parse_format_validator_credit_card() {
+        let call = make_call(vec![Value::test_string("credit-card")]);
+        let validator = parse_format_validator("credit-card", &call).unwrap();
+        assert!(matches!(validator, FormatValidator::CreditCard));
     }
 
     #[test]
