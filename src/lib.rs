@@ -111,7 +111,7 @@ mod tests {
     fn test_plugin_commands() {
         let plugin = SecretPlugin::default();
         let commands = plugin.commands();
-        assert_eq!(commands.len(), 16);
+        assert_eq!(commands.len(), 17);
 
         // Test all commands to ensure they're registered correctly
         let command_names: Vec<&str> = commands.iter().map(|cmd| cmd.name()).collect();
@@ -123,6 +123,7 @@ mod tests {
         assert!(command_names.contains(&"secret contains"));
         assert!(command_names.contains(&"secret hash"));
         assert!(command_names.contains(&"secret is-empty"));
+        assert!(command_names.contains(&"secret length"));
         assert!(command_names.contains(&"secret info"));
         assert!(command_names.contains(&"secret validate"));
         assert!(command_names.contains(&"secret validate-format"));

@@ -6,7 +6,7 @@ use nu_protocol::ast::Operator;
 use nu_protocol::CustomValue;
 use nu_protocol::{ShellError, Span, Value};
 
-use super::secret_comparison_operation;
+use super::{secret_comparison_operation, secret_ordering_operation};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -139,7 +139,15 @@ impl CustomValue for SecretInt {
         op: Span,
         right: &Value,
     ) -> Result<Value, ShellError> {
-        secret_comparison_operation(self, lhs_span, operator, op, right, "secret_int")
+        match operator {
+            Operator::Comparison(
+                nu_protocol::ast::Comparison::LessThan
+                | nu_protocol::ast::Comparison::GreaterThan
+                | nu_protocol::ast::Comparison::LessThanOrEqual
+                | nu_protocol::ast::Comparison::GreaterThanOrEqual,
+            ) => secret_ordering_operation(self, lhs_span, operator, op, right, "secret_int"),
+            _ => secret_comparison_operation(self, lhs_span, operator, op, right, "secret_int"),
+        }
     }
 }
 
@@ -189,6 +197,12 @@ impl PartialEq for SecretInt {
         // For integers, we can use simple XOR
         let diff = self.inner ^ other.inner;
         diff == 0
+    }
+}
+
+impl PartialOrd for SecretInt {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.inner.cmp(&other.inner))
     }
 }
 
