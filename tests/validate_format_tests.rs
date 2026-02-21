@@ -450,5 +450,5 @@ fn is_valid_credit_card(s: &str) -> bool {
         }
         sum += d;
     }
-    sum % 10 == 0
+    sum.is_multiple_of(10)
 }
