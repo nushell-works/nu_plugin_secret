@@ -84,6 +84,7 @@ impl Plugin for SecretPlugin {
             Box::new(SecretLengthCommand),
             Box::new(SecretInfoCommand),
             Box::new(SecretValidateCommand),
+            Box::new(SecretValidateFormatCommand),
             Box::new(SecretTypeOfCommand),
             // Configuration commands
             Box::new(SecretConfigureCommand),
@@ -124,6 +125,7 @@ mod tests {
         assert!(command_names.contains(&"secret is-empty"));
         assert!(command_names.contains(&"secret info"));
         assert!(command_names.contains(&"secret validate"));
+        assert!(command_names.contains(&"secret validate-format"));
         assert!(command_names.contains(&"secret type-of"));
         // Configuration commands
         assert!(command_names.contains(&"secret configure"));

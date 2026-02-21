@@ -84,6 +84,9 @@ thiserror = "2.0"
 # Templating for redaction
 tera = "1.20"
 
+# Pattern matching for format validation
+regex = "1"
+
 [dev-dependencies]
 nu-test-support = "0.110.0"
 criterion = { version = "0.5", features = ["html_reports"] }
