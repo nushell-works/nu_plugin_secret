@@ -13,6 +13,7 @@ mod length;
 mod type_of;
 mod unwrap;
 mod validate;
+mod validate_format;
 pub mod wrap;
 mod wrap_with;
 
@@ -29,5 +30,6 @@ pub use length::SecretLengthCommand;
 pub use type_of::SecretTypeOfCommand;
 pub use unwrap::SecretUnwrapCommand;
 pub use validate::SecretValidateCommand;
+pub use validate_format::SecretValidateFormatCommand;
 pub use wrap::SecretWrapCommand;
 pub use wrap_with::SecretWrapWithCommand;

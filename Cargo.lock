@@ -1378,6 +1378,7 @@ dependencies = [
  "nu-protocol",
  "nu-test-support",
  "proptest",
+ "regex",
  "serde",
  "serde_json",
  "serde_yaml",
