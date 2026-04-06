@@ -72,7 +72,7 @@ fn bench_secret_string_regression(c: &mut Criterion) {
                 // Record performance metric
                 performance_monitoring::get_monitor().record(performance_monitoring::Measurement {
                     metric_type: MetricType::SecretCreation,
-                    value: duration.as_nanos() as f64 / iters as f64,
+                    value: if iters > 0 { duration.as_nanos() as f64 / iters as f64 } else { 0.0 },
                     unit: Unit::Nanoseconds,
                     timestamp: start,
                     context: Some(format!("string_len_{}", s.len())),
@@ -96,12 +96,14 @@ fn bench_secret_string_regression(c: &mut Criterion) {
                     let duration = start.elapsed();
 
                     // Check against performance target
-                    let avg_ns = duration.as_nanos() / iters as u128;
-                    if avg_ns > targets.secret_string_reveal as u128 {
-                        eprintln!(
-                            "WARNING: Secret string reveal performance regression detected: {}ns > {}ns",
-                            avg_ns, targets.secret_string_reveal
-                        );
+                    if iters > 0 {
+                        let avg_ns = duration.as_nanos() / iters as u128;
+                        if avg_ns > targets.secret_string_reveal as u128 {
+                            eprintln!(
+                                "WARNING: Secret string reveal performance regression detected: {}ns > {}ns",
+                                avg_ns, targets.secret_string_reveal
+                            );
+                        }
                     }
 
                     duration
@@ -118,12 +120,14 @@ fn bench_secret_string_regression(c: &mut Criterion) {
                 let duration = start.elapsed();
 
                 // Check performance budget
-                let avg_ns = duration.as_nanos() / iters as u128;
-                if avg_ns > PERFORMANCE_BUDGET_NS as u128 {
-                    eprintln!(
-                        "WARNING: Secret string display exceeds budget: {}ns > {}ns",
-                        avg_ns, PERFORMANCE_BUDGET_NS
-                    );
+                if iters > 0 {
+                    let avg_ns = duration.as_nanos() / iters as u128;
+                    if avg_ns > PERFORMANCE_BUDGET_NS as u128 {
+                        eprintln!(
+                            "WARNING: Secret string display exceeds budget: {}ns > {}ns",
+                            avg_ns, PERFORMANCE_BUDGET_NS
+                        );
+                    }
                 }
 
                 duration
@@ -336,13 +340,15 @@ fn bench_startup_regression(c: &mut Criterion) {
             let duration = start.elapsed();
 
             // Check startup time budget
-            let avg_ms = duration.as_millis() / iters as u128;
-            if avg_ms > targets.startup_time_ms as u128 / 1000 {
-                eprintln!(
-                    "WARNING: Plugin initialization regression: {}ms > {}ms",
-                    avg_ms,
-                    targets.startup_time_ms / 1000
-                );
+            if iters > 0 {
+                let avg_ms = duration.as_millis() / iters as u128;
+                if avg_ms > targets.startup_time_ms as u128 / 1000 {
+                    eprintln!(
+                        "WARNING: Plugin initialization regression: {}ms > {}ms",
+                        avg_ms,
+                        targets.startup_time_ms / 1000
+                    );
+                }
             }
 
             duration
