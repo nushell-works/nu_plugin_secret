@@ -198,7 +198,7 @@ jobs:
 
       - name: Run supply chain security scan
         run: |
-          cargo tree --format "{p} {l}" | grep -E "(GPL|AGPL)" && exit 1 || echo "No GPL/AGPL licenses found"
+          cargo tree --format "{p} {l}" | grep -E "(GPL|AGPL)" | grep -vE "\bOR\b.*(GPL|AGPL)|(GPL|AGPL).*\bOR\b" && exit 1 || echo "No GPL/AGPL-only licenses found"
 
   # Performance regression check
   performance-check:
