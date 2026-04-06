@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-04-06
+
+### 🔧 Enhanced
+
+#### Dependency Updates
+- **Nushell 0.111.0**: Updated nu-plugin, nu-protocol, and nu-test-support to 0.111.0
+
+#### New Commands & Operations
+- **`secret validate-format`**: Pattern-based format validation for secrets (email, UUID, hex, base64, JWT, custom regex)
+- **`secret is-empty`**: Empty content detection for secret values
+- **Ordering operators**: Added `<`, `>`, `<=`, `>=` support for SecretInt, SecretFloat, and SecretDate
+- **Extended format validators**: Added ipv4, ipv6, ssn, and credit-card format validators with Luhn checksum
+- **Equality operators**: Added equality operators (`==`, `!=`) for all secret types
+
+#### CI/CD Improvements
+- **Trivy action update**: Updated vulnerability scanner from 0.33.1 to 0.35.0
+- **Supply chain check fix**: Exclude dual-licensed crates (e.g., `Apache-2.0 OR GPL-2.0-only`) from GPL/AGPL check
+- **Nushell integration test**: Updated CI to install Nushell 0.111.0
+
+#### Code Quality
+- **Style guide**: Added comprehensive coding conventions documentation
+- **ADR framework**: Established Architecture Decision Records
+- **Module documentation**: Added module-level docs to command and type modules
+- **Import ordering**: Enforced consistent import ordering across all source files
+
 ## [0.6.0] - 2026-02-05
 
 ### 🔧 Enhanced
@@ -315,6 +340,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: Complete user and developer documentation
 - **Community**: Contributing guidelines and security vulnerability disclosure
 
+[0.7.0]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/nushell-works/nu_plugin_secret/compare/v0.2.0...v0.3.0
