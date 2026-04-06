@@ -194,7 +194,7 @@ jobs:
 
       - name: Install Nushell
         run: |
-          cargo install nu --version 0.110.0 --locked
+          cargo install nu --version 0.111.0 --locked
 
       - name: Install plugin
         run: |
