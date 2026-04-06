@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["register_all_standard_functions","register_mask_partial_function","register_replicate_function","register_reverse_function","register_strlen_function","register_take_function"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["record_metric","time_block"],"mod":["commands","config","memory_optimizations","performance_monitoring","redaction","startup_optimizations","tera_functions"],"struct":["SecretBinary","SecretBool","SecretDate","SecretFloat","SecretInt","SecretList","SecretPlugin","SecretRecord","SecretString"]};

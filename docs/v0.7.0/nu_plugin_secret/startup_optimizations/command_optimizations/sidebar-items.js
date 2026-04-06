@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CommandCategory"],"fn":["get_commands_by_category","init_command_cache"]};

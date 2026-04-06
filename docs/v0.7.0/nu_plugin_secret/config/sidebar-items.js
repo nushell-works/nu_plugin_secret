@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ConfigError","RedactionContext","SecurityLevel"],"fn":["audit_config_change","get_config_file_path"],"struct":["ConfigManager","PluginConfig","RedactionConfig","SecurityConfig"]};
