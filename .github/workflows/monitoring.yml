@@ -127,16 +127,17 @@ jobs:
       - name: Supply chain security
         run: |
           echo "=== Supply Chain Security ==="
-          # Check for any GPL/AGPL dependencies
-          if cargo tree --format "{p} {l}" | grep -E "(GPL|AGPL)"; then
-            echo "❌ Found GPL/AGPL licensed dependencies"
+          # Check for any GPL/AGPL-only dependencies (exclude dual-licensed crates
+          # where a permissive license is also available, e.g. "Apache-2.0 OR GPL-2.0-only")
+          if cargo tree --format "{p} {l}" | grep -E "(GPL|AGPL)" | grep -vE "\bOR\b.*(GPL|AGPL)|(GPL|AGPL).*\bOR\b"; then
+            echo "❌ Found GPL/AGPL-only licensed dependencies"
             exit 1
           else
-            echo "✅ No GPL/AGPL dependencies found"
+            echo "✅ No GPL/AGPL-only dependencies found"
           fi
 
       - name: Vulnerability scan with Trivy
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: 'fs'
           scan-ref: '.'

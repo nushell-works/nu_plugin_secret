@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Nushell plugin (`nu_plugin_secret`) providing 8 custom value types for secure secret handling. Secrets are always redacted in display/debug output but preserve their actual data through serialization for pipeline operations (the "dual-layer security model").
 
-**Nushell compatibility**: nu-plugin/nu-protocol 0.110.0 · **MSRV**: 1.88.0 · **License**: BSD-3-Clause
+**Nushell compatibility**: nu-plugin/nu-protocol 0.111.0 · **MSRV**: 1.88.0 · **License**: BSD-3-Clause
 
 ## Build & Development Commands
 
