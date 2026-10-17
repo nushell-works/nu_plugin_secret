@@ -1,7 +1,9 @@
 //! Implements `secret unwrap` — extracts the underlying value from a secret.
 
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{Category, Example, LabeledError, PipelineData, Signature, Type, Value};
+use nu_protocol::{
+    Category, CollectionColumns, Example, LabeledError, PipelineData, Signature, Type, Value,
+};
 
 use crate::{
     SecretBinary, SecretBool, SecretDate, SecretFloat, SecretInt, SecretList, SecretRecord,
@@ -26,7 +28,7 @@ impl PluginCommand for SecretUnwrapCommand {
                 (Type::Custom("secret_bool".into()), Type::Bool),
                 (
                     Type::Custom("secret_record".into()),
-                    Type::Record(Box::new([])),
+                    Type::Record(CollectionColumns::default()),
                 ),
                 (
                     Type::Custom("secret_list".into()),

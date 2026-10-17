@@ -120,11 +120,11 @@ impl PluginCommand for SecretWrapCommand {
                         Value::custom(Box::new(secret), call.head)
                     }
                     Value::Binary { val, .. } => {
-                        let secret = SecretBinary::new(val);
+                        let secret = SecretBinary::new(val.to_vec());
                         Value::custom(Box::new(secret), call.head)
                     }
                     Value::List { vals, .. } => {
-                        let secret = SecretList::new(vals);
+                        let secret = SecretList::new(vals.to_vec());
                         Value::custom(Box::new(secret), call.head)
                     }
                     Value::Record { val, .. } => {

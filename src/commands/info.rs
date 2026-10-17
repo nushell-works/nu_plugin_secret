@@ -1,7 +1,10 @@
 //! Implements `secret info` — displays plugin version and metadata.
 
 use nu_plugin::{EngineInterface, EvaluatedCall, Plugin, PluginCommand};
-use nu_protocol::{Category, Example, LabeledError, PipelineData, Record, Signature, Type, Value};
+use nu_protocol::{
+    Category, CollectionColumns, Example, LabeledError, PipelineData, Record, Signature, Type,
+    Value,
+};
 
 #[derive(Clone)]
 pub struct SecretInfoCommand;
@@ -15,7 +18,10 @@ impl PluginCommand for SecretInfoCommand {
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .input_output_types(vec![(Type::Nothing, Type::Record(Box::new([])))])
+            .input_output_types(vec![(
+                Type::Nothing,
+                Type::Record(CollectionColumns::default()),
+            )])
             .category(Category::System)
     }
 

@@ -578,8 +578,8 @@ mod tests {
 
         assert!(result.is_err());
         match result.unwrap_err() {
-            ShellError::GenericError { error, .. } => {
-                assert!(error.contains("not supported for secret_string"));
+            ShellError::Generic(err) => {
+                assert!(err.error.contains("not supported for secret_string"));
             }
             _ => panic!("Expected GenericError"),
         }

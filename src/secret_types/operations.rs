@@ -6,6 +6,7 @@
 
 use nu_protocol::{
     ast::{Comparison, Operator},
+    shell_error::generic::GenericError,
     ShellError, Span, Value,
 };
 
@@ -47,13 +48,11 @@ pub(crate) fn secret_comparison_operation<T: PartialEq + 'static>(
                 Ok(Value::bool(true, lhs_span))
             }
         }
-        _ => Err(ShellError::GenericError {
-            error: format!("Operator {operator:?} is not supported for {type_name}"),
-            msg: String::new(),
-            span: Some(op),
-            help: None,
-            inner: vec![],
-        }),
+        _ => Err(ShellError::Generic(GenericError::new(
+            format!("Operator {operator:?} is not supported for {type_name}"),
+            String::new(),
+            op,
+        ))),
     }
 }
 
@@ -81,13 +80,11 @@ pub(crate) fn secret_ordering_operation<T: PartialOrd + 'static>(
             | Comparison::GreaterThanOrEqual,
         ) => operator,
         _ => {
-            return Err(ShellError::GenericError {
-                error: format!("Operator {operator:?} is not supported for {type_name}"),
-                msg: String::new(),
-                span: Some(op),
-                help: None,
-                inner: vec![],
-            });
+            return Err(ShellError::Generic(GenericError::new(
+                format!("Operator {operator:?} is not supported for {type_name}"),
+                String::new(),
+                op,
+            )));
         }
     };
 
@@ -98,24 +95,20 @@ pub(crate) fn secret_ordering_operation<T: PartialOrd + 'static>(
     };
 
     let Some(other) = other else {
-        return Err(ShellError::GenericError {
-            error: format!("Ordering comparison requires two {type_name} values"),
-            msg: "right-hand side is not the same secret type".into(),
-            span: Some(op),
-            help: None,
-            inner: vec![],
-        });
+        return Err(ShellError::Generic(GenericError::new(
+            format!("Ordering comparison requires two {type_name} values"),
+            "right-hand side is not the same secret type",
+            op,
+        )));
     };
 
-    let ordering = lhs
-        .partial_cmp(other)
-        .ok_or_else(|| ShellError::GenericError {
-            error: format!("Values are not orderable for {type_name}"),
-            msg: "comparison is undefined (e.g., NaN)".into(),
-            span: Some(op),
-            help: None,
-            inner: vec![],
-        })?;
+    let ordering = lhs.partial_cmp(other).ok_or_else(|| {
+        ShellError::Generic(GenericError::new(
+            format!("Values are not orderable for {type_name}"),
+            "comparison is undefined (e.g., NaN)",
+            op,
+        ))
+    })?;
 
     let result = match cmp {
         Operator::Comparison(Comparison::LessThan) => ordering.is_lt(),

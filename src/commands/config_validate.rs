@@ -1,7 +1,10 @@
 //! Configuration validation command for nu_plugin_secret
 
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{Category, Example, LabeledError, PipelineData, Record, Signature, Type, Value};
+use nu_protocol::{
+    Category, CollectionColumns, Example, LabeledError, PipelineData, Record, Signature, Type,
+    Value,
+};
 
 use crate::config::{ConfigManager, PluginConfig};
 
@@ -178,7 +181,10 @@ impl PluginCommand for SecretConfigValidateCommand {
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .input_output_types(vec![(Type::Nothing, Type::Record(Box::new([])))])
+            .input_output_types(vec![(
+                Type::Nothing,
+                Type::Record(CollectionColumns::default()),
+            )])
             .switch("verbose", "Show detailed validation results", Some('v'))
             .category(Category::Custom("secret".into()))
     }
@@ -625,7 +631,7 @@ mod tests {
 
         assert!(signature
             .input_output_types
-            .contains(&(Type::Nothing, Type::Record(Box::new([])))));
+            .contains(&(Type::Nothing, Type::Record(CollectionColumns::default()))));
     }
 
     #[test]
