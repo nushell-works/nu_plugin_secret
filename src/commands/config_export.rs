@@ -4,7 +4,8 @@ use std::path::PathBuf;
 
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
-    Category, Example, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
+    Category, CollectionColumns, Example, LabeledError, PipelineData, Record, Signature,
+    SyntaxShape, Type, Value,
 };
 
 use crate::config::ConfigManager;
@@ -64,7 +65,10 @@ impl PluginCommand for SecretConfigExportCommand {
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .input_output_types(vec![(Type::Nothing, Type::Record(Box::new([])))])
+            .input_output_types(vec![(
+                Type::Nothing,
+                Type::Record(CollectionColumns::default()),
+            )])
             .required(
                 "path",
                 SyntaxShape::Filepath,

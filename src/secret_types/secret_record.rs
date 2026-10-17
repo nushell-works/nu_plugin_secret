@@ -545,8 +545,8 @@ mod tests {
         );
 
         assert!(result.is_err());
-        if let Err(ShellError::GenericError { error, .. }) = result {
-            assert!(error.contains("not supported"));
+        if let Err(ShellError::Generic(err)) = result {
+            assert!(err.error.contains("not supported"));
         }
     }
 

@@ -68,7 +68,7 @@ fn test_unified_wrap_functionality() {
     // Test binary wrapping
     let binary_val = Value::binary(vec![1, 2, 3, 4], Span::test_data());
     if let Value::Binary { val, .. } = binary_val {
-        let secret = SecretBinary::new(val);
+        let secret = SecretBinary::new(val.to_vec());
         let display = format!("{}", secret);
         assert!(
             display.contains("redacted") || display.contains("HIDDEN") || display.contains("***")
@@ -84,7 +84,7 @@ fn test_unified_wrap_functionality() {
         Span::test_data(),
     );
     if let Value::List { vals, .. } = list_val {
-        let secret = SecretList::new(vals);
+        let secret = SecretList::new(vals.to_vec());
         let display = format!("{}", secret);
         assert!(
             display.contains("redacted") || display.contains("HIDDEN") || display.contains("***")

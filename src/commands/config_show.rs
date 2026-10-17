@@ -1,7 +1,10 @@
 //! Configuration display command for nu_plugin_secret
 
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{Category, Example, LabeledError, PipelineData, Record, Signature, Type, Value};
+use nu_protocol::{
+    Category, CollectionColumns, Example, LabeledError, PipelineData, Record, Signature, Type,
+    Value,
+};
 
 /// Command to display current configuration settings
 pub struct SecretConfigShowCommand;
@@ -88,7 +91,10 @@ impl PluginCommand for SecretConfigShowCommand {
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .input_output_types(vec![(Type::Nothing, Type::Record(Box::new([])))])
+            .input_output_types(vec![(
+                Type::Nothing,
+                Type::Record(CollectionColumns::default()),
+            )])
             .switch("raw", "Show raw TOML configuration", Some('r'))
             .switch("file-path", "Show configuration file path only", Some('f'))
             .category(Category::Custom("secret".into()))

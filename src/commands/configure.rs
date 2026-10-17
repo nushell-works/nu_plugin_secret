@@ -9,7 +9,8 @@
 
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
 use nu_protocol::{
-    Category, Example, LabeledError, PipelineData, Record, Signature, SyntaxShape, Type, Value,
+    Category, CollectionColumns, Example, LabeledError, PipelineData, Record, Signature,
+    SyntaxShape, Type, Value,
 };
 
 use crate::config::{ConfigManager, PluginConfig, SecurityLevel};
@@ -102,7 +103,10 @@ impl PluginCommand for SecretConfigureCommand {
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .input_output_types(vec![(Type::Nothing, Type::Record(Box::new([])))])
+            .input_output_types(vec![(
+                Type::Nothing,
+                Type::Record(CollectionColumns::default()),
+            )])
             .named(
                 "security-level",
                 SyntaxShape::String,

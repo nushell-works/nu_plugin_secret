@@ -1,7 +1,10 @@
 //! Configuration reset command for nu_plugin_secret
 
 use nu_plugin::{EngineInterface, EvaluatedCall, PluginCommand};
-use nu_protocol::{Category, Example, LabeledError, PipelineData, Record, Signature, Type, Value};
+use nu_protocol::{
+    Category, CollectionColumns, Example, LabeledError, PipelineData, Record, Signature, Type,
+    Value,
+};
 
 use crate::config::PluginConfig;
 
@@ -83,7 +86,10 @@ impl PluginCommand for SecretConfigResetCommand {
 
     fn signature(&self) -> Signature {
         Signature::build(self.name())
-            .input_output_types(vec![(Type::Nothing, Type::Record(Box::new([])))])
+            .input_output_types(vec![(
+                Type::Nothing,
+                Type::Record(CollectionColumns::default()),
+            )])
             .switch(
                 "confirm",
                 "Confirm the reset operation (required for safety)",

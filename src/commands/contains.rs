@@ -84,7 +84,7 @@ fn compare_secret_value(
             } => {
                 // Create Value::List instances for comparison since Value implements PartialEq
                 let secret_value = Value::list(secret_list.reveal().clone(), span);
-                let search_value_list = Value::list(search_list.clone(), span);
+                let search_value_list = Value::list(search_list.to_vec(), span);
                 Ok(Value::bool(secret_value == search_value_list, span))
             }
             _ => Err(LabeledError::new("Type mismatch")
